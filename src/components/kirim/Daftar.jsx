@@ -6,7 +6,8 @@ import { Button, Input, Select, Sheet, Empty, Textarea, Tabs, cx } from '../ui.j
 import { rupiah } from '../../lib/format.js'
 import { go } from '../../lib/router.js'
 import { kelompokTahap, labelTahap, TAHAP, JENIS_KIRIM, PENANGGUNG, fmtWaktu, zonaCabang, bolehOps, nomorKode, normalHp, IS_DEMO, resiOf, isEverpro, bolehPenting, PENYEDIA, TAHAP_MANUAL } from '../../lib/kirim.js'
-import { sinkronKirim, bukaLabelKirim, batalKirim, sinkronSemua } from '../../lib/kirimApi.js'
+import { sinkronKirim, batalKirim, sinkronSemua } from '../../lib/kirimApi.js'
+import CetakLabel from './CetakLabel.jsx'
 import { bukuExcel } from '../UnduhData.jsx'
 import { drive } from '../../lib/integrations.js'
 import { saveBlob } from '../../lib/download.js'
@@ -61,6 +62,7 @@ export default function Daftar({ awal, onBuat }) {
   const [atur, setAtur] = useState(false)
   const [buka, setBuka] = useState(null)
   const [sibuk, setSibuk] = useState('')
+  const [cetak, setCetak] = useState(null)
   const PER = 25
 
   const hasil = useMemo(() => {
@@ -121,7 +123,7 @@ export default function Daftar({ awal, onBuat }) {
       <div className="flex flex-wrap items-center gap-2 text-xs text-ink-mute">
         <span>{hasil.length} pengiriman · biaya estimasi {rupiah(hasil.filter((r) => r.tahap !== 'dibatalkan').reduce((a, r) => a + Number(r.biaya?.total || 0), 0))}</span>
         {sinkron?.at && <span>· tarik Everpro terakhir {fmtWaktu(sinkron.at)} oleh {sinkron.oleh}</span>}
-        <Button size="sm" className="ml-auto" disabled={!pilih.size} loading={sibuk === 'label'} onClick={async () => { setSibuk('label'); await bukaLabelKirim([...pilih], notify); setSibuk('') }} data-aksi="label-massal"><Printer className="h-4 w-4" />Cetak label{pilih.size ? ` (${pilih.size})` : ''}</Button>
+        <Button size="sm" className="ml-auto" disabled={!pilih.size} onClick={() => setCetak(kirim.filter((r) => pilih.has(r.id)))} data-aksi="label-massal"><Printer className="h-4 w-4" />Cetak label{pilih.size ? ` (${pilih.size})` : ''}</Button>
       </div>
 
       {!hasil.length ? <Empty icon={Package} title="Belum ada pengiriman" text={kirim.length ? 'Tidak ada yang cocok dengan saringan.' : 'Buat pengiriman baru, atau tarik data dari Everpro.'} /> : (
@@ -169,6 +171,7 @@ export default function Daftar({ awal, onBuat }) {
         </Sheet>
       )}
       {buka && <DetailKirim id={buka} onClose={() => setBuka(null)} />}
+      {cetak && <CetakLabel rows={cetak} onClose={() => setCetak(null)} />}
     </div>
   )
 }
@@ -187,6 +190,7 @@ export function DetailKirim({ id, onClose }) {
   const ev = useMemo(() => (data.kirim_event || []).filter((e) => e.kirim_id === id), [data.kirim_event, id])
   const kendala = (data.kirim_kendala || []).filter((k) => k.kirim_id === id)
   const [sibuk, setSibuk] = useState('')
+  const [cetak, setCetak] = useState(null)
   const [batal, setBatal] = useState(null)
   const [pesan, setPesan] = useState('resi')
   const [kdl, setKdl] = useState(null)
@@ -227,12 +231,13 @@ export function DetailKirim({ id, onClose }) {
   return (
     <Sheet open onClose={onClose} side wide title={r.kode || r.everpro?.client_order_no || 'Pengiriman'} subtitle={<span className="inline-flex flex-wrap items-center gap-2"><BadgeTahap tahap={r.tahap} /><BadgeSumber sumber={r.sumber_status || r.sumber} waktu={r.diperbarui_at} /></span>}>
       <div className="space-y-4 text-sm" data-detail-kirim>
+        {r.everpro?.menunggu_cocok && <p className="rounded-lg bg-amber-50 px-3 py-2 text-[12px] text-amber-800 ring-1 ring-amber-200">Order sudah diterima Everpro, nomor order & resi sedang menyusul. Tekan <b>Lacak / perbarui</b> beberapa saat lagi.</p>}
         <div className="flex flex-wrap gap-1.5">
           {r.tahap === 'draft' || r.tahap === 'siap' || r.tahap === 'gagal_order' ? ops && <Button size="sm" onClick={() => { onClose(); go(`pengiriman/buat/${r.id}`) }}>Lanjutkan draft</Button> : null}
           {!isEverpro(r) && ops && !['draft', 'siap'].includes(r.tahap) && <Button size="sm" onClick={() => setStatus({ tahap: r.tahap, catatan: '' })} data-aksi="ubah-status"><RefreshCw className="h-4 w-4" />Perbarui status</Button>}
           {!isEverpro(r) && resiOf(r) && <Button size="sm" variant="outline" onClick={lacakManual}><ExternalLink className="h-4 w-4" />Lacak di {PENYEDIA[r.penyedia]?.singkat || 'situs kurir'}</Button>}
           {r.everpro?.client_order_no && <Button size="sm" variant="outline" loading={sibuk === 'sinkron'} onClick={sinkron}><RefreshCw className="h-4 w-4" />Lacak / perbarui</Button>}
-          {awb && ops && isEverpro(r) && <Button size="sm" variant="outline" loading={sibuk === 'label'} onClick={async () => { setSibuk('label'); await bukaLabelKirim([r.id], notify); setSibuk('') }}><Printer className="h-4 w-4" />Label</Button>}
+          {resiOf(r) && ops && <Button size="sm" variant="outline" onClick={() => setCetak([r])} data-aksi="cetak-label-satu"><Printer className="h-4 w-4" />Cetak label</Button>}
           {ops && <Button size="sm" variant="outline" onClick={duplikat}><Files className="h-4 w-4" />Duplikasi jadi draft</Button>}
           {ops && <Button size="sm" variant="outline" onClick={() => setKdl({ kirim_id: r.id, cabang: r.cabang, jenis: 'kendala', status: 'terbuka', judul: '', pic: user.name, catatan: '' })}><AlertTriangle className="h-4 w-4" />Catat kendala</Button>}
           {bisaBatal && bolehPenting(user) && isEverpro(r) && <Button size="sm" variant="outline" onClick={() => setBatal('')}><Ban className="h-4 w-4" />Ajukan pembatalan</Button>}
@@ -312,6 +317,7 @@ export function DetailKirim({ id, onClose }) {
           </div>
         </Sheet>
       )}
+      {cetak && <CetakLabel rows={cetak} onClose={() => setCetak(null)} />}
     </Sheet>
   )
 }

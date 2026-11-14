@@ -226,7 +226,7 @@ export default function Buat({ id }) {
         return
       }
       if (!x.ok) return notify(x.alasan || 'Pengiriman gagal dibuat. Draft tetap tersimpan.', 'err')
-      notify(x.sudah_ada ? 'Order sudah ada di Everpro — tidak dipesan ulang' : x.everpro?.awb ? `Order dibuat · resi ${x.everpro.awb}` : 'Order dibuat · resi menyusul')
+      notify(x.sudah_ada ? 'Order sudah ada di Everpro — tidak dipesan ulang' : x.menunggu ? 'Order diterima Everpro — nomor order & resi menyusul. Tekan "Lacak / perbarui" beberapa saat lagi.' : x.everpro?.awb ? `Order dibuat · resi ${x.everpro.awb}` : 'Order dibuat · resi menyusul')
       go('pengiriman/daftar')
     } finally { kirimRef.current = false; setSibuk('') }
   }

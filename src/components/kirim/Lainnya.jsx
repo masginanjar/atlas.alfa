@@ -6,7 +6,7 @@ import { Button, Input, Select, Sheet, Empty, Textarea, Tabs, cx } from '../ui.j
 import { rupiah } from '../../lib/format.js'
 import { BRANCHES } from '../../config/access.js'
 import { normalHp, kodeposOk, bolehOps, bolehAturKirim, bolehPenting, fmtWaktu, zonaCabang, AMBANG_BAWAAN, labelTahap, resiOf, isEverpro, PENYEDIA, penyediaCabang } from '../../lib/kirim.js'
-import { bukaLabelKirim } from '../../lib/kirimApi.js'
+import CetakLabel from './CetakLabel.jsx'
 import { useKirim, Kotak, Catatan, BadgeTahap, LogoKurir } from './bersama.jsx'
 import { PilihLokasi } from './Buat.jsx'
 import { DetailKirim, FormKendala, EVERPRO_DASHBOARD } from './Daftar.jsx'
@@ -69,15 +69,14 @@ export function BukuAlamat() {
 }
 
 // ---------------- Label & Serah Terima ----------------
-const UKURAN = [['a4', 'Satu label per halaman'], ['8x10', '8 × 10 cm'], ['8x15', '8 × 15 cm'], ['10x10', '10 × 10 cm'], ['10x15', '10 × 15 cm']]
 export function LabelSerah() {
   const { user, save, notify } = useApp()
   const { kirim } = useKirim()
   const [tab, setTab] = useState('label')
   const [pilih, setPilih] = useState(new Set())
-  const [sibuk, setSibuk] = useState(false)
   const [f, setF] = useState({ tanggal: new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10), kurir: '', cabang: '' })
-  const siap = kirim.filter((r) => isEverpro(r) && resiOf(r) && ['dibuat', 'menunggu_jemput', 'gagal_pickup'].includes(r.tahap))
+  const siap = kirim.filter((r) => resiOf(r) && ['dibuat', 'menunggu_jemput', 'gagal_pickup'].includes(r.tahap))
+  const [cetak, setCetak] = useState(null)
   const serah = useMemo(() => kirim.filter((r) => resiOf(r) && !['dibatalkan', 'batal_diajukan', 'draft'].includes(r.tahap) && (!f.kurir || r.kurir?.kurir === f.kurir) && (!f.cabang || r.cabang === f.cabang) && String(r.dipesan_at || r.created_at).slice(0, 10) === f.tanggal), [kirim, f])
   const tandaiCetak = async (ids) => { const at = new Date().toISOString(); for (const id of ids) { const r = kirim.find((x) => x.id === id); if (r) await save('kirim', { id, label_dicetak_at: at, label_dicetak_oleh: user.name, riwayat: [...(r.riwayat || []), { at, by: user.name, aksi: 'Label ditandai sudah dicetak fisik' }] }) } notify('Ditandai sudah dicetak') }
   const cetakSerah = () => {
@@ -94,21 +93,19 @@ export function LabelSerah() {
   }
   return (
     <div className="space-y-3" data-label-serah>
+      {cetak && <CetakLabel rows={cetak} onClose={() => setCetak(null)} />}
       <Tabs value={tab} onChange={setTab} tabs={[{ value: 'label', label: 'Label', count: siap.length }, { value: 'serah', label: 'Serah terima' }]} />
       {tab === 'label' ? (
         <>
           <Kotak>
-            <p className="text-sm font-bold">Ukuran & isi label</p>
-            <p className="mt-1 text-[12px]">Label yang dicetak adalah <b>label resmi kurir dari Everpro (PDF)</b> — ATLAS tidak membuat resi atau barcode sendiri supaya data wajib kurir tidak berubah dan barcode tetap terbaca.</p>
-            <ul className="mt-2 grid gap-1 text-[12px] sm:grid-cols-2">{UKURAN.map(([k, l]) => <li key={k}>• {l}: <span className="text-ink-mute">mengikuti file dari Everpro; API Everpro belum menyediakan pilihan ukuran</span></li>)}</ul>
-            <p className="mt-2 text-[12px] text-ink-mute">Pilihan tampil ongkir, alamat/telepon pengirim, kelurahan/telepon penerima, logo, tanggal cetak, dan salinan pelanggan tidak tersedia lewat API — atur di pengaturan label dashboard Everpro, lalu cetak dari sini atau dari dashboard. Saat mencetak, pakai skala 100% (jangan &quot;fit to page&quot;) agar barcode tidak terdistorsi.</p>
-            <a href={EVERPRO_DASHBOARD} target="_blank" rel="noopener noreferrer" className="mt-1 inline-flex items-center gap-1 text-[12px] font-semibold underline"><ExternalLink className="h-3 w-3" />Buka dashboard Everpro</a>
+            <p className="text-sm font-bold">Cetak label langsung dari ATLAS</p>
+            <p className="mt-1 text-[12px]">Pilih pengiriman lalu tekan <b>Cetak label</b>. Atur isi label (ongkir, alamat/telepon, kelurahan, logo, tanggal), template (kurir / kurir &amp; pelanggan) dan ukuran (A4 atau thermal 8×10, 8×15, 10×10, 10×15 cm). Barcode memakai nomor resi resmi dari kurir. Label resmi Everpro (PDF) tetap bisa dibuka dari dialog yang sama.</p>
           </Kotak>
           {!siap.length ? <Empty icon={Printer} title="Tidak ada label menunggu" text="Label muncul untuk pengiriman yang sudah punya resi dan belum dijemput." /> : (
             <>
               <div className="flex flex-wrap gap-2">
                 <Button size="sm" variant="outline" onClick={() => setPilih(new Set(siap.map((r) => r.id)))}>Pilih semua</Button>
-                <Button size="sm" disabled={!pilih.size} loading={sibuk} onClick={async () => { setSibuk(true); const x = await bukaLabelKirim([...pilih], notify); setSibuk(false); return x }}><Printer className="h-4 w-4" />Buka label ({pilih.size})</Button>
+                <Button size="sm" disabled={!pilih.size} onClick={() => setCetak(siap.filter((r) => pilih.has(r.id)))}><Printer className="h-4 w-4" />Cetak label ({pilih.size})</Button>
                 <Button size="sm" variant="outline" disabled={!pilih.size} onClick={() => tandaiCetak([...pilih])}><Check className="h-4 w-4" />Tandai sudah dicetak</Button>
               </div>
               <ul className="space-y-1.5">{siap.map((r) => (

@@ -74,7 +74,7 @@ async function tarifLengkap(t: string, b: Record<string, any>) {
   const beratKg = Math.max(0.1, Number(b.berat_gram ?? 200) / 1000);
   const body: Record<string, unknown> = {
     origin_postal_code: String(b.asal_kodepos ?? ""), destination_postal_code: String(b.tujuan_kodepos ?? ""),
-    package_type_id: 1, shipment_type: b.jenis === "DROP" ? "DROP" : "PICKUP", weight: beratKg, item_price: Math.max(0, Number(b.nilai ?? 0)),
+    package_type_id: 1, shipment_type: b.jenis === "DROP" ? "DROP" : "PICKUP", weight: beratKg, item_price: Math.max(1, Math.round(Number(b.nilai ?? 0))), // prepaid: wajib > 0
   };
   if (b.asal_kel) body.origin_sub_district_name = String(b.asal_kel);
   if (b.tujuan_kel) body.destination_sub_district_name = String(b.tujuan_kel);
@@ -91,7 +91,8 @@ async function tarifLengkap(t: string, b: Record<string, any>) {
     out.push({ grup, kurir: it.logistic_name, kode_kurir: it.logistic_code, layanan: it.rate_name ?? it.name, rate_code: it.rate_code, logo: it.logistic_logo_url ?? null,
       ongkir, asuransi: asur, asuransi_tersedia: it.insurance_price != null, biaya_tambahan: tambah, rincian_tambahan: it.surcharge_details ?? null,
       total: ongkir + asur + tambah, cashback: Number(it.cashback) || 0, min_hari: it.min_duration ?? null, max_hari: it.max_duration ?? null, satuan_durasi: it.duration_type ?? "",
-      jemput_hari_ini: it.is_available_pickup_today ?? null, flat: !!it.is_flat_rate, kayu: !!it.is_use_wood_packing, berat_volume: it.volume_weight ?? null, berat_dihitung: it.weight ?? null });
+      jemput_hari_ini: it.is_available_pickup_today ?? null, flat: !!it.is_flat_rate, kayu: !!it.is_use_wood_packing, berat_volume: it.volume_weight ?? null, berat_dihitung: it.weight ?? null,
+      signed_key: it.signed_key ?? "", asuransi_everpro: Number(it.insurance_price) || 0, min_raw: Number(it.min_duration) || 0, max_raw: Number(it.max_duration) || 0 });
   }
   return { tarif: out.filter((r) => r.rate_code), diambil_at: new Date().toISOString(), permintaan: { ...body, origin_latitude: undefined } };
 }
@@ -109,7 +110,7 @@ Deno.serve(async (req: Request) => {
   if (uji) {
     const { data: cfg } = await admin.from("pembayaran_gateway_config").select("value").eq("key", "uji_token").maybeSingle();
     const ok = !!cfg?.value && uji.length >= 20 && uji === cfg.value;
-    if (!ok || !["tarif", "lokasi", "jemput_cabang"].includes(aksi)) return json({ ok: false, alasan: "tidak diizinkan" }, 401);
+    if (!ok || !["tarif", "lokasi", "jemput_cabang", "saldo"].includes(aksi)) return json({ ok: false, alasan: "tidak diizinkan" }, 401);
   } else {
     const auth = req.headers.get("Authorization") ?? "";
     db = createClient(URL_, ANON, { global: { headers: { Authorization: auth } }, auth: { persistSession: false } });
@@ -129,6 +130,11 @@ Deno.serve(async (req: Request) => {
       if (!/^\d{5}$/.test(kp) && q.length < 3) return json({ ok: false, alasan: "Ketik minimal 3 huruf nama kelurahan, atau 5 angka kode pos" });
       const x = await ep(t, `/location/v1/sub-districts?${/^\d{5}$/.test(kp) ? "postal_code=" + kp : "sub_district_name=" + encodeURIComponent(q)}`);
       return json({ ok: true, data: (Array.isArray(x?.data) ? x.data : []).slice(0, 30) });
+    }
+    const saldoEverpro = async () => { const x = await ep(t, "/balance/v1/detail"); return { cash: Number(x?.data?.cash ?? 0), nama: x?.data?.name ?? "" }; };
+    if (aksi === "saldo") {
+      if (user && !KEU.includes(peran)) return json({ ok: false, alasan: "Khusus Superadmin, Direktur & Admin Pusat" }, 403);
+      return json({ ok: true, ...(await saldoEverpro()), diambil_at: new Date().toISOString() });
     }
     if (aksi === "jemput_cabang") return json({ ok: true, slot: await jadwalJemput(t, String(b.rate_code), ZONA[String(b.cabang)] ?? "Asia/Jakarta"), zona: ZONA[String(b.cabang)] ?? "Asia/Jakarta" });
 
@@ -162,6 +168,20 @@ Deno.serve(async (req: Request) => {
       const rows = x?.data?.orders ?? (Array.isArray(x?.data) ? x.data : []);
       return rows.find((o: any) => o.client_order_no === no) ?? null;
     };
+    /** Akun prepaid: Everpro memberi nomor order sendiri (TRD…) dan jawaban buat order kosong.
+     *  Order dicari di daftar terbaru: No. HP penerima sama, dibuat setelah `sejak`, belum tertaut ke pengiriman lain. */
+    const cariOrderBaru = async (d: Record<string, any>, sejak: number, kecuali = "") => {
+      const hari = (ms: number) => tgPakai(new Date(ms));
+      const x = await ep(t, `/shipment/v1/orders?start_date=${hari(sejak - 864e5)}&end_date=${hari(Date.now() + 864e5)}&page=1&limit=50`);
+      const rows = x?.data?.orders ?? (Array.isArray(x?.data) ? x.data : []);
+      const telp = hp(d.penerima?.telp);
+      const calon = rows.filter((o: any) => hp(o.receiver_phone_number ?? o.receiver_phone) === telp && !/cancel/i.test(String(o.status ?? "")) && (() => { const w = Date.parse(String(o.order_date ?? "").replace(" ", "T")); return Number.isNaN(w) || w >= sejak - 5 * 60e3; })());
+      if (!calon.length) return null;
+      const nomor = calon.map((o: any) => o.client_order_no).filter(Boolean);
+      const { data: dipakai } = await admin.from("kirim").select("doc->everpro->>client_order_no").in("doc->everpro->>client_order_no", nomor);
+      const pakai = new Set((dipakai ?? []).map((r: any) => Object.values(r)[0]).filter((v: any) => v && v !== kecuali));
+      return calon.find((o: any) => !pakai.has(o.client_order_no)) ?? null;
+    };
     const dariOrder = (o: any) => ({
       status_everpro: o.status ?? "", status_id: o.status_id ?? null, tahap: tahapDariId(o.status_id),
       everpro: { client_order_no: o.client_order_no, no_everpro: o.shipment_order_no ?? "", awb: o.awb_number ?? "", label_url: o.label_url ?? "", batal_diminta: !!o.is_request_cancel_order },
@@ -173,10 +193,11 @@ Deno.serve(async (req: Request) => {
       if (!OPS.includes(peran)) return json({ ok: false, alasan: "Peran Anda tidak boleh membuat pengiriman" }, 403);
       const k = await bacaKirim(String(b.kirim_id ?? "")); const d = k.doc;
       if (!["draft", "siap", "diproses", "gagal_order"].includes(String(d.tahap))) return json({ ok: false, alasan: "Pengiriman ini sudah dibuat sebelumnya" }, 409);
-      // 1) Hasil sebelumnya belum pasti? cek dulu di Everpro, jangan pesan ulang
-      if (d.everpro?.client_order_no) {
-        const ada = await cariOrder(d.everpro.client_order_no).catch(() => null);
-        if (ada) { const u = dariOrder(ada); await patchKirim(k.id, { ...u, everpro: { ...d.everpro, ...u.everpro }, riwayat: catat(d, `Order ditemukan di Everpro (${ada.client_order_no}) — tidak dipesan ulang`) }); return json({ ok: true, sudah_ada: true, ...u }); }
+      // 1) Percobaan sebelumnya belum pasti? cek dulu di Everpro, jangan pesan ulang
+      if (d.everpro?.client_order_no || d.everpro?.dikirim_at) {
+        let ada = d.everpro?.client_order_no ? await cariOrder(d.everpro.client_order_no).catch(() => null) : null;
+        if (!ada && d.everpro?.dikirim_at) ada = await cariOrderBaru(d, Date.parse(d.everpro.dikirim_at)).catch(() => null);
+        if (ada) { const u = dariOrder(ada); await patchKirim(k.id, { ...u, everpro: { ...d.everpro, ...u.everpro, menunggu_cocok: false }, riwayat: catat(d, `Order ditemukan di Everpro (${ada.client_order_no}) — tidak dipesan ulang`) }); return json({ ok: true, sudah_ada: true, ...u }); }
       }
       // 2) validasi
       const pg = d.pengirim ?? {}, pn = d.penerima ?? {}, pk = d.paket ?? {}, kr = d.kurir ?? {};
@@ -192,47 +213,62 @@ Deno.serve(async (req: Request) => {
       if (!kr.rate_code) salah.push("layanan kurir");
       if (kr.jenis !== "DROP" && !Number(kr.pickup_time)) salah.push("jadwal jemput");
       if (salah.length) return json({ ok: false, alasan: "Belum lengkap: " + salah.join(", ") });
-      // 3) cek ulang tarif sebelum memesan
-      const ulang = await tarifLengkap(t, { asal_kodepos: pg.kodepos, asal_kel: pg.kelurahan, tujuan_kodepos: pn.kodepos, tujuan_kel: pn.kelurahan, berat_gram: pk.berat_gram, length: pk.p, width: pk.l, height: pk.t, jenis: kr.jenis, nilai: pk.nilai, asuransi: !!pk.asuransi, cod: !!pk.cod, cod_nilai: pk.cod_nilai, rate_codes: [kr.rate_code] });
+      // 3) cek ulang tarif (sekaligus ambil signed_key untuk validasi order)
+      const nilai = Math.max(1, Math.round(Number(pk.nilai ?? 0)));
+      const ulang = await tarifLengkap(t, { asal_kodepos: pg.kodepos, asal_kel: pg.kelurahan, tujuan_kodepos: pn.kodepos, tujuan_kel: pn.kelurahan, berat_gram: pk.berat_gram, length: pk.p, width: pk.l, height: pk.t, jenis: kr.jenis, nilai, asuransi: !!pk.asuransi, cod: !!pk.cod, cod_nilai: pk.cod_nilai, rate_codes: [kr.rate_code] });
       const r = ulang.tarif.find((x: any) => x.rate_code === kr.rate_code) as any;
       if (!r) return json({ ok: false, alasan: "Layanan kurir ini tidak tersedia lagi untuk rute tersebut — pilih ulang kurir" });
       if (Math.round(r.total) !== Math.round(Number(b.total_dilihat ?? kr.total ?? 0))) return json({ ok: false, berubah: true, alasan: `Tarif berubah: ${r.total} (sebelumnya ${b.total_dilihat ?? kr.total}). Periksa lalu konfirmasi ulang.`, tarif: r });
-      // 4) kunci nomor order dulu (anti dobel), baru pesan
+      // 4) saldo prepaid cukup?
+      try { const sd = await saldoEverpro(); if (sd.cash < r.total) return json({ ok: false, alasan: `Saldo Everpro tidak cukup (sisa Rp ${sd.cash.toLocaleString("id-ID")}, perlu Rp ${Math.round(r.total).toLocaleString("id-ID")}). Top-up dulu di dashboard Everpro.` }); } catch (_) { /* cek saldo gagal: lanjut, Everpro tetap menolak bila kurang */ }
+      // 5) tandai "sedang dikirim ke Everpro" dulu (anti dobel), baru pesan
       const no = d.everpro?.client_order_no || `ATLAS-${String(d.kode || k.id).replace(/[^A-Za-z0-9]/g, "").slice(-12)}-${Date.now().toString(36).slice(-4).toUpperCase()}`;
-      await patchKirim(k.id, { tahap: "diproses", everpro: { ...(d.everpro ?? {}), client_order_no: no }, riwayat: catat(d, `Permintaan dikirim ke Everpro (${no})`) });
+      const mulai = Date.now();
+      await patchKirim(k.id, { tahap: "diproses", everpro: { ...(d.everpro ?? {}), client_order_no: no, dikirim_at: new Date(mulai).toISOString() }, riwayat: catat(d, `Permintaan dikirim ke Everpro (${no})`) });
       const body: Record<string, unknown> = {
-        client_order_no: no, order_reference_id: no, package_desc: String(pk.isi || "Dokumen").slice(0, 100), package_price: Math.max(0, Math.round(Number(pk.nilai ?? 0))), package_type_id: 1, package_count: Math.max(1, Number(pk.jumlah ?? 1)),
+        client_order_no: no, package_desc: String(pk.isi || "Dokumen").slice(0, 100), package_price: nilai, package_type_id: 1,
         rate_code: kr.rate_code, shipment_price: Math.round(r.ongkir), shipment_type: kr.jenis === "DROP" ? "DROP" : "PICKUP", weight: Math.max(0.1, Number(pk.berat_gram) / 1000),
-        receiver_name: String(pn.nama).slice(0, 60), receiver_phone: hp(pn.telp), receiver_address: String(pn.alamat).slice(0, 250), receiver_postal_code: String(pn.kodepos), receiver_address_note: String(pn.catatan ?? "").slice(0, 100) || undefined,
-        shipper_name: String(pg.nama || "247 Translator").slice(0, 60), shipper_phone: hp(pg.telp), shipper_address: String(pg.alamat).slice(0, 250), shipper_postal_code: String(pg.kodepos), shipper_address_note: String(pg.catatan ?? "").slice(0, 100) || undefined,
+        min_duration: Math.max(1, Number(r.min_raw) || 1), max_duration: Math.max(1, Number(r.max_raw) || Number(r.min_raw) || 1),
+        cashback: Math.round(Number(r.cashback) || 0), is_flat_rate: !!r.flat, is_use_woodpacking: !!r.kayu, surcharge: Math.round(Number(r.biaya_tambahan) || 0), signed_key: r.signed_key || undefined,
+        receiver_name: String(pn.nama).slice(0, 60), receiver_phone: hp(pn.telp), receiver_address: String(pn.alamat).slice(0, 250), receiver_postal_code: String(pn.kodepos), receiver_sub_district_name: pn.kelurahan || undefined, receiver_address_note: String(pn.catatan ?? "").slice(0, 100) || undefined,
+        shipper_name: String(pg.nama || "247 Translator").slice(0, 60), shipper_phone: hp(pg.telp), shipper_address: String(pg.alamat).slice(0, 250), shipper_postal_code: String(pg.kodepos), shipper_sub_district_name: pg.kelurahan || undefined, shipper_address_note: String(pg.catatan ?? "").slice(0, 100) || undefined,
         shipping_note: String(d.catatan_kurir || (d.invoice_no ? `Invoice ${d.invoice_no}` : "")).slice(0, 100) || undefined,
       };
       for (const [k2, v] of [["length", pk.p], ["width", pk.l], ["height", pk.t]] as const) if (Number(v) >= 1) body[k2] = Math.round(Number(v));
-      if (pk.asuransi) { body.is_use_insurance = true; body.insurance_price = Math.round(r.asuransi); }
+      if (pk.asuransi && Number(r.asuransi_everpro) > 0) { body.is_use_insurance = true; body.insurance_price = Math.round(r.asuransi_everpro); } else body.is_use_insurance = false;
       if (pk.cod) { body.is_cod = true; body.cod_price = Math.round(Number(pk.cod_nilai ?? 0)); }
-      if (kr.jenis !== "DROP") body.pickup_time = Number(kr.pickup_time);
-      let o: any;
-      try { o = await ep(t, "/shipment/v1/orders", { method: "POST", body: JSON.stringify(body) }); }
+      if (kr.jenis !== "DROP") body.pickup_time = new Date(Number(kr.pickup_time) * 1000).toISOString(); // Everpro v2: string waktu UTC (contoh resmi "2024-12-09T16:09:53.000Z")
+      try { await ep(t, "/shipment/v2/orders", { method: "POST", body: JSON.stringify(body) }); }
       catch (e) {
         // hasil tidak pasti → cek keberadaan order sebelum menyatakan gagal
-        const ada = await cariOrder(no).catch(() => null);
-        if (!ada) { await patchKirim(k.id, { tahap: "gagal_order", galat: String((e as Error).message).slice(0, 300), riwayat: catat(d, "Pembuatan order gagal: " + String((e as Error).message).slice(0, 150)) }); throw e; }
-        o = { data: { actual_price: ada.total_price } };
+        const ada = await cariOrder(no).catch(() => null) ?? await cariOrderBaru(d, mulai).catch(() => null);
+        if (!ada) { await patchKirim(k.id, { tahap: "gagal_order", galat: String((e as Error).message).slice(0, 300), everpro: { ...(d.everpro ?? {}), client_order_no: "", dikirim_at: null }, riwayat: catat(d, "Pembuatan order gagal: " + String((e as Error).message).slice(0, 150)) }); throw e; }
       }
-      let awb: string | null = null;
-      try { await ep(t, `/shipment/v1/orders/${encodeURIComponent(no)}/generate`, { method: "POST", body: "{}" }); } catch (_) { /* resi bisa menyusul (callback AWB) */ }
-      try { const a = await ep(t, `/shipment/v1/orders/${encodeURIComponent(no)}/awb`); awb = a?.data?.awb_number ?? null; } catch (_) { /* belum ada */ }
+      // 6) cari nomor order Everpro (prepaid: nomor TRD… dari Everpro)
+      let o: any = null;
+      for (let i = 0; i < 4 && !o; i++) { if (i) await new Promise((res) => setTimeout(res, 1500)); o = await cariOrder(no).catch(() => null) ?? await cariOrderBaru(d, mulai).catch(() => null); }
       const sekarang = new Date().toISOString();
+      const biaya = { ongkir: r.ongkir, asuransi: r.asuransi, biaya_tambahan: r.biaya_tambahan, total: r.total, cashback_estimasi: r.cashback, tarif_at: ulang.diambil_at };
+      if (!o) {
+        const patch = { tahap: "dibuat", sumber_status: "Everpro", diperbarui_at: sekarang, dipesan_at: sekarang, dipesan_oleh: user?.name ?? "", everpro: { ...(d.everpro ?? {}), client_order_no: no, dikirim_at: new Date(mulai).toISOString(), menunggu_cocok: true }, biaya,
+          riwayat: catat(d, "Order diterima Everpro — nomor order & resi menyusul (tekan Lacak / perbarui beberapa saat lagi)") };
+        await patchKirim(k.id, patch);
+        return json({ ok: true, menunggu: true, ...patch });
+      }
+      const noEv = o.client_order_no || no;
+      let awb: string | null = o.awb_number || null;
+      if (!awb) { try { await ep(t, `/shipment/v1/orders/${encodeURIComponent(noEv)}/generate`, { method: "POST", body: "{}" }); } catch (_) { /* resi bisa menyusul (callback AWB) */ } }
+      if (!awb) { try { const a = await ep(t, `/shipment/v1/orders/${encodeURIComponent(noEv)}/awb`); awb = a?.data?.awb_number ?? null; } catch (_) { /* belum ada */ } }
+      const u = dariOrder({ ...o, awb_number: awb ?? o.awb_number });
       const patch = {
-        tahap: awb ? "menunggu_jemput" : "dibuat", status_everpro: awb ? "WAITING" : "", sumber_status: "Everpro", diperbarui_at: sekarang, dipesan_at: sekarang, dipesan_oleh: user?.name ?? "",
-        everpro: { ...(d.everpro ?? {}), client_order_no: no, awb: awb ?? "" },
-        biaya: { ongkir: r.ongkir, asuransi: r.asuransi, biaya_tambahan: r.biaya_tambahan, total: r.total, cashback_estimasi: r.cashback, tarif_at: ulang.diambil_at, dibayar_everpro: Number(o?.data?.actual_price ?? 0) || null },
-        riwayat: catat({ riwayat: [...(d.riwayat ?? []), { at: sekarang, by: user?.name ?? "ATLAS", aksi: `Permintaan dikirim ke Everpro (${no})` }] }, `Order berhasil dibuat di Everpro${awb ? ` · resi ${awb}` : " · menunggu resi"}`),
+        ...u, tahap: awb ? (u.tahap === "dibuat" || u.tahap === "diproses" ? "menunggu_jemput" : u.tahap) : (u.tahap === "perlu_dicek" ? "dibuat" : u.tahap),
+        dipesan_at: sekarang, dipesan_oleh: user?.name ?? "", everpro: { ...(d.everpro ?? {}), ...u.everpro, client_order_no: noEv, awb: awb ?? "", menunggu_cocok: false }, biaya,
+        riwayat: catat({ riwayat: [...(d.riwayat ?? []), { at: sekarang, by: user?.name ?? "ATLAS", aksi: `Permintaan dikirim ke Everpro` }] }, `Order dibuat di Everpro (${noEv})${awb ? ` · resi ${awb}` : " · menunggu resi"}`),
       };
       await patchKirim(k.id, patch);
       if (d.project_id && d.jenis_kirim === "keluar") {
         const { data: pr } = await db.from("projects").select("id, doc").eq("id", String(d.project_id)).maybeSingle();
-        if (pr) { const ab = pr.doc?.about ?? {}; await db.rpc("app_patch", { tbl: "projects", row_id: pr.id, patch: { about: { ...ab, ...(awb ? { resi_no: awb } : {}), courier_name: `${kr.kurir ?? ""} ${kr.layanan ?? ""}`.trim() }, history: [...(pr.doc?.history ?? []), { at: sekarang, by: user?.name ?? "ATLAS", action: `Pengiriman Everpro dibuat: ${kr.kurir ?? ""} ${kr.layanan ?? ""} · ${no}${awb ? ` · resi ${awb}` : ""}` }] } }); }
+        if (pr) { const ab = pr.doc?.about ?? {}; await db.rpc("app_patch", { tbl: "projects", row_id: pr.id, patch: { about: { ...ab, ...(awb ? { resi_no: awb } : {}), courier_name: `${kr.kurir ?? ""} ${kr.layanan ?? ""}`.trim() }, history: [...(pr.doc?.history ?? []), { at: sekarang, by: user?.name ?? "ATLAS", action: `Pengiriman Everpro dibuat: ${kr.kurir ?? ""} ${kr.layanan ?? ""} · ${noEv}${awb ? ` · resi ${awb}` : ""}` }] } }); }
       }
       return json({ ok: true, ...patch });
     }
@@ -240,12 +276,14 @@ Deno.serve(async (req: Request) => {
     if (aksi === "sinkron_kirim") {
       const k = await bacaKirim(String(b.kirim_id ?? "")); const d = k.doc;
       const no = d.everpro?.client_order_no; if (!no) return json({ ok: false, alasan: "Belum ada order Everpro untuk pengiriman ini" });
-      const o = await cariOrder(no);
+      let o = await cariOrder(no).catch(() => null);
+      if (!o && d.everpro?.dikirim_at) o = await cariOrderBaru(d, Date.parse(d.everpro.dikirim_at)).catch(() => null);
       if (!o) return json({ ok: false, alasan: "Order belum ditemukan di Everpro — coba lagi beberapa saat" });
       const u: Record<string, any> = dariOrder(o);
       if (o.awb_number) { try { const tr = await ep(t, `/shipment/v1/orders/${encodeURIComponent(o.awb_number)}/track`); u.timeline = await simpanLacak(k, tr?.data); u.lacak_url = tr?.data?.tracking_url ?? ""; u.dikirim_at = tr?.data?.dispatch_at ?? null; u.diterima_at = tr?.data?.delivered_at ?? null; } catch (_) { /* lacak belum ada */ } }
       if (["menunggu_jemput", "dikirim"].includes(String(d.tahap)) && u.tahap === "dibuat") u.tahap = d.tahap; // jangan mundur
-      u.everpro = { ...(d.everpro ?? {}), ...u.everpro };
+      u.everpro = { ...(d.everpro ?? {}), ...u.everpro, menunggu_cocok: false };
+      if (!u.everpro.awb && u.everpro.client_order_no) { try { const a = await ep(t, `/shipment/v1/orders/${encodeURIComponent(u.everpro.client_order_no)}/awb`); if (a?.data?.awb_number) { u.everpro.awb = a.data.awb_number; if (["dibuat", "diproses"].includes(u.tahap)) u.tahap = "menunggu_jemput"; } } catch (_) { /* belum ada */ } }
       if (d.tahap !== u.tahap) u.riwayat = catat(d, `Status diperbarui dari Everpro: ${o.status ?? u.tahap}`);
       await patchKirim(k.id, u);
       return json({ ok: true, ...u });
@@ -296,6 +334,10 @@ Deno.serve(async (req: Request) => {
             if (lama.doc.tahap === u.tahap && lama.doc.everpro?.awb === u.everpro.awb && lama.doc.biaya_aktual?.total === u.biaya_aktual.total) continue;
             await admin.from("kirim").update({ doc: { ...lama.doc, ...u, everpro: { ...(lama.doc.everpro ?? {}), ...u.everpro } }, updated_at: new Date().toISOString() }).eq("id", lama.id); ubah++;
           } else {
+            // pengiriman dari ATLAS yang masih menunggu nomor order (prepaid) → tautkan, jangan buat baris baru
+            const { data: tunggu } = await admin.from("kirim").select("id, doc").eq("doc->everpro->>menunggu_cocok", "true").limit(50);
+            const cocok = (tunggu ?? []).find((r: any) => hp(r.doc?.penerima?.telp) === hp(o.receiver_phone_number) && Date.parse(String(o.order_date ?? "").replace(" ", "T") || "0") >= Date.parse(r.doc?.everpro?.dikirim_at ?? "0") - 5 * 60e3);
+            if (cocok) { await admin.from("kirim").update({ doc: { ...cocok.doc, ...u, everpro: { ...(cocok.doc.everpro ?? {}), ...u.everpro, menunggu_cocok: false } }, updated_at: new Date().toISOString() }).eq("id", cocok.id); ubah++; continue; }
             await admin.from("kirim").insert({ doc: { ...u, kode: o.client_order_no, sumber: "Everpro", cabang: tebakCabang(o), jenis_kirim: "lainnya", dibuat_at: o.order_date ?? null,
               pengirim: { nama: o.shipper_name ?? "", telp: o.shipper_phone_number ?? "", alamat: o.shipper_address ?? "", lokasi: o.shipper_location_detail ?? "" },
               penerima: { nama: o.receiver_name ?? "", telp: o.receiver_phone_number ?? "", alamat: o.receiver_address ?? "", lokasi: o.receiver_location_detail ?? "", catatan: o.receiver_address_note ?? "" },
