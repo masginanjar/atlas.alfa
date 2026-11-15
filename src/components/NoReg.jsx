@@ -4,11 +4,11 @@ import { copyText } from './CopyText.jsx'
 import { cx } from './ui.jsx'
 
 /** Centang biru "Official" — penanda baris dokumen yang nomor registernya sudah terbit. */
-export function CentangOfficial({ teks = true, className }) {
+export function CentangOfficial({ teks = true, kecil, className }) {
   return (
     <span data-centang-official title="Official — nomor register sudah terbit"
       className={cx('inline-flex shrink-0 items-center gap-0.5 align-middle text-[11px] font-bold text-sky-700', className)}>
-      <BadgeCheck className="h-4 w-4 fill-sky-500 text-white" aria-hidden="true" />
+      <BadgeCheck className={cx(kecil ? 'h-3.5 w-3.5' : 'h-4 w-4', 'shrink-0 fill-sky-500 text-white')} aria-hidden="true" />
       {teks ? 'Official' : <span className="sr-only">Official</span>}
     </span>
   )
@@ -32,4 +32,11 @@ export default function NoReg({ n, className }) {
       </button>
     </span>
   )
+}
+
+/** Project "official": ada dokumen yang nomor registernya sudah terbit (bukan masih menunggu di tahap Nomor Registrasi). */
+export const projectOfficial = (p) => (p?.sub_projects || []).some((x) => (x?.data?.reg_numbers || []).filter(Boolean).length > 0 && x.stage !== 'registrasi')
+/** Centang biru di belakang nomor invoice pada daftar project. */
+export function OfficialInvoice({ project, className, kecil }) {
+  return projectOfficial(project) ? <CentangOfficial teks={false} kecil={kecil} className={className} /> : null
 }

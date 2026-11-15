@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { OfficialInvoice } from '../components/NoReg.jsx'
 import { go } from '../lib/router.js'
 import { Plus, Minus, Search, FolderOpen, Banknote, CalendarClock, Layers, LayoutGrid, List, ChevronRight, ChevronDown, Sparkles, StickyNote, Printer, AlertTriangle, Eye, X, Save, Rows2, Rows3, Rows4, Maximize2, Minimize2, Table2, MoreHorizontal, Columns3, Bookmark } from 'lucide-react'
 import FileManager, { fieldFiles, collect as collectFiles } from '../components/FileManager.jsx'
@@ -480,7 +481,7 @@ function ProjectCard({ p, onOpen, active }) {
       <Card className={cx('h-full p-4 pb-0 transition hover:-translate-y-0.5 hover:shadow-md', active && 'ring-2 ring-brand')}>
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <p className="flex flex-wrap items-center gap-1.5"><InvoiceNo project={p} size="base" /><NoteIcon note={p.about?.notes} /><DemoBadge project={p} className="align-middle" /></p>
+            <p className="flex flex-wrap items-center gap-1.5"><InvoiceNo project={p} size="base" /><OfficialInvoice project={p} /><NoteIcon note={p.about?.notes} /><DemoBadge project={p} className="align-middle" /></p>
             <TimeAgo at={p.created_at} prefix="Diposting" />
             <p className="truncate text-sm text-ink-soft">{p.customer?.name}</p>
           </div>
@@ -759,11 +760,12 @@ function WaIkon({ p }) {
 
 export const COLUMNS = [
   // Tata letak CANVAS ATLAS (12 Nov 2026): kartu per baris, maks 2 baris per sel (utama + pendukung).
-  { key: 'invoice', label: 'Invoice', w: 'minmax(178px,136fr)', cls: 'flex min-w-0 flex-col gap-[3px]',
+  { key: 'invoice', label: 'Invoice', w: 'minmax(190px,136fr)', cls: 'flex min-w-0 flex-col gap-[3px]',
     cell: (p) => <>
       <span className="flex min-w-0 max-w-full items-center gap-0.5 self-start">
         <span data-inv={dibuatBaru(p) ? 'baru' : 'lama'} title={invoiceLabel(p.invoice_no)}
           className={cx('min-w-0 break-all rounded-md text-base font-bold leading-[26px] tabular-nums text-[#141B34]', dibuatBaru(p) && '-ml-1.5 bg-[#E2F5E8] px-1.5')}>{invoiceLabel(p.invoice_no)}</span>
+        <OfficialInvoice project={p} kecil />
         <SalinInvoice no={invoiceLabel(p.invoice_no)} />
       </span>
       <WaktuDibuat p={p} />
@@ -847,7 +849,7 @@ function ProjectList({ status = 'aktif', setStatus = () => {}, statusOpsi = [], 
                 {/* HP: kartu 4 baris — (1) invoice · prioritas · tenggat, (2) pelanggan, (3) arah bahasa · dok · hlm · cabang, (4) tahap ▸ berikutnya + progres, lalu tombol */}
                 <div className="flex flex-col gap-2.5 py-3.5 xl:hidden" data-kartu-hp>
                   <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5">
-                    <span className="flex shrink-0 items-center gap-0.5"><span className={cx('whitespace-nowrap text-[15px] font-bold tabular-nums', dibuatBaru(p) && '-ml-1.5 rounded-md bg-[#E2F5E8] px-1.5')}>{invoiceLabel(p.invoice_no)}</span><SalinInvoice no={invoiceLabel(p.invoice_no)} /></span>
+                    <span className="flex shrink-0 items-center gap-0.5"><span className={cx('whitespace-nowrap text-[15px] font-bold tabular-nums', dibuatBaru(p) && '-ml-1.5 rounded-md bg-[#E2F5E8] px-1.5')}>{invoiceLabel(p.invoice_no)}</span><OfficialInvoice project={p} /><SalinInvoice no={invoiceLabel(p.invoice_no)} /></span>
                     <PrioPill p={p.about?.priority || 'Normal'} />
                     <span className="flex-1" />
                     {(() => { const d = infoDeadline(p); return d ? <span className="inline-flex min-h-6 shrink-0 items-center whitespace-nowrap rounded-full px-2.5 text-xs font-bold" style={{ background: d.bg, color: d.fg }}>{d.sisa === 'Hari ini' ? 'Hari Ini' : d.sisa === 'Besok' ? 'Besok' : d.lewat ? d.sisa : d.tgl.replace(/ \d\d\.\d\d$/, '')}</span> : null })()}
