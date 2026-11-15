@@ -338,7 +338,7 @@ const {lev,sim}=OCRCORE;
 const deteksiJenis=t=>OCRCORE.deteksiJenis(t);
 function teksDok(d){return d.pages.map(p=>p.text||'').join('\n\n').trim()}
 const AMBANG={vision:90,tesseract:75}; // skor terendah (huruf utk Vision, kata utk Tesseract) di bawah ini → perlu dicek
-const mesinNama=m=>m==='vision'?'Google Vision':m==='tesseract'?'Tesseract':m==='pdf'?'Teks PDF':m==='manual'?'Ketik manual':'—';
+const mesinNama=m=>m==='gemini'?'AI Gemini':m==='vision'?'Google Vision':m==='tesseract'?'Tesseract':m==='pdf'?'Teks PDF':m==='manual'?'Ketik manual':'—';
 /* ---------- Keadaan aplikasi ---------- */
 const S={view:'proses',step:1,docs:[],cur:0,srcTab:'gambar',zoom:false,busy:false,customTpl:null,q:''};
 let uid=0;
@@ -426,12 +426,31 @@ function getWorker(){
 const VISION={kuota:null,info:''};
 function sesiAtlas(){try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);const m=k&&k.match(/^sb-([a-z0-9]+)-auth-token$/);if(!m)continue;const v=JSON.parse(localStorage.getItem(k)||'null');const t=v&&(v.access_token||(v.currentSession&&v.currentSession.access_token));if(t)return{url:'https://'+m[1]+'.supabase.co/functions/v1/vision-ocr',token:t}}}catch(e){}return null}
 async function visionPanggil(body){const s=sesiAtlas();if(!s)return null;const r=await fetch(s.url,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+s.token},body:JSON.stringify(body)});return r.json().catch(()=>null)}
+/* ---------- Pembaca kedua: AI Gemini (model dipilih di ATLAS → Pengaturan → AI) ----------
+   Hanya saat dibuka dari ATLAS (login). Hasil AI menjadi KANDIDAT: kolom kosong diisi, yang berbeda dari Vision ditandai
+   untuk dipilih pengguna, koreksi pengguna tidak pernah ditimpa. Gagal/dimatikan → dicatat di halaman, tidak diam-diam. */
+const AI={label:'',info:''};
+async function aiPanggil(body){const s=sesiAtlas();if(!s)return null;try{const r=await fetch(s.url.replace('vision-ocr','gemini-ai'),{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+s.token},body:JSON.stringify(body)});return await r.json()}catch(e){return{ok:false,alasan:'Koneksi ke server AI gagal'}}}
+async function bacaAi(d,pg){
+  if(!sesiAtlas()||pg.aiSudah)return;pg.aiSudah=true;
+  const c=drawRot(pg.src,pg.rot,2000);const j=await aiPanggil({aksi:'jalan',fitur:'penerjemah',gambar:c.toDataURL('image/jpeg',0.9)});
+  if(!j||!j.ok){if(j&&j.mati)return;pg.engineNote=(pg.engineNote?pg.engineNote+' ':'')+'Pembaca kedua (AI Gemini) tidak dipakai: '+((j&&j.alasan)||'tidak ada jawaban')+'.';return}
+  AI.label=j.modelLabel||'Gemini';const x=j.data||{},ragu=new Set(Array.isArray(x.ragu)?x.ragu:[]);
+  if(!/ktp/i.test(String(x.jenis||''))){pg.engineNote=(pg.engineNote?pg.engineNote+' ':'')+'AI menilai berkas ini bukan KTP ('+String(x.jenis||'tidak jelas').slice(0,40)+') — hasil AI tidak dipakai.';return}
+  let beda=0;
+  for(const f of d.fields){const v=String(x[f.key]==null?'':x[f.key]).trim();if(!v)continue;
+    const sblm=f.beda;tambahKandidat(f,{v,raw:v,mesin:'gemini',conf:null,box:null},'AI '+AI.label,pg);
+    if(ragu.has(f.key)&&!f.checked&&!f.srcEdited)f.beda=true;
+    if(f.beda&&!sblm)beda++}
+  pg.aiCatatan='Dibaca juga oleh AI '+AI.label+(beda?' — '+beda+' kolom berbeda/diragukan, pilih yang sesuai dokumen.':' — sama dengan bacaan utama.');
+  renderVision();
+}
 function setKuota(k){if(k&&k.batas){VISION.kuota=k;renderVision()}}
 function visionChip(){return ''}
 function renderVision(){const el=document.getElementById('visionCard');if(!el)return;const k=VISION.kuota;
   if(!k){el.innerHTML=`<div class="vcard"><span class="dot" style="background:#9AA1B8"></span><div class="vb"><div class="vt"><b>Pembaca: Tesseract</b><span>di perangkat</span></div><small>${sesiAtlas()?'Menghubungkan Google Vision…':'Google Vision aktif saat dibuka dari ATLAS'}</small></div></div>`;return}
   const sisa=Math.max(0,k.batas-k.halaman),pct=Math.min(100,k.halaman/k.batas*100),hampir=k.halaman>=k.ingat,habis=sisa<=0,c=habis?'#C0392B':hampir?'#E0A800':'#1E9E5A';
-  el.innerHTML=`<div class="vcard"><span class="dot" style="background:${c}"></span><div class="vb"><div class="vt"><b>${habis?'Kuota Vision habis — Tesseract':hampir?'Google Vision hampir habis':'Google Vision aktif'}</b><span>${k.halaman.toLocaleString('id-ID')} / ${k.batas.toLocaleString('id-ID')}</span></div><div class="track"><div style="width:${pct}%;background:${c}"></div></div><small>Gratis bulan ini · sisa ${sisa.toLocaleString('id-ID')} halaman</small></div></div>`}
+  el.innerHTML=`<div class="vcard"><span class="dot" style="background:${c}"></span><div class="vb"><div class="vt"><b>${habis?'Kuota Vision habis — Tesseract':hampir?'Google Vision hampir habis':'Google Vision aktif'}</b><span>${k.halaman.toLocaleString('id-ID')} / ${k.batas.toLocaleString('id-ID')}</span></div><div class="track"><div style="width:${pct}%;background:${c}"></div></div><small>Gratis bulan ini · sisa ${sisa.toLocaleString('id-ID')} halaman${AI.label?' · + AI '+esc(AI.label):''}</small></div></div>`}
 /* ---------- Penyedia OCR ----------
    Google Vision = mesin utama (DOCUMENT_TEXT_DETECTION lewat server ATLAS). Tesseract = cadangan lokal,
    dipakai HANYA bila Vision tidak tersedia/gagal, dan alasannya ditampilkan di halaman (tidak diam-diam). */
@@ -482,7 +501,7 @@ async function runQueue(){
       if(!job)break;const [d,p]=job;p.status='baca';p.progress=0;p.err='';p.peta=null;render();
       try{await ocrPage(p);d.jenis=deteksiJenis(teksDok(d));if(TUGAS)keAtlas({type:'st-jenis',nama:d.jenis.nama});
         const first=d.pages.find(x=>x.status==='ok'&&x.lines&&x.lines.length>3&&Object.keys(petaHalaman(x).nilai).length>=3);
-        if(first===p||(!d.fields&&first)){terapkanPeta(d,first);d.fieldPage=first.id;render();if(first.engine==='vision')await bacaUlangOtomatis(d,first)}
+        if(first===p||(!d.fields&&first)){terapkanPeta(d,first);d.fieldPage=first.id;render();if(first.engine==='vision')await bacaUlangOtomatis(d,first);if(d.jenis&&d.jenis.nama==='KTP'&&!first.viaText)await bacaAi(d,first)}
         else if(!d.fields&&d.pages.every(x=>x.status==='ok'||x.status==='gagal')){d.fields=FIELDS.map(df=>fieldBaru(df,null,{},null))}
       }catch(e){curPage=null;p.status='gagal';p.err=(e&&e.message)||String(e)}
       render();
@@ -592,6 +611,7 @@ function viewPeriksa(){
      <div class="row" style="gap:8px"><div class="seg" role="tablist"><button type="button" role="tab" aria-pressed="${S.srcTab==='gambar'}" data-act="srctab" data-t="gambar">Gambar</button><button type="button" role="tab" aria-pressed="${S.srcTab==='teks'}" data-act="srctab" data-t="teks">Teks OCR</button></div>
      <button type="button" class="ib" style="border:1px solid #E3E6EF;border-radius:12px" data-act="zoom" aria-label="Perbesar" aria-pressed="${S.zoom}" title="Perbesar">${ic(I.zoom)}</button><button type="button" class="ib" style="border:1px solid #E3E6EF;border-radius:12px" data-act="putarcur" aria-label="Putar 90° lalu baca ulang" title="Putar 90° lalu baca ulang">${ic(I.rot)}</button></div></div>
     ${pg.engineNote?`<div class="hint" style="background:#FDECEC;color:#7A1F1F">${esc(pg.engineNote)}</div>`:''}
+    ${pg.aiCatatan?`<div class="hint" data-ai-catatan>${esc(pg.aiCatatan)}</div>`:''}
     ${S.srcTab==='gambar'?`<div class="docview ${S.pilihArea?'pilih':''}" id="docview"><div class="srcinner ${S.zoom?'zoom':''}" id="srcinner"><div class="hl" id="hl"></div></div></div>`:`<pre class="raw" style="border-radius:16px">${esc(pg.text||'(tidak ada teks)')}</pre>`}
     <div class="row" style="gap:8px"><button type="button" class="btn sm" data-act="pilihArea" aria-pressed="${!!S.pilihArea}" ${S.selField&&pg.ocrCanvas?'':'disabled'} title="Tarik kotak di gambar untuk membaca ulang area itu ke kolom terpilih">${S.pilihArea?'Batal pilih area':'Pilih area manual'}</button><span class="small">${S.selField?'Kolom terpilih: <b>'+esc(DEF[S.selField].label)+'</b>':'Klik salah satu kolom di kanan dulu'}</span></div>
     <div class="qbox" id="potbox" ${S.selField?'':'hidden'}><b>Potongan sumber</b><canvas id="potongan" width="10" height="10"></canvas></div>

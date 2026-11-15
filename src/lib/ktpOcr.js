@@ -1,8 +1,11 @@
 // ============================================================
-//  BACA KTP untuk Surat Kuasa — Tesseract di perangkat (tanpa Google Vision, tanpa kirim gambar ke server)
+//  BACA KTP untuk Surat Kuasa — AI (Gemini, model dipilih di Pengaturan → AI) bila aktif; selain itu Tesseract di perangkat.
+//  Tidak memakai kuota Google Vision. Mesin yang dipakai selalu ditampilkan (tidak pernah berganti diam-diam).
 //  + modul pemetaan ocr-core.js yang sama dengan Smart Translator.
 //  Tidak ada isi KTP yang ditulis ke log.
 // ============================================================
+
+import { aiJalan, kanvasKeJpeg } from './ai.js'
 
 const BASE = 'smart-translator/'
 const muat = (src) => new Promise((res, rej) => { if (document.querySelector(`script[data-src="${src}"]`)) return res(); const s = document.createElement('script'); s.src = src; s.dataset.src = src; s.onload = res; s.onerror = () => rej(new Error('Gagal memuat ' + src)); document.head.appendChild(s) })
@@ -38,8 +41,22 @@ const AMBANG = { vision: 90, tesseract: 75 }
 export async function bacaKtp(blob, nama) {
   await muat(BASE + 'ocr-core.js'); const C = window.OCRCORE
   const kanvas = await keKanvas(blob, nama)
-  // Keputusan pemilik (15 Nov 2026): Surat Kuasa memakai Tesseract saja (di perangkat) — tidak memakai kuota Google Vision.
-  const mesin = 'tesseract'; let catatan = ''
+  // Keputusan pemilik (15 Nov 2026): Surat Kuasa memakai AI hemat (Gemini) — tidak memakai kuota Google Vision. Cadangan: Tesseract di perangkat.
+  let catatan = ''
+  const ai = await aiJalan('surat_kuasa', kanvasKeJpeg(kanvas, 2000))
+  if (ai.ok && ai.data) {
+    const d = ai.data, ragu = new Set(Array.isArray(d.ragu) ? d.ragu : []), out = {}
+    for (const [k, sumber] of Object.entries(PETA)) {
+      const v = String(d[sumber] ?? '').trim() // apa adanya — tidak "dirapikan"
+      if (!v) { out[k] = { v: '', perlu_cek: true, alasan: 'Tidak terbaca — isi manual dari KTP' }; continue }
+      const val = C.validasi(sumber, v)
+      out[k] = { v, perlu_cek: !val.ok || ragu.has(sumber), alasan: !val.ok ? val.alasan : ragu.has(sumber) ? 'AI ragu pada kolom ini — cocokkan dengan KTP' : '' }
+    }
+    if (!/ktp/i.test(String(d.jenis || ''))) catatan = `Berkas ini tidak dikenali sebagai KTP (${String(d.jenis || 'jenis tidak jelas').slice(0, 40)}).`
+    return { mesin: 'gemini', mesinLabel: `AI ${ai.modelLabel || 'Gemini'}`, catatan, nilai: out, kanvas }
+  }
+  if (!ai.demo && !ai.mati) catatan = `AI tidak dipakai (${ai.alasan || 'gagal'}) — dibaca dengan Tesseract di perangkat, akurasi lebih rendah.`
+  const mesin = 'tesseract'
   const kata = await viaTesseract(kanvas)
   const { nilai } = C.petakanKTP(C.barisDariKata(kata, mesin).lines)
   const out = {}
@@ -50,5 +67,5 @@ export async function bacaKtp(blob, nama) {
   }
   const jenis = C.deteksiJenis(kata.map((x) => x.t).join(' '))
   if (jenis.nama !== 'KTP') catatan = `${catatan ? catatan + ' ' : ''}Berkas ini tidak dikenali sebagai KTP (${jenis.nama}).`
-  return { mesin, catatan, nilai: out, kanvas }
+  return { mesin, mesinLabel: 'Tesseract (di perangkat ini)', catatan, nilai: out, kanvas }
 }

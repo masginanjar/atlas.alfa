@@ -41,6 +41,7 @@ function Pindah({ ke, judul, teks, tombol }) {
 
 import { KeAtas, TombolTambah } from '../components/SlotAtas.jsx'
 import { AksesApostilleSettings } from '../components/CentangApostille.jsx'
+const AiSettings = lazy(() => import('../components/AiSettings.jsx'))
 
 export default function Settings() {
   const { user } = useApp()
@@ -52,6 +53,7 @@ export default function Settings() {
     can.managePeople(user) && { value: 'kurir', label: 'Kurir', grup: 'Perusahaan' },
     ['superadmin', 'admin_pusat'].includes(user.role) && { value: 'file', label: 'File & portal', grup: 'Perusahaan' },
     can.manageUsers(user) && { value: 'integrasi', label: 'Integrasi', grup: 'Perusahaan' },
+    bolehIzin(user, 'pengaturan.ai.lihat') && { value: 'ai', label: 'AI (Gemini)', grup: 'Perusahaan' },
     user.role === 'superadmin' && { value: 'tampilan', label: 'Tampilan login', grup: 'Perusahaan' },
     user.role === 'superadmin' && { value: 'beranda', label: 'Slide Beranda', grup: 'Perusahaan' },
     user.role === 'superadmin' && { value: 'apostille', label: 'Tahapan Apostille', grup: 'Perusahaan' },
@@ -93,6 +95,7 @@ export default function Settings() {
       {tab === 'akses' && <Suspense fallback={null}><AksesRole /></Suspense>}
       {tab === 'file' && <><FileRules />{can.manageUsers(user) && <PortalSettings />}</>}
       {tab === 'integrasi' && <Integrations />}
+      {tab === 'ai' && <Suspense fallback={null}><AiSettings /></Suspense>}
       {tab === 'tampilan' && <LoginSettings />}
       {tab === 'beranda' && <SlideBerandaSettings />}
       {tab === 'apostille' && <AksesApostilleSettings />}

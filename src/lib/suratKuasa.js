@@ -75,7 +75,14 @@ export const TANGGA = [
   { fs: 10.5, tfs: 10, lh: 1.18, gap: 4.5, pad: 2.2, m: mm(16), ttd: 50 },
   { fs: 10, tfs: 9.5, lh: 1.16, gap: 4, pad: 2, m: mm(15), ttd: 48 },
 ]
-const KOLOM = [0.06, 0.17, 0.27, 0.27, 0.23]
+export const KOLOM_BAWAAN = [6, 17, 27, 27, 23] // persen lebar: No, Jenis, Nama, Pemilik, Tanggal/Nomor
+export const KOLOM_MIN = [4, 10, 12, 12, 12]
+export const KOLOM_NAMA = ['No', 'Jenis', 'Nama dokumen', 'Pemilik', 'Tanggal/Nomor']
+/** Lebar kolom tabel (persen) → pecahan yang selalu berjumlah 1. Nilai tak wajar kembali ke bawaan; tiap kolom dijaga di atas minimum agar teks tidak terjepit. */
+export function kolomDari(k) {
+  const a = Array.isArray(k) && k.length === 5 && k.every((x) => Number(x) > 0) ? k.map((x, i) => Math.max(KOLOM_MIN[i], Number(x))) : KOLOM_BAWAAN
+  const t = a.reduce((x, y) => x + y, 0); return a.map((x) => x / t)
+}
 const KEPALA = ['No', 'Jenis Dokumen', 'Nama Dokumen', 'Pemilik Dokumen / Nama yang tertera pada dokumen', 'Tanggal/Nomor Dokumen']
 
 function gambar(s, P, red) {
@@ -101,7 +108,7 @@ function gambar(s, P, red) {
   // 6. Tujuan
   mulai('paragraf'); para(isi(red.tujuan, s), { indent: 30, no: '1.' }); y += P.gap * 0.8; selesai('paragraf')
   // 7. Tabel
-  mulai('tabel'); const xs = [L]; KOLOM.forEach((k) => xs.push(xs[xs.length - 1] + k * W)); doc.setLineWidth(0.5); doc.setDrawColor(60)
+  mulai('tabel'); const xs = [L]; kolomDari(s.kolom || red.kolom).forEach((k) => xs.push(xs[xs.length - 1] + k * W)); doc.setLineWidth(0.5); doc.setDrawColor(60)
   const baris = (sel, bold, tengah) => { set(P.tfs, bold); const ls = sel.map((t, i) => doc.splitTextToSize(String(t || ''), xs[i + 1] - xs[i] - 2 * P.pad)); const h = Math.max(...ls.map((x) => x.length)) * P.tfs * 1.18 + 2 * P.pad
     ls.forEach((x, i) => { doc.rect(xs[i], y, xs[i + 1] - xs[i], h); const ty0 = tengah ? y + (h - x.length * P.tfs * 1.18) / 2 : y + P.pad; x.forEach((l, j) => { const ty = ty0 + j * P.tfs * 1.18 + P.tfs * 0.82; if (tengah || i === 0) doc.text(l, (xs[i] + xs[i + 1]) / 2, ty, { align: 'center' }); else doc.text(l, xs[i] + P.pad, ty) }) }); y += h }
   baris(KEPALA, true, true)

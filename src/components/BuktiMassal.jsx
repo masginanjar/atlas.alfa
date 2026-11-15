@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Upload, Loader2, Check, X, AlertTriangle, ChevronUp, ChevronDown, ImagePlus, CircleSlash, ArrowLeftRight } from 'lucide-react'
+import { Upload, Loader2, Check, X, AlertTriangle, ChevronUp, ChevronDown, ImagePlus, CircleSlash, ArrowLeftRight, Sparkles } from 'lucide-react'
 import { useApp } from '../lib/store.jsx'
 import { db, MODE } from '../lib/db.js'
 import { drive } from '../lib/integrations.js'
@@ -7,13 +7,15 @@ import { invoiceLabel } from '../config/access.js'
 import { rupiah } from '../lib/format.js'
 import { Button, Sheet, cx } from './ui.jsx'
 import { REQ_KINDS, scopeRequests, tandaiDibayar } from './Requests.jsx'
-import { bacaScreenshot, cocokkan, potong } from '../lib/buktiMassal.js'
+import { bacaScreenshot, bacaStruktur, terapkanAi, nominalKedua, cocokkan, potong } from '../lib/buktiMassal.js'
+import { aiInfo, aiJalan, kanvasKeJpeg } from '../lib/ai.js'
 
 // ============================================================
 //  UPLOAD BUKTI TRANSFER MASSAL (Keuangan → +). Superadmin & Akunting.
 //  Screenshot daftar transaksi → OCR di browser → crop per baris (+ header)
 //  → cocokkan ke pengajuan "Perlu transfer" → preview → Konfirmasi & Upload.
-//  Tidak ada status yang berubah sebelum admin menekan Konfirmasi.
+//  Pembaca: AI Gemini (model di Pengaturan → AI) + cek ulang nominal dengan Tesseract; cadangan: Tesseract saja.
+//  Mode otomatis (Pengaturan → AI): baris yang cocok pasti langsung diproses; baris ragu tetap menunggu Konfirmasi.
 // ============================================================
 
 // ---------- OCR (Tesseract, file di folder ocr/ — dimuat saat dibutuhkan) ----------
@@ -76,12 +78,16 @@ export default function BuktiMassal({ open, onClose }) {
   const [hasil, setHasil] = useState([])
   const [salah, setSalah] = useState('')
   const inputRef = useRef(null)
+  const sudahArsip = useRef(false)
+  const [setel, setSetel] = useState(null) // { model, otomatis } dari Pengaturan → AI
+  const [mesin, setMesin] = useState([]) // catatan pembaca per file
+  useEffect(() => { if (open) aiInfo().then((r) => setSetel(r.ok ? r.fitur?.bukti || {} : {})).catch(() => setSetel({})) }, [open])
 
   const projectOf = (r) => (data.projects || []).find((p) => p.id === r.project_id)
   const invoiceOf = (r) => projectOf(r)?.invoice_no || ''
   const kandidat = useMemo(() => scopeRequests(user, data.requests || [], branchFilter).filter((r) => r.status === 'disetujui' && !r.bukti_transfer), [data.requests, user, branchFilter])
 
-  useEffect(() => { if (!open) { baris.forEach((x) => x.url && URL.revokeObjectURL(x.url)); setTahap('pilih'); setBaris([]); setAsli([]); setHasil([]); setSalah('') } }, [open]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (!open) { baris.forEach((x) => x.url && URL.revokeObjectURL(x.url)); setTahap('pilih'); setBaris([]); setAsli([]); setHasil([]); setSalah(''); setMesin([]); sudahArsip.current = false } }, [open]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const gambarUlang = async (x) => { const blob = await keBlob(rakitBukti(x.im, x.hd, x.b)); if (x.url) URL.revokeObjectURL(x.url); return { ...x, blob, url: URL.createObjectURL(blob) } }
 
@@ -89,19 +95,38 @@ export default function BuktiMassal({ open, onClose }) {
     files = [...files].filter((f) => /^image\/(png|jpe?g|webp)$/.test(f.type))
     if (!files.length) return notify('Pilih screenshot PNG/JPG', 'err')
     setTahap('baca'); setSalah(''); setAsli(files)
+    let cfg = setel; if (!cfg) { const i = await aiInfo().catch(() => null); cfg = i?.ok ? i.fitur?.bukti || {} : {}; setSetel(cfg) }
     try {
       setProgres({ teks: 'Menyiapkan pembaca gambar (sekali saja, ±7 MB)…', n: 0 }); await ambilWorker()
-      const semua = []
+      const semua = []; const catat = []
       for (const [i, f] of files.entries()) {
         setProgres({ teks: `Membaca ${f.name} (${i + 1}/${files.length})…`, n: 0 })
         const im = await bacaFile(f)
-        let r
-        try { r = await bacaScreenshot(im, ocr, (n) => setProgres((p) => ({ ...p, n }))) } catch (e) { notify(`${f.name}: ${e.message}`, 'err'); continue }
+        let r = null
+        try {
+          // 1) AI membaca seluruh tabel; struktur baris & potongan bukti tetap dari piksel asli. 2) Tesseract membaca ulang kolom nominal.
+          if (cfg.model) {
+            const st = bacaStruktur(im)
+            const ai = await aiJalan('bukti', kanvasKeJpeg(keKanvas(im), 2600, 0.92))
+            if (ai.ok && terapkanAi(st, ai.data?.baris)) {
+              setProgres({ teks: `Mengecek ulang nominal ${f.name}…`, n: 0 })
+              try { await nominalKedua(im, st, ocr, (n) => setProgres((p) => ({ ...p, n }))) } catch { /* pembaca kedua gagal → baris tidak diproses otomatis */ }
+              r = st; catat.push(`${f.name}: dibaca AI ${ai.modelLabel || 'Gemini'}, nominal dicek ulang Tesseract`)
+            } else if (!ai.demo) catat.push(`${f.name}: AI tidak dipakai (${ai.ok ? 'jumlah baris AI berbeda dengan tabel' : ai.alasan || 'gagal'}) — dibaca Tesseract`)
+          }
+          if (!r) { r = await bacaScreenshot(im, ocr, (n) => setProgres((p) => ({ ...p, n }))); if (!catat.some((c) => c.startsWith(f.name + ':'))) catat.push(`${f.name}: dibaca Tesseract (di perangkat ini)`) }
+        } catch (e) { notify(`${f.name}: ${e.message}`, 'err'); continue }
         for (const [j, b] of r.baris.entries()) semua.push({ id: `${i}-${j}`, sumber: f.name, im, hd: r.header, b })
       }
       if (!semua.length) { setSalah('Tidak ada baris transaksi yang terbaca. Pastikan screenshot berisi tabel daftar transaksi lengkap dengan judul kolomnya.'); setTahap('pilih'); return }
       const cocok = cocokkan(semua.map((x) => x.b), kandidat, invoiceOf)
       const jadi = await Promise.all(semua.map((x, k) => gambarUlang({ ...x, h: cocok[k], req: cocok[k].req || null, ikut: cocok[k].status === 'cocok' })))
+      setMesin(catat)
+      // Otomatis: cocok dengan tepat satu pengajuan; bila dibaca AI, nominal AI harus sama dengan bacaan Tesseract.
+      const pasti = (x) => x.h.status === 'cocok' && x.req && (x.b.mesin !== 'gemini' || (x.b.nominal2 != null && x.b.nominal2 === x.b.nominal))
+      jadi.forEach((x) => { if (x.h.status === 'cocok' && !pasti(x)) x.h = { ...x.h, alasan: 'Nominal bacaan AI dan Tesseract berbeda — periksa dulu' } })
+      const auto = cfg.otomatis ? jadi.filter(pasti) : []
+      if (auto.length) { setBaris(jadi.filter((x) => !auto.includes(x))); await konfirmasi(auto, files, true); return }
       setBaris(jadi); setTahap('preview')
     } catch (e) { setSalah(`Gagal membaca gambar: ${e.message}`); setTahap('pilih') }
   }
@@ -115,38 +140,41 @@ export default function BuktiMassal({ open, onClose }) {
   const dipakai = (id, kecuali) => baris.some((x) => x.ikut && x.id !== kecuali && x.req?.id === id)
   const terpilih = baris.filter((x) => x.ikut && x.req && !['gagal', 'sendiri'].includes(x.h.status))
 
-  const konfirmasi = async () => {
-    if (!terpilih.length) return
+  const konfirmasi = async (daftar = terpilih, berkas = asli, otomatis = false) => {
+    if (!daftar.length) return
     setTahap('simpan'); const out = []
     try {
       // Data terbaru dari server — cegah upload ganda
       const segar = await db.list('requests').catch(() => data.requests || [])
       // Arsip screenshot asli
       const arsip = []
-      for (const f of asli) { try { arsip.push(await drive.upload(f, { branch: 'Pusat', invoice: 'BUKTI-MASSAL' })) } catch { /* arsip gagal tidak menghentikan */ } }
-      for (const [k, x] of terpilih.entries()) {
-        setProgres({ teks: `Menyimpan bukti ${k + 1}/${terpilih.length}…`, n: k / terpilih.length })
+      for (const f of (otomatis || !sudahArsip.current ? berkas : [])) { try { arsip.push(await drive.upload(f, { branch: 'Pusat', invoice: 'BUKTI-MASSAL' })) } catch { /* arsip gagal tidak menghentikan */ } }
+      sudahArsip.current = true
+      for (const [k, x] of daftar.entries()) {
+        setProgres({ teks: `${otomatis ? 'Memproses otomatis' : 'Menyimpan bukti'} ${k + 1}/${daftar.length}…`, n: k / daftar.length })
         const r = segar.find((q) => q.id === x.req.id) || x.req
         if (r.status !== 'disetujui' || r.bukti_transfer) { out.push({ x, ok: false, pesan: r.status === 'dibayar' ? 'Sudah ditransfer sebelumnya — dilewati' : 'Sudah punya bukti / status berubah — dilewati' }); continue }
         try {
           const nama = `Bukti-${(invoiceOf(r) || r.purpose || 'pengajuan').replace(/[^\w-]+/g, '_').slice(0, 40)}-${x.b.nominal || r.amount}.jpg`
           const file = await drive.upload(new File([x.blob], nama, { type: 'image/jpeg' }), { branch: r.branch, invoice: 'PENGAJUAN' })
-          await tandaiDibayar({ r, file, date: tglIso(x.b.tgl), user, save, catatan: 'bukti massal' })
+          await tandaiDibayar({ r, file, date: tglIso(x.b.tgl), user, save, catatan: otomatis ? 'bukti massal (otomatis)' : 'bukti massal' })
           out.push({ x, r, ok: true })
         } catch (e) { out.push({ x, ok: false, pesan: e.message }) }
       }
       const ok = out.filter((o) => o.ok)
       await db.insert?.('activity_log', {
-        table: 'requests', kind: 'keuangan', action: `Upload bukti transfer massal: ${ok.length} pengajuan ditandai ditransfer`,
+        table: 'requests', kind: 'keuangan', action: `Upload bukti transfer massal${otomatis ? ' (otomatis)' : ''}: ${ok.length} pengajuan ditandai ditransfer`,
         by: user.name, by_id: user.id, role: user.role, at: new Date().toISOString(),
-        detail: { arsip, screenshot: asli.map((f) => f.name), pengajuan: ok.map((o) => ({ id: o.r.id, nominal: o.r.amount, ref: o.x.b.ref || '' })), gagal: out.filter((o) => !o.ok).map((o) => o.pesan) },
+        detail: { otomatis, arsip, screenshot: berkas.map((f) => f.name), pengajuan: ok.map((o) => ({ id: o.r.id, nominal: o.r.amount, ref: o.x.b.ref || '' })), gagal: out.filter((o) => !o.ok).map((o) => o.pesan) },
       })?.catch?.(() => {})
       refreshTables?.(['requests', 'petty_cash', 'activity_log'])
-      setHasil(out); setTahap('hasil')
-      notify(`${ok.length} bukti transfer tersimpan`)
+      if (!otomatis) setBaris((bs) => bs.filter((x) => !daftar.includes(x)))
+      setHasil((h) => [...h, ...out.map((o) => ({ ...o, otomatis }))]); setTahap('hasil')
+      notify(`${ok.length} bukti transfer tersimpan${otomatis ? ' otomatis' : ''}`)
     } catch (e) { notify(e.message, 'err'); setTahap('preview') }
   }
 
+  const sisa = baris.filter((x) => !['gagal', 'sendiri'].includes(x.h.status))
   const ringkas = { cocok: 0, pilih: 0, tidak: 0, gagal: 0, sendiri: 0 }; baris.forEach((x) => { ringkas[x.h.status]++ })
   const opsiReq = (x) => {
     const sama = kandidat.filter((r) => Number(r.amount) === x.b.nominal)
@@ -159,9 +187,9 @@ export default function BuktiMassal({ open, onClose }) {
     <span className="flex w-full flex-wrap items-center gap-2">
       <span className="mr-auto text-xs text-ink-mute"><b className="text-ink">{terpilih.length}</b> bukti akan diupload · total <b className="text-ink">{rupiah(terpilih.reduce((a, x) => a + Number(x.req.amount || 0), 0))}</b></span>
       <Button variant="outline" onClick={() => { setTahap('pilih'); setBaris([]) }}>Ulangi</Button>
-      <Button disabled={!terpilih.length} onClick={konfirmasi} data-aksi="konfirmasi-massal"><Upload className="h-4 w-4" />Konfirmasi &amp; Upload</Button>
+      <Button disabled={!terpilih.length} onClick={() => konfirmasi()} data-aksi="konfirmasi-massal"><Upload className="h-4 w-4" />Konfirmasi &amp; Upload</Button>
     </span>
-  ) : tahap === 'hasil' ? <Button onClick={onClose}>Selesai</Button> : null
+  ) : tahap === 'hasil' ? <span className="flex w-full flex-wrap justify-end gap-2">{sisa.length > 0 && <Button variant="outline" className="max-md:min-h-11" onClick={() => setTahap('preview')} data-aksi="periksa-sisa">Periksa {sisa.length} baris lainnya</Button>}<Button className="max-md:min-h-11" onClick={onClose}>Selesai</Button></span> : null
 
   return (
     <Sheet open={open} onClose={tahap === 'simpan' ? () => {} : onClose} xwide title="Upload Bukti Transfer Massal" subtitle={`${kandidat.length} pengajuan berstatus Perlu transfer`} footer={footer}>
@@ -180,7 +208,9 @@ export default function BuktiMassal({ open, onClose }) {
             <ul className="space-y-1 text-xs text-ink-mute">
               <li>• Pencocokan wajib: nominal sama persis &amp; sumber dana sama (ATS / PTI / PAL / ATI).</li>
               <li>• Baris Gagal/Pending dan transfer antar rekening sendiri tidak diupload.</li>
-              <li>• Tidak ada yang berubah sebelum Anda menekan <b>Konfirmasi &amp; Upload</b>.</li>
+              {setel?.otomatis
+                ? <li data-info-otomatis>• <b>Mode otomatis aktif:</b> baris yang cocok dengan tepat satu pengajuan langsung ditandai sudah ditransfer. Baris yang ragu tetap menunggu Anda periksa.</li>
+                : <li>• Tidak ada yang berubah sebelum Anda menekan <b>Konfirmasi &amp; Upload</b>.</li>}
             </ul>
           </>
         )}
@@ -193,6 +223,7 @@ export default function BuktiMassal({ open, onClose }) {
           </div>
         )}
 
+        {['preview', 'hasil'].includes(tahap) && mesin.length > 0 && <ul className="space-y-0.5 rounded-xl bg-slate-50 px-3 py-2 text-[11px] text-ink-mute" data-mesin-massal>{mesin.map((m, i) => <li key={i} className="flex gap-1.5"><Sparkles className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />{m}</li>)}</ul>}
         {tahap === 'preview' && (
           <>
             <p className="flex flex-wrap gap-1.5 text-xs" data-ringkas-massal>
@@ -258,9 +289,10 @@ export default function BuktiMassal({ open, onClose }) {
               <li key={i} className={cx('flex items-center gap-2 rounded-xl px-3 py-2 text-sm', o.ok ? 'bg-emerald-50 text-emerald-800' : 'bg-rose-50 text-rose-700')}>
                 {o.ok ? <Check className="h-4 w-4 shrink-0" /> : <X className="h-4 w-4 shrink-0" />}
                 <span className="min-w-0 flex-1 truncate">{rupiah(o.x.b.nominal || o.x.req?.amount || 0)} · {o.x.req ? labelReq(o.x.req) : ''}</span>
-                <span className="shrink-0 text-xs">{o.ok ? 'Sudah Dibayar' : o.pesan}</span>
+                <span className="shrink-0 text-xs">{o.ok ? (o.otomatis ? 'Otomatis · Sudah Dibayar' : 'Sudah Dibayar') : o.pesan}</span>
               </li>
             ))}
+            {sisa.length > 0 && <li className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-800" data-sisa-massal>{sisa.length} baris belum diproses karena perlu diperiksa (tidak cocok pasti). Tekan “Periksa {sisa.length} baris lainnya”.</li>}
             <li className="pt-1 text-xs text-ink-mute">Screenshot asli diarsipkan dan tercatat di Log Aktivitas.</li>
           </ul>
         )}

@@ -171,6 +171,38 @@ export function bacaStatus(teks) {
 const angkaRek = (teks) => { const m = String(teks || '').replace(/[\s-]/g, '').match(/\d{6,}/); return m ? m[0] : '' }
 const namaRek = (teks) => String(teks || '').replace(/[({\[]\s*(rp|idr)\s*[)}\]]/gi, '').replace(/^[\d\s\-./|:]+/, '').replace(/^\/\s*/, '').replace(/\s+/g, ' ').trim()
 
+/** Nilai turunan satu baris (nominal, sumber dana, rekening, status) dari teks sel — sama untuk pembaca Tesseract maupun AI. */
+function lengkapi(b, adaKolomStatus) {
+  b.nominal = bacaNominal(b.jumlah)
+  b.dana = kodeDana(b.dari)
+  b.rek = angkaRek(b.ke); b.nama = namaRek(String(b.ke || '').split('/').slice(1).join('/') || b.ke)
+  b.statusTrx = bacaStatus(b.status) || (adaKolomStatus ? null : 'berhasil')
+  b.sendiri = !!kodeDana(b.ke) || /rekening sendiri|antar rekening/i.test(`${b.ke} ${b.berita}`)
+}
+
+/** Struktur tabel saja (tanpa membaca teks): pita judul + baris. Dipakai jalur AI — potongan bukti tetap dari piksel asli. */
+export function bacaStruktur(im) {
+  const hd = cariHeader(im)
+  if (!hd) throw new Error('Tabel transaksi tidak dikenali (header kolom tidak ditemukan).')
+  const baris = cariBaris(im, hd)
+  if (!baris.length) throw new Error('Baris transaksi tidak ditemukan di screenshot.')
+  return { header: hd, baris }
+}
+/** Tempel hasil baca AI (urut atas→bawah) ke baris. Jumlah baris harus sama persis; bila tidak → null (pakai Tesseract). */
+export function terapkanAi(st, barisAi) {
+  if (!Array.isArray(barisAi) || barisAi.length !== st.baris.length) return null
+  const adaStatus = barisAi.some((r) => String(r?.status || '').trim())
+  st.baris.forEach((b, i) => { for (const k of ['jumlah', 'dari', 'ke', 'status', 'tgl', 'berita', 'ref']) b[k] = String(barisAi[i]?.[k] ?? '').replace(/\s+/g, ' ').trim(); lengkapi(b, adaStatus); b.mesin = 'gemini' })
+  return st
+}
+/** Pembaca kedua (Tesseract) khusus kolom nominal → b.nominal2. Dipakai untuk memastikan angka AI sebelum diproses otomatis. */
+export async function nominalKedua(im, st, ocr, onProgres) {
+  const hd = st.header, kolom = cariKolom(im, hd); let n = 0; const total = kolom.length + st.baris.length
+  for (const k of kolom) { k.jenis = jenisKolom((await ocr(siapOcr(potong(im, k.x0 + 2, hd.y0 + 2, k.x1 - 2, hd.y1 - 2)), {})).replace(/\s+/g, ' ').trim()); onProgres?.(++n / total) }
+  const kj = kolom.find((k) => k.jenis === 'jumlah')
+  for (const b of st.baris) { b.nominal2 = kj ? bacaNominal(await ocr(siapOcr(potong(im, kj.x0 + 2, b.y0 + 1, kj.x1 - 2, b.y1 - 1)), { angka: true })) : null; onProgres?.(++n / total) }
+}
+
 /**
  * Baca satu screenshot. Hasil: { header, kolom, baris: [{ y0, y1, nominal, dari, dana, ke, rek, nama, status, tgl, berita, ref, teks }] }
  * onProgres(0..1) opsional.
@@ -193,11 +225,7 @@ export async function bacaScreenshot(im, ocr, onProgres) {
       const t = (await ocr(siapOcr(potong(im, k.x0 + 2, b.y0 + 1, k.x1 - 2, b.y1 - 1)), { angka: j === 'jumlah' })).replace(/\s+/g, ' ').trim()
       b[j] = t; maju()
     }
-    b.nominal = bacaNominal(b.jumlah)
-    b.dana = kodeDana(b.dari)
-    b.rek = angkaRek(b.ke); b.nama = namaRek(String(b.ke || '').split('/').slice(1).join('/') || (b.rek ? '' : b.ke))
-    b.statusTrx = bacaStatus(b.status) || (kolom.some((x) => x.jenis === 'status') ? null : 'berhasil')
-    b.sendiri = !!kodeDana(b.ke) || /rekening sendiri|antar rekening/i.test(`${b.ke} ${b.berita}`)
+    lengkapi(b, kolom.some((x) => x.jenis === 'status'))
   }
   return { header: hd, kolom, baris }
 }

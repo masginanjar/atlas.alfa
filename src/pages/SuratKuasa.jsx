@@ -10,7 +10,7 @@ import { drive } from '../lib/integrations.js'
 import { saveBlob, dataUrlToBlob } from '../lib/download.js'
 import { printBlob } from '../lib/printing.js'
 import { renderPdf } from '../lib/pdfRender.js'
-import { buatPdf, suratBaru, rangkaiAlamat, cekNik, kekurangan, namaFile, tglIndo, LAYANAN, STATUS_SK, REDAKSI_BAWAAN, TPL_VERSI } from '../lib/suratKuasa.js'
+import { buatPdf, suratBaru, rangkaiAlamat, cekNik, kekurangan, namaFile, tglIndo, LAYANAN, STATUS_SK, REDAKSI_BAWAAN, TPL_VERSI, KOLOM_BAWAAN, KOLOM_MIN, KOLOM_NAMA, kolomDari } from '../lib/suratKuasa.js'
 import { bacaKtp } from '../lib/ktpOcr.js'
 import { Button, Card, Empty, Input, Textarea, Select, Sheet, cx } from '../components/ui.jsx'
 
@@ -124,7 +124,7 @@ function Editor({ id, projectId }) {
     }
     return b
   })
-  const red = useMemo(() => ({ ...REDAKSI_BAWAAN, ...(lama?.redaksi || setelan?.redaksi || {}) }), [lama, setelan])
+  const red = useMemo(() => ({ ...REDAKSI_BAWAAN, ...(lama?.redaksi || setelan?.redaksi || {}), kolom: setelan?.kolom }), [lama, setelan])
   const [ktp, setKtp] = useState(null) // { gambar (dataURL), mesin, catatan, cek: {kolom: alasan} }
   const [sibuk, setSibuk] = useState('')
   const [hasil, setHasil] = useState(null)
@@ -149,10 +149,10 @@ function Editor({ id, projectId }) {
       const k = Math.min(1, 900 / r.kanvas.width); const c = document.createElement('canvas'); c.width = Math.round(r.kanvas.width * k); c.height = Math.round(r.kanvas.height * k); c.getContext('2d').drawImage(r.kanvas, 0, 0, c.width, c.height)
       const cek = {}; let terisi = 0, dilewati = 0
       setS((v) => { const p = { ...v.pemberi }; for (const [kol, o] of Object.entries(r.nilai)) { if ((v.pemberi_diedit || []).includes(kol)) { dilewati++; continue } if (o.v) { p[kol] = o.v; terisi++ } if (o.perlu_cek) cek[kol] = o.alasan }
-        if (!v.alamat_manual) p.alamat_surat = rangkaiAlamat(p); return { ...v, pemberi: p, ktp_sumber: nama || 'unggahan', ktp_mesin: r.mesin, status: v.status === 'siap_cetak' ? 'perlu_diperiksa' : v.status } })
+        if (!v.alamat_manual) p.alamat_surat = rangkaiAlamat(p); return { ...v, pemberi: p, ktp_sumber: nama || 'unggahan', ktp_mesin: r.mesin, ktp_mesin_label: r.mesinLabel, status: v.status === 'siap_cetak' ? 'perlu_diperiksa' : v.status } })
       kotor.current = true
       setKtp({ gambar: c.toDataURL('image/jpeg', 0.85), mesin: r.mesin, catatan: r.catatan, cek })
-      notify(`KTP dibaca (Tesseract, di perangkat ini) — periksa setiap kolom${dilewati ? `; ${dilewati} koreksi Anda tidak ditimpa` : ''}`)
+      notify(`KTP dibaca (${r.mesinLabel}) — periksa setiap kolom${dilewati ? `; ${dilewati} koreksi Anda tidak ditimpa` : ''}`)
     } catch (e) { notify(`KTP tidak bisa dibaca: ${e.message}. Isi manual.`, 'err') } finally { setSibuk('') }
   }
   const berkasProject = useMemo(() => (project ? collect(project, { user }).filter((f) => /\.(jpe?g|png|pdf)$/i.test(f.name || '')) : []), [project, user])
@@ -196,7 +196,7 @@ function Editor({ id, projectId }) {
 
       <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)]">
         <div className="space-y-3">
-          <Bagian no="1" judul="Pemberi kuasa (dari KTP)" sisi={<span className="text-[11px] text-ink-mute">{s.ktp_mesin ? 'Dibaca Tesseract (di perangkat)' : 'Belum ada KTP dibaca'}</span>}>
+          <Bagian no="1" judul="Pemberi kuasa (dari KTP)" sisi={<span className="text-[11px] text-ink-mute">{s.ktp_mesin ? `Dibaca ${s.ktp_mesin_label || (s.ktp_mesin === 'gemini' ? 'AI Gemini' : 'Tesseract (di perangkat)')}` : 'Belum ada KTP dibaca'}</span>}>
             <div className="flex flex-wrap gap-2">
               <label className={cx('inline-flex min-h-10 cursor-pointer items-center gap-1.5 rounded-xl bg-[#141B34] px-3 text-sm font-semibold text-white max-md:min-h-11', sibuk === 'ktp' && 'pointer-events-none opacity-60')}>{sibuk === 'ktp' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}{sibuk === 'ktp' ? 'Membaca KTP…' : 'Unggah KTP'}<input type="file" accept="image/jpeg,image/png,application/pdf,.jpg,.jpeg,.png,.pdf" className="hidden" aria-label="Unggah KTP" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) tarikKtp(f, f.name) }} /></label>
               {berkasProject.length > 0 && <Select aria-label="Pilih KTP dari lampiran pekerjaan" value="" disabled={sibuk === 'ktp'} onChange={async (e) => { const f = berkasProject.find((x) => x.key === e.target.value); if (!f) return; setSibuk('ktp'); try { await tarikKtp(f.url?.startsWith('data:') ? dataUrlToBlob(f.url) : await drive.blob(f), f.name) } catch (er) { notify(er.message, 'err'); setSibuk('') } }} className="!w-auto max-w-full flex-1 basis-48"><option value="">Pilih KTP dari lampiran pekerjaan…</option>{berkasProject.map((f) => <option key={f.key} value={f.key}>{f.name}</option>)}</Select>}
@@ -246,6 +246,8 @@ function Editor({ id, projectId }) {
                   </div>
                 </div>) })}
               <Button variant="outline" className="w-full max-md:min-h-11" onClick={() => ubah((v) => ({ dokumen: [...v.dokumen, { jenis: '', nama: '', pemilik: '', tanggal: '', nomor: '' }] }))} data-aksi="tambah-dokumen"><Plus className="h-4 w-4" />Tambah baris dokumen</Button>
+              <LebarKolom nilai={s.kolom || setelan?.kolom || KOLOM_BAWAAN} khusus={!!s.kolom} bisa={bolehUbah} onUbah={(k) => ubah({ kolom: k })}
+                onBawaan={boleh(user, 'surat-kuasa.atur') ? async (k) => { try { await save('app_settings', { ...(setelan || { key: 'surat_kuasa' }), kolom: k }); ubah({ kolom: null }); notify('Ukuran kolom dijadikan bawaan semua surat') } catch (e) { notify(e.message, 'err') } } : null} />
             </div>
           </Bagian>
 
@@ -278,6 +280,31 @@ function Editor({ id, projectId }) {
       </div>
       {aturRed && <AturRedaksi awal={setelan} onClose={() => setAturRed(false)} />}
     </div>
+  )
+}
+
+/** Ukuran (lebar) kolom tabel dokumen di PDF. Total selalu 100% — kolom lain menyesuaikan secara proporsional. */
+function LebarKolom({ nilai, khusus, bisa, onUbah, onBawaan }) {
+  const persen = kolomDari(nilai).map((x) => Math.round(x * 100))
+  const sama = JSON.stringify(nilai) === JSON.stringify(KOLOM_BAWAAN)
+  return (
+    <details className="rounded-xl ring-1 ring-slate-200" data-lebar-kolom>
+      <summary className="flex min-h-11 cursor-pointer items-center gap-2 px-3 text-xs font-semibold text-ink"><Settings2 className="h-4 w-4 text-ink-mute" aria-hidden="true" />Ukuran kolom tabel<span className="font-normal text-ink-mute">{khusus ? '· diatur khusus surat ini' : sama ? '· bawaan' : '· bawaan kantor'}</span></summary>
+      <div className="space-y-1 px-3 pb-3">
+        {KOLOM_NAMA.map((nm, i) => (
+          <label key={nm} className="grid grid-cols-[96px_minmax(0,1fr)_40px] items-center gap-2 text-xs text-ink-soft">
+            <span>{nm}</span>
+            <input type="range" min={KOLOM_MIN[i]} max={i === 0 ? 12 : 50} step={1} value={Math.round(nilai[i])} disabled={!bisa} onChange={(e) => onUbah(nilai.map((x, j) => (j === i ? Number(e.target.value) : x)))} className="h-11 w-full accent-[var(--brand,#2563eb)] md:h-7" aria-label={`Lebar kolom ${nm}`} data-kolom={i} />
+            <b className="text-right tabular-nums text-ink">{persen[i]}%</b>
+          </label>
+        ))}
+        <p className="pt-1 text-[11px] text-ink-mute">Geser lalu lihat hasilnya di pratinjau. Jumlah selalu 100%, jadi melebarkan satu kolom menyempitkan kolom lain. Surat tetap dijaga satu halaman A4.</p>
+        {bisa && <div className="flex flex-wrap gap-2 pt-1">
+          <Button size="sm" variant="outline" className="max-md:min-h-11" disabled={sama && !khusus} onClick={() => onUbah(khusus ? null : KOLOM_BAWAAN)} data-aksi="kolom-reset">{khusus ? 'Ikuti bawaan' : 'Kembalikan ukuran awal'}</Button>
+          {onBawaan && <Button size="sm" variant="outline" className="max-md:min-h-11" onClick={() => onBawaan(nilai)} data-aksi="kolom-bawaan">Jadikan bawaan semua surat</Button>}
+        </div>}
+      </div>
+    </details>
   )
 }
 

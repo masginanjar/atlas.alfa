@@ -154,6 +154,8 @@ export const MODUL = [
     f('pengaturan.pengguna', 'Pengguna', ['lihat', 'tambah', 'ubah', 'arsip'], { semua: dari(can.manageUsers) }),
     f('pengaturan.master', 'Master data & Kurir', ['lihat', 'tambah', 'ubah', 'hapus'], { semua: dari(can.managePeople) }),
     f('pengaturan.integrasi', 'Integrasi', ['lihat', 'atur'], { semua: dari(can.manageUsers) }),
+    // 15 Nov 2026: pengaturan AI (Gemini) — fitur baru, bawaan hanya Superadmin.
+    f('pengaturan.ai', 'AI (Gemini) — model & batas biaya', ['lihat', 'atur']),
     f('pengaturan.role', 'Role & Hak Akses', ['lihat', 'kelola', 'riwayat'], { semua: ['superadmin'] }, { inti: true }),
     f('pengguna.role', 'Menetapkan role pengguna', ['kelola'], { semua: ['superadmin'] }, { inti: true }),
   ], field: [
