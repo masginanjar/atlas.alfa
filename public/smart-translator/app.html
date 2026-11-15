@@ -593,7 +593,7 @@ async function runQueue(){
       if(!job)break;const [d,p]=job;p.status='baca';p.progress=0;p.err='';p.peta=null;render();
       try{await ocrPage(p);d.jenis=deteksiJenis(teksDok(d));if(TUGAS)keAtlas({type:'st-jenis',nama:d.jenis.nama});
         const first=d.pages.find(x=>x.status==='ok'&&(x.aiData||(x.lines&&x.lines.length>3))&&Object.keys(petaHalaman(x).nilai).length>=3);
-        if(first===p||(!d.fields&&first)){terapkanPeta(d,first);d.fieldPage=first.id;render();if(first.engine==='vision')await bacaUlangOtomatis(d,first);if(d.jenis&&d.jenis.nama==='KTP'&&!first.viaText&&first.engine!=='gemini'&&!AI.utama)await bacaAi(d,first)}
+        if(first===p||(!d.fields&&first)){terapkanPeta(d,first);d.fieldPage=first.id;render();jadwalSimpan(1500);if(first.engine==='vision')await bacaUlangOtomatis(d,first);if(d.jenis&&d.jenis.nama==='KTP'&&!first.viaText&&first.engine!=='gemini'&&!AI.utama)await bacaAi(d,first)}
         else if(!d.fields&&d.pages.every(x=>x.status==='ok'||x.status==='gagal')){d.fields=FIELDS.map(df=>fieldBaru(df,null,{},null))}
       }catch(e){curPage=null;p.status='gagal';p.err=(e&&e.message)||String(e)}
       render();
@@ -614,7 +614,7 @@ async function bacaUlangOtomatis(d,pg){
 function rereadDoc(d){for(const p of d.pages){p.status='antre'}render();runQueue()}
 
 /* ---------- Tampilan ---------- */
-const NAV=[['proses','Proses dokumen'],['referensi','Referensi kota'],['pekerjaan','Daftar pekerjaan'],['glosarium','Glosarium'],['template','Template']];
+const NAV=[['proses','Proses dokumen'],['referensi','Referensi kota'],['pekerjaan','Riwayat'],['glosarium','Glosarium'],['template','Template']];
 function renderNav(){$('#navlist').innerHTML=NAV.map(([k,l])=>`<button type="button" data-act="view" data-v="${k}" ${S.view===k?'aria-current="page"':''}>${l}</button>`).join('');renderVision()}
 function head(title,extra='',sub=''){return `<div class="row" style="gap:16px;justify-content:space-between"><div class="col" style="gap:4px;flex:1 1 300px"><h2 class="ptitle">${title}</h2>${sub?`<p class="psub">${sub}</p>`:''}</div>${extra}</div>`}
 function bacaInfo(){const ps=S.docs.flatMap(d=>d.pages);if(!ps.length)return{st:'todo',t:'Google Vision / Tesseract'};
@@ -719,7 +719,7 @@ function viewPeriksa(){
    ${S.docs.length>1?docTabs():''}${chip(d.jenis?d.jenis.nama:'KTP','biru')}
    <button type="button" class="tbtn" data-act="bacacur">Baca ulang</button><button type="button" class="tbtn" data-act="simpan">Simpan</button><span class="sep"></span>
    <button type="button" class="tbtn" data-act="berikut">Masalah berikutnya</button><span id="chips" class="info">${countChips(d)}</span>
-   <span class="kanan"><button type="button" class="tbtn" data-act="step" data-s="1">Ganti berkas</button><button type="button" class="tbtn dark" data-act="step" data-s="3">Pratinjau &amp; unduh</button></span>
+   <span class="kanan"><span id="simpanst" class="info" aria-live="polite"></span><button type="button" class="tbtn" data-act="step" data-s="1">Ganti berkas</button><button type="button" class="tbtn dark" data-act="step" data-s="3">Pratinjau &amp; unduh</button></span>
   </div>
   <div class="p3" id="p3">${kiri}<div class="spl" data-spl="0" role="separator" aria-orientation="vertical" aria-label="Geser pembatas panel"></div>
    <section class="pn" aria-label="Hasil ekstraksi" data-pn="1" style="flex:${L[1]} 1 0"><div class="pnh"><b>Hasil ekstraksi</b><span class="ket">Isi dokumen · bisa diedit</span></div>
@@ -739,7 +739,7 @@ function pasGambar(){const dv=$('#docview'),box=$('#srcinner'),c=$('#srccanvas')
 function afterPeriksa(){
   const d=curDoc();if(!d)return;const pg=d.pages.find(p=>p.id===d.fieldPage)||d.pages[0];const box=$('#srcinner');
   if(box&&pg){const c=drawRot(pg.src,pg.rot,1400);c.id='srccanvas';box.insertBefore(c,box.firstChild)}
-  pasGambar();tandaiPilih(S.selField);
+  pasGambar();tandaiPilih(S.selField);if(SIMPAN.st)setSimpan(SIMPAN.st);
   const a=$('#pnb-src'),b2=$('#pnb-en');if(a&&b2){let kunci=false;const sink=(x,y)=>()=>{if(kunci)return;kunci=true;y.scrollTop=x.scrollTop;requestAnimationFrame(()=>{kunci=false})};a.addEventListener('scroll',sink(a,b2));b2.addEventListener('scroll',sink(b2,a))}
   if(S.selField)showHL(S.selField);
 }
@@ -847,21 +847,57 @@ function fitSheet(){const w=$('#sheetwrap'),b=$('#sheetbox'),s=$('#sheet');if(!w
 
 /* ---------- Daftar pekerjaan (tersimpan di browser ini) ---------- */
 let JOBS=store.get('st_jobs_v1',[]);
+/* ---------- Penyimpanan permanen di server ATLAS (tabel st_proses, dijaga RLS + izin smart-translator.lihat) ----------
+   Yang disimpan: bacaan awal mesin (ocr_asli, tidak bisa diubah), keadaan kerja terakhir (koreksi + terjemahan), status, versi.
+   Gambar dokumen TIDAK disimpan di sini. Tanpa login ATLAS (demo / layar mandiri) → hanya tersimpan di perangkat. */
+const SB_KEY='sb_publishable_wvCWE64SK9COIBVaSOLD3Q_aQo2I1wM'; // kunci publik (publishable) — aman di browser; akses data tetap dijaga RLS
+function sbInfo(){const x=sesiAtlas();if(!x)return null;return{rest:x.url.replace(/\/functions\/v1\/.*$/,'/rest/v1/'),token:x.token}}
+async function sb(method,path,body,prefer){const i=sbInfo();if(!i)return{ok:false,off:true};
+  try{const r=await fetch(i.rest+path,{method,headers:Object.assign({apikey:SB_KEY,Authorization:'Bearer '+i.token,'Content-Type':'application/json'},prefer?{Prefer:prefer}:{}),body:body?JSON.stringify(body):undefined});
+    let j=null;try{j=await r.json()}catch(e){}return{ok:r.ok,status:r.status,data:j}}catch(e){return{ok:false,net:true}}}
+const SIMPAN={st:'',at:null,timer:null,jalan:false,ulang:false};
+function jamKini(){return new Date().toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'})}
+function setSimpan(st,ket){SIMPAN.st=st;if(st==='ok'||st==='lokal')SIMPAN.at=jamKini();const el=document.getElementById('simpanst');if(!el)return;
+  const t={jalan:'Menyimpan…',ok:'✓ Tersimpan '+(SIMPAN.at||''),lokal:'✓ Tersimpan di perangkat ini '+(SIMPAN.at||''),gagal:'Gagal menyimpan'+(ket?' ('+ket+')':''),bentrok:'Diubah di sesi lain — buka ulang dari Riwayat',tunda:'Belum disimpan'}[st]||'';
+  el.innerHTML=st==='gagal'?`<span style="color:#9B2318;font-weight:600">${esc(t)}</span> <button type="button" class="tbtn" data-act="simpan">Coba lagi</button>`:`<span style="color:${st==='ok'||st==='lokal'?'#14713F':st==='bentrok'?'#9B2318':'#5B6178'}">${esc(t)}</span>`}
+function muatanServer(d,j){return{file_name:d.name||(d.pages&&d.pages[0]&&d.pages[0].name)||'',jenis:(d.jenis&&d.jenis.nama)||'KTP',mesin:[...new Set((d.pages||[]).map(p=>p.engine).filter(Boolean))].join('+')||null,status:j.status,tpl:j.tpl,
+  doc:{fields:j.fields,confirmed:!!j.confirmed,tplVersi:j.versi,nama:j.nama}}}
+async function simpanServer(d,j){
+  if(!sbInfo()){setSimpan('lokal');return}
+  if(SIMPAN.jalan){SIMPAN.ulang=true;return}SIMPAN.jalan=true;setSimpan('jalan');
+  try{const m=muatanServer(d,j);let r;
+    if(!d.sid){const asli={teks:(d.pages||[]).map(p=>p.text||''),kolom:d.fields.map(f=>{const c=(f.cands||[]).filter(x=>x.mesin).slice(-1)[0];return{key:f.key,v:c?c.v:'',raw:c?c.raw:'',mesin:c?c.mesin:null,conf:c?c.conf:null,box:c?c.box:null}})};
+      r=await sb('POST','st_proses?select=id,rev,updated_at',Object.assign(m,{ocr_asli:asli,versi:d.versiProses||1,asal_id:d.asalId||null}),'return=representation');
+      if(r.ok&&r.data&&r.data[0]){d.sid=r.data[0].id;d.rev=r.data[0].rev}}
+    else{r=await sb('PATCH','st_proses?id=eq.'+d.sid+'&rev=eq.'+d.rev+'&select=id,rev,updated_at',m,'return=representation');
+      if(r.ok&&Array.isArray(r.data)&&!r.data.length){setSimpan('bentrok');return}
+      if(r.ok&&r.data&&r.data[0])d.rev=r.data[0].rev}
+    if(r.ok){const k=JOBS.find(x=>x.id===d.jobId);if(k){k.sid=d.sid;store.set('st_jobs_v1',JOBS)}S.riwayat=null;setSimpan('ok')}
+    else setSimpan('gagal',r.net?'koneksi':r.status===401?'sesi berakhir — masuk ulang':r.status===403?'tidak ada izin':'server '+(r.status||''))}
+  finally{SIMPAN.jalan=false;if(SIMPAN.ulang){SIMPAN.ulang=false;jadwalSimpan(300)}}}
+/** Simpan otomatis setelah jeda (tidak menyimpan tiap ketukan). */
+function jadwalSimpan(ms){const d=curDoc();if(!d||!d.fields)return;clearTimeout(SIMPAN.timer);if(SIMPAN.st!=='jalan')setSimpan('tunda');SIMPAN.timer=setTimeout(()=>{const x=curDoc();if(x&&x.fields)saveJob(x,true)},ms==null?2500:ms)}
+window.addEventListener('beforeunload',e=>{if(SIMPAN.st==='tunda'||SIMPAN.st==='jalan'||SIMPAN.st==='gagal'){e.preventDefault();e.returnValue=''}});
+async function muatRiwayat(){if(!sbInfo()||S.riwayatMuat)return;S.riwayatMuat=true;const r=await sb('GET','st_proses?select=id,file_name,jenis,status,versi,rev,project_id,invoice_no,user_nama,mesin,created_at,updated_at,nama:doc->>nama&order=updated_at.desc&limit=200');S.riwayatMuat=false;S.riwayat=r.ok&&Array.isArray(r.data)?r.data:[];S.riwayatGalat=r.ok?'':(r.status===401?'Sesi berakhir — masuk ulang ke ATLAS':r.net?'Koneksi gagal':'Riwayat tidak bisa dimuat');if(S.view==='pekerjaan')render()}
 function saveJob(d,quiet){
   if(!d.fields)return;if(!d.jobId)d.jobId='J'+Date.now()+'-'+d.id;const nama=(d.fields.find(f=>f.key==='nama')||{}).src||'(tanpa nama)';
   const st=d.finalDone?'Siap diunduh':(d.confirmed&&!issues(d).length?'Sudah diperiksa':'Perlu diperiksa');
   const j={id:d.jobId,nama,jenis:'KTP',waktu:new Date().toISOString(),status:st,tpl:d.tpl,versi:d.tpl==='khusus'&&S.customTpl?S.customTpl.name:TPL_VERSION,confirmed:d.confirmed,fields:d.fields.map(f=>({key:f.key,src:f.src,raw:f.raw,en:f.en,srcEdited:f.srcEdited,enManual:f.enManual,review:f.review,checked:f.checked,conf:f.conf,mesin:f.mesin,absen:f.absen,hist:(f.hist||[]).slice(-10)}))};
-  const i=JOBS.findIndex(x=>x.id===j.id);if(i>=0)JOBS[i]=j;else JOBS.unshift(j);const ok=store.set('st_jobs_v1',JOBS);if(!quiet)toast(ok?'Draf disimpan di browser ini':'Penyimpanan browser tidak tersedia');
+  const i=JOBS.findIndex(x=>x.id===j.id);j.sid=d.sid||(i>=0?JOBS[i].sid:null)||null;if(i>=0)JOBS[i]=j;else JOBS.unshift(j);const ok=store.set('st_jobs_v1',JOBS);clearTimeout(SIMPAN.timer);if(!quiet&&!sbInfo())toast(ok?'Draf disimpan di perangkat ini':'Penyimpanan browser tidak tersedia');simpanServer(d,j);
 }
 function viewPekerjaan(){
   const q=S.q.toLowerCase(),f=S.jf||'semua';
   const tone={'Perlu diperiksa':['#FFF1C7','#6B4600','Periksa'],'Sudah diperiksa':['#E8EEFF','#23358F','Lanjutkan'],'Siap diunduh':['#E3F5EC','#136C3F','Unduh']};
   const cnt=k=>JOBS.filter(j=>j.status===k).length;const k=VISION.kuota;
-  const list=JOBS.filter(j=>(f==='semua'||j.status===f)&&(!q||[j.nama,j.jenis,j.status,j.waktu.slice(0,10)].join(' ').toLowerCase().includes(q)));
+  const list=JOBS.filter(j=>!(sbInfo()&&j.sid)&&(f==='semua'||j.status===f)&&(!q||[j.nama,j.jenis,j.status,j.waktu.slice(0,10)].join(' ').toLowerCase().includes(q)));
+  const ada=!!sbInfo();if(ada&&S.riwayat==null)muatRiwayat();
+  const srv=(S.riwayat||[]).filter(r=>(f==='semua'||r.status===f)&&(!q||[r.file_name,r.nama,r.jenis,r.status,r.user_nama,r.invoice_no,(r.updated_at||'').slice(0,10)].join(' ').toLowerCase().includes(q)));
+  const tblSrv=ada?`<div class="tblbox" data-riwayat-server><table><thead><tr><th>Berkas</th><th>Jenis</th><th>Versi</th><th>Status</th><th>Pengguna</th><th>Diperbarui</th><th>Aksi</th></tr></thead><tbody>${srv.map(r=>{const t=tone[r.status]||['#EEF0F6','#2B3A5C','Buka'];return `<tr><td><b style="font-weight:600;overflow-wrap:anywhere">${esc(r.file_name||'(tanpa nama berkas)')}</b>${r.nama?`<div class="small">${esc(r.nama)}</div>`:''}${r.invoice_no?`<div class="small">${esc(r.invoice_no)}</div>`:''}</td><td>${esc(r.jenis)}</td><td class="small">v${r.versi} · simpan ke-${r.rev}</td><td><span class="chip" style="background:${t[0]};color:${t[1]}">${esc(r.status)}</span></td><td class="small">${esc(r.user_nama||'')}</td><td class="small">${new Date(r.updated_at).toLocaleString('id-ID',{dateStyle:'medium',timeStyle:'short'})}</td><td><button type="button" class="btn sm" data-act="bukaproses" data-sid="${r.id}">Lanjutkan</button></td></tr>`}).join('')||`<tr><td colspan="7" style="padding:28px 14px;text-align:center;color:#5B6178">${S.riwayat==null?'Memuat riwayat…':S.riwayatGalat?esc(S.riwayatGalat):(S.riwayat.length?'Tidak ada yang cocok':'Belum ada proses tersimpan di server')}</td></tr>`}</tbody></table></div><div class="small">Tersimpan di server ATLAS: hasil baca awal, koreksi, dan terjemahan. Bisa dilanjutkan dari perangkat lain. Gambar dokumen tidak ikut disimpan. Baca ulang membuat versi baru; versi lama tetap ada.</div>`:'';
   const pills=[['semua','Semua'],['Perlu diperiksa','Perlu dicek'],['Sudah diperiksa','Siap diterjemahkan'],['Siap diunduh','Selesai']].map(([v,l])=>`<button type="button" class="pill" data-act="jf" data-f="${v}" aria-pressed="${f===v}">${l}</button>`).join('');
-  return head('Daftar pekerjaan',`<button type="button" class="btn dark lg" data-act="view" data-v="proses">${ic(I.up,18)}Proses dokumen baru</button>`,'Semua dokumen yang sedang dan sudah diproses')+`
+  return head('Riwayat',`<button type="button" class="btn dark lg" data-act="view" data-v="proses">${ic(I.up,18)}Proses dokumen baru</button>`,'Semua dokumen yang sedang dan sudah diproses — lanjutkan kapan saja')+`
   <div class="stats"><div class="stat"><span>Perlu dicek</span><b style="color:#8A5A00">${cnt('Perlu diperiksa')}</b></div><div class="stat"><span>Siap diterjemahkan</span><b style="color:#23358F">${cnt('Sudah diperiksa')}</b></div><div class="stat"><span>Selesai</span><b style="color:#136C3F">${cnt('Siap diunduh')}</b></div><div class="stat"><span>Kuota Google Vision</span><b>${k?Math.max(0,k.batas-k.halaman).toLocaleString('id-ID'):'—'} <span style="font-size:15px">halaman sisa</span></b></div></div>
   <div class="row" style="gap:10px"><label class="search"><span class="small" style="position:absolute;width:1px;height:1px;overflow:hidden">Cari</span>${ic('M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16ZM21 21l-4.3-4.3',18,2)}<input id="q" type="search" placeholder="Cari nama, jenis, tanggal, status" value="${esc(S.q)}"></label>${pills}</div>
+  ${tblSrv}${ada?`<h3 style="margin:6px 0 0;font-size:13px">Hanya di perangkat ini</h3>`:""}
   <div class="tblbox"><table><thead><tr><th>Dokumen</th><th>Jenis</th><th>Versi template</th><th>Status</th><th>Diperbarui</th><th>Aksi</th></tr></thead><tbody>
   ${list.map(j=>{const t=tone[j.status]||['#EEF0F6','#2B3A5C','Buka'];return `<tr><td><div class="row" style="gap:12px;flex-wrap:nowrap"><span class="ficon">${ic('M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7ZM14 2v4a2 2 0 0 0 2 2h4',20,2)}</span><b style="font-weight:600;overflow-wrap:anywhere">${esc(j.nama)}</b></div></td><td>${esc(j.jenis)}</td><td class="small">${esc(j.versi)}</td><td><span class="chip" style="background:${t[0]};color:${t[1]}">${esc(j.status)}</span></td><td class="small">${new Date(j.waktu).toLocaleString('id-ID',{dateStyle:'medium',timeStyle:'short'})}</td><td><div class="row" style="gap:4px;justify-content:flex-end;flex-wrap:nowrap"><button type="button" class="btn sm" data-act="bukajob" data-id="${j.id}">${t[2]}</button><button type="button" class="ib" data-act="hapusjob" data-id="${j.id}" aria-label="Hapus ${esc(j.nama)}">${ic(I.trash)}</button></div></td></tr>`}).join('')||`<tr><td colspan="6" style="padding:40px 14px;text-align:center;color:#5B6178">${JOBS.length?'Tidak ada yang cocok':'Belum ada pekerjaan tersimpan'}</td></tr>`}
   </tbody></table></div>
@@ -914,7 +950,7 @@ function render(){
   else v.innerHTML=viewTpl();
   window.scrollTo(0,sy);
 }
-function refreshStatus(key){const d=curDoc();const f=d.fields.find(x=>x.key===key);const c=$('#st-'+key);if(c)c.innerHTML=stCell3(f);const c2=$('#stt-'+key);if(c2)c2.innerHTML=stCell3(f);for(const id of ['#row-','#rowt-']){const rw=$(id+key);if(rw)rw.classList.toggle('warn',rowWarn(f))}const m=$('#meta-'+key);if(m){m.outerHTML=metaKolom(f);if(S.selField===key){const m2=$('#meta-'+key);if(m2)m2.classList.add('on')}}const ch=$('#chips');if(ch)ch.innerHTML=countChips(d)}
+function refreshStatus(key){const d=curDoc();const f=d.fields.find(x=>x.key===key);const c=$('#st-'+key);if(c)c.innerHTML=stCell3(f);const c2=$('#stt-'+key);if(c2)c2.innerHTML=stCell3(f);for(const id of ['#row-','#rowt-']){const rw=$(id+key);if(rw)rw.classList.toggle('warn',rowWarn(f))}const m=$('#meta-'+key);if(m){m.outerHTML=metaKolom(f);if(S.selField===key){const m2=$('#meta-'+key);if(m2)m2.classList.add('on')}}const ch=$('#chips');if(ch)ch.innerHTML=countChips(d);jadwalSimpan()}
 document.addEventListener('click',async e=>{
   const b=e.target.closest('[data-act]');if(!b)return;const a=b.dataset.act,di=+b.dataset.d,pi=+b.dataset.p;
   if(a==='view'){S.view=b.dataset.v;render()}
@@ -932,7 +968,7 @@ document.addEventListener('click',async e=>{
   else if(a==='cur'){S.cur=di;render()}
   else if(a==='srctab'){S.srcTab=b.dataset.t;render()}
   else if(a==='zoom'){S.zoom=!S.zoom;render()}
-  else if(a==='putarcur'||a==='bacacur'){const d=curDoc();const p=d.pages.find(x=>x.id===d.fieldPage)||d.pages[0];if(!p)return;if(a==='putarcur')p.rot=(p.rot+90)%360;p.status='antre';toast('Membaca ulang… koreksi manual tidak ditimpa');S.step=1;render();runQueue()}
+  else if(a==='putarcur'||a==='bacacur'){const d=curDoc();const p=d.pages.find(x=>x.id===d.fieldPage)||d.pages[0];if(!p)return;if(a==='putarcur')p.rot=(p.rot+90)%360;if(d.sid){d.asalId=d.sid;d.sid=null;d.rev=null;d.versiProses=(d.versiProses||1)+1}p.status='antre';toast('Membaca ulang… koreksi manual tidak ditimpa');S.step=1;render();runQueue()}
   else if(a==='tick'){const f=curDoc().fields.find(x=>x.key===b.dataset.k);f.review=false;f.beda=false;f.checked=true;f.hist.push({at:Date.now(),ke:f.src,oleh:'pengguna (sudah dicek)'});refreshStatus(f.key)}
   else if(a==='absen'){const f=curDoc().fields.find(x=>x.key===b.dataset.k);f.absen=f.absen?null:'tidak-tercantum';f.hist.push({at:Date.now(),ke:f.absen||'(dibatalkan)',oleh:'pengguna'});refreshStatus(f.key)}
   else if(a==='pakai'){const f=curDoc().fields.find(x=>x.key===b.dataset.k);const c=f.cands[+b.dataset.i];if(!c)return;setSumber(f,c.v,'pengguna memilih kandidat ('+c.cara+')');f.raw=c.raw;f.conf=c.conf;f.mesin=c.mesin;f.bbox=c.box||f.bbox;f.srcEdited=true;f.beda=false;f.checked=true;render()}
@@ -947,7 +983,7 @@ document.addEventListener('click',async e=>{
     tambahKandidat(f,o,'baca ulang kolom',pg);render();toast(norm(o.v)===norm(f.src)?'Hasil baca ulang sama':'Hasil baca ulang berbeda — lihat kandidat')}
   else if(a==='simpan')saveJob(curDoc());
   else if(a==='dl'){b.disabled=true;try{await unduh(b.dataset.k,!b.dataset.f)}finally{b.disabled=false}}
-  else if(a==='bukajob'){const j=JOBS.find(x=>x.id===b.dataset.id);if(!j)return;const d=newDoc();d.jobId=j.id;d.tpl=j.tpl==='khusus'?'depan':j.tpl;d.confirmed=!!j.confirmed;d.fields=FIELDS.map(df=>{const f=j.fields.find(x=>x.key===df.key)||{};return{key:df.key,src:f.src||'',raw:f.raw||'',en:f.en||'',srcEdited:!!f.srcEdited,enManual:!!f.enManual,review:!!f.review,checked:!!f.checked,conf:f.conf??null,mesin:f.mesin||null,bbox:null,labelAda:!!f.src,cands:[],beda:false,absen:f.absen||null,hist:f.hist||[]}});S.docs.push(d);S.cur=S.docs.length-1;S.view='proses';S.step=2;render()}
+  else if(a==='bukajob'||a==='bukaproses'){let j,row=null;if(a==='bukaproses'){b.disabled=true;const r=await sb('GET','st_proses?id=eq.'+encodeURIComponent(b.dataset.sid)+'&select=*');row=r.ok&&r.data&&r.data[0];if(!row){b.disabled=false;toast(r.status===401?'Sesi berakhir — masuk ulang ke ATLAS':'Riwayat tidak bisa dibuka');return}j={id:'S'+row.id,tpl:row.tpl||'depan',confirmed:!!(row.doc&&row.doc.confirmed),fields:(row.doc&&row.doc.fields)||[]}}else j=JOBS.find(x=>x.id===b.dataset.id);if(!j)return;const d=newDoc();d.jobId=j.id;d.tpl=j.tpl==='khusus'?'depan':j.tpl;d.confirmed=!!j.confirmed;d.fields=FIELDS.map(df=>{const f=j.fields.find(x=>x.key===df.key)||{};return{key:df.key,src:f.src||'',raw:f.raw||'',en:f.en||'',srcEdited:!!f.srcEdited,enManual:!!f.enManual,review:!!f.review,checked:!!f.checked,conf:f.conf??null,mesin:f.mesin||null,bbox:null,labelAda:!!f.src,cands:[],beda:false,absen:f.absen||null,hist:f.hist||[]}});if(row){d.sid=row.id;d.rev=row.rev;d.versiProses=row.versi;d.name=row.file_name||d.name;SIMPAN.at=new Date(row.updated_at).toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'});SIMPAN.st='ok'}else{d.sid=j.sid||null;SIMPAN.st=''}S.docs.push(d);S.cur=S.docs.length-1;S.view='proses';S.step=2;render()}
   else if(a==='hapusjob'){JOBS=JOBS.filter(x=>x.id!==b.dataset.id);store.set('st_jobs_v1',JOBS);render()}
   else if(a==='hapussemua'){if(b.dataset.sure){JOBS=[];store.set('st_jobs_v1',JOBS);render()}else{b.dataset.sure='1';b.textContent='Klik lagi untuk hapus semua'}}
   else if(a==='glosadd'){const g=$('#gg').value,s=norm($('#gs').value),en=$('#ge').value.trim().toUpperCase();if(!s||!en){toast('Isi sumber dan terjemahan');return}GLOS=GLOS.filter(x=>!(x.g===g&&norm(x.src)===s));GLOS.unshift({g,src:s,en});store.set('st_glos_v1',GLOS);render()}
