@@ -94,7 +94,7 @@ function DocCard({ project, sub }) {
   const saveList = (list) => processStage(project, sub.id, { file_final: list[0] ?? null, file_final_list: list }, false)
   const [reviewNames, namerDialog] = useUploadNamer({ existing: collect(project).map((f) => f.name), invoice: project.invoice_no })
   const upload = async (picked) => { const files = await reviewNames(picked); return files && run('up', async () => {
-    const added = await uploadProjectFiles(files.map(({ file, name }) => ({ file, name, sub_id: sub.id })), { branch: project.branch, invoice: project.invoice_no, by: user.name })
+    const added = await uploadProjectFiles(files.map(({ file, name }) => ({ file, name, sub_id: sub.id })), { branch: project.branch, invoice: project.invoice_no, by: user.name, subs: project.sub_projects })
     await saveList([...uploadedList, ...added])
   }, files.length > 1 ? `${files.length} dokumen terunggah` : 'Dokumen terunggah') }
   const removeOne = (i) => run('rm', () => saveList(uploadedList.filter((_, j) => j !== i)))

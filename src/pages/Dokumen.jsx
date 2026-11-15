@@ -13,6 +13,9 @@ import { collect, patchEverywhere, uploadProjectFiles } from '../components/File
 import FilePreview from '../components/FilePreview.jsx'
 import PohonFolder from '../components/PohonFolder.jsx'
 import { scopeByBranch, invoiceLabel } from '../config/access.js'
+import { fileAL, subAL, bolehAL, FOLDER_AL, LABEL_AL } from '../lib/dokumenAL.js'
+
+const SUB_AL = '__apostille_legalisasi'
 import { tanggalJam } from '../lib/waktu.js'
 import { drive } from '../lib/integrations.js'
 import { saveBlob, dataUrlToBlob } from '../lib/download.js'
@@ -122,11 +125,11 @@ export default function Dokumen() {
     pelanggan: p.customer?.name || '',
   }), [])
   const berkas = useMemo(
-    () => projects.flatMap((p) => collect(p).map((f) => lengkapi(p, f))),
-    [projects, lengkapi],
+    () => projects.flatMap((p) => collect(p, { user }).map((f) => lengkapi(p, f))),
+    [projects, lengkapi, user],
   )
   const diTrash = useMemo(
-    () => projects.flatMap((p) => collect(p, { termasukTrash: true }).filter((f) => f.trashed_at).map((f) => lengkapi(p, f))),
+    () => projects.flatMap((p) => collect(p, { termasukTrash: true, user }).filter((f) => f.trashed_at).map((f) => lengkapi(p, f))),
     [projects, lengkapi],
   )
 
@@ -296,8 +299,8 @@ export default function Dokumen() {
     if (!dipilih.length || !projectAktif) return
     try {
       const added = await uploadProjectFiles(
-        dipilih.map((file) => ({ file, name: file.name, sub_id: '' })),
-        { branch: projectAktif.branch, invoice: projectAktif.invoice_no, by: user.name },
+        dipilih.map((file) => ({ file, name: file.name, sub_id: '', folder: subAktif === SUB_AL ? FOLDER_AL : '' })),
+        { branch: projectAktif.branch, invoice: projectAktif.invoice_no, by: user.name, subs: projectAktif.sub_projects },
         (i, n) => setSibuk(`Mengunggah ${i}/${n}…`),
       )
       await ubahProject(projectAktif, (n) => { n.files.push(...added) })
@@ -335,11 +338,18 @@ export default function Dokumen() {
   const IkonBerkas = ({ f, besar }) => { const [t, , w] = JENIS[kindOf(f)] || JENIS.other; return <span className={cx('inline-grid shrink-0 place-items-center rounded-[3px] font-extrabold text-white', w, besar ? 'h-[62px] w-[48px] text-[11px] shadow' : 'h-[18px] w-[15px] text-[6px]')}>{t}</span> }
   const IkonFolder = ({ besar }) => <span className={cx('relative inline-block shrink-0 rounded-[3px] bg-gradient-to-b from-[#ffd666] to-[#f5b942]', besar ? 'h-[52px] w-[68px]' : 'h-[14px] w-[18px]')}><span className={cx('absolute left-0 rounded-t-[3px] bg-[#f5b942]', besar ? '-top-2 h-2.5 w-7' : '-top-[3px] h-1 w-2')} /></span>
   // subfolder per sub project
+  // Semua dokumen Apostille & Legalisasi sebuah project dikumpulkan di SATU folder sendiri
+  // (hanya muncul bagi yang berizin — berkasnya memang tidak ikut terambil untuk yang lain).
+  const isAL = (f) => fileAL(projectAktif, f)
   const subFolder = aktif.jenis === 'project' && projectAktif && !mencari
-    ? (projectAktif.sub_projects || []).map((sp) => ({ id: sp.id, nama: sp.title || 'Sub project', n: dalamFolder.filter((f) => f.subId === sp.id).length })).filter((x) => x.n)
+    ? [
+        ...(projectAktif.sub_projects || []).filter((sp) => !subAL(sp)).map((sp) => ({ id: sp.id, nama: sp.title || 'Sub project', n: dalamFolder.filter((f) => f.subId === sp.id && !isAL(f)).length })).filter((x) => x.n),
+        ...(bolehAL(user) && ((projectAktif.sub_projects || []).some(subAL) || dalamFolder.some(isAL)) ? [{ id: SUB_AL, nama: LABEL_AL, n: dalamFolder.filter(isAL).length }] : []),
+      ]
     : []
-  const tanpaSub = aktif.jenis === 'project' ? dalamFolder.filter((f) => !f.subId || !subFolder.some((x) => x.id === f.subId)) : []
-  const barisTampil = aktif.jenis === 'project' && !mencari ? (subAktif ? baris.filter((f) => f.subId === subAktif) : baris.filter((f) => tanpaSub.includes(f))) : baris
+  const diSub = (f, id) => (id === SUB_AL ? isAL(f) : f.subId === id && !isAL(f))
+  const tanpaSub = aktif.jenis === 'project' ? dalamFolder.filter((f) => !subFolder.some((x) => diSub(f, x.id))) : []
+  const barisTampil = aktif.jenis === 'project' && !mencari ? (subAktif ? baris.filter((f) => diSub(f, subAktif)) : baris.filter((f) => tanpaSub.includes(f))) : baris
   const subNama = subFolder.find((x) => x.id === subAktif)?.nama
   // Akses cepat
   const cepat = [

@@ -11,19 +11,24 @@ import { Card, Empty, cx } from './ui.jsx'
 import { jam, kb } from '../lib/format.js'
 import { useUploadNamer, nameTaken } from './UploadNamer.jsx'
 import { invoiceLabel } from '../config/access.js'
+import { folderUnggah, fileAL, bolehAL, subAL, FOLDER_AL, LABEL_AL } from '../lib/dokumenAL.js'
+
+const SUB_AL = '__apostille_legalisasi'
 
 const uid = () => crypto.randomUUID?.() ?? String(Date.now() + Math.random())
 const ext = (n) => (n.match(/\.[^.]+$/)?.[0] ?? '')
 
 /** Upload banyak file ke Drive → objek file project. */
-export async function uploadProjectFiles(items, { branch, invoice, by }, onProgress) {
+export async function uploadProjectFiles(items, { branch, invoice, by, subs }, onProgress) {
   const out = []
   for (let i = 0; i < items.length; i++) {
     onProgress?.(i + 1, items.length)
-    const { file, name, sub_id } = items[i]
+    const { file, name, sub_id, folder: fd } = items[i]
     const f = name && name !== file.name ? new File([file], name, { type: file.type }) : file
-    const up = await drive.upload(f, { branch, invoice })
-    out.push({ id: uid(), ...up, sub_id: sub_id || null, by })
+    // Dokumen Apostille & Legalisasi → folder sendiri di project (tertutup untuk pelaksana)
+    const folder = fd || folderUnggah(subs, sub_id)
+    const up = await drive.upload(f, { branch, invoice, folder })
+    out.push({ id: uid(), ...up, ...(folder ? { folder } : {}), sub_id: sub_id || null, by })
   }
   return out
 }
@@ -37,7 +42,7 @@ export const fieldFiles = (data, key) => {
 }
 
 /** Semua file project: file manajemen project + file yang diunggah di tahap alur kerja (tanpa ganda). */
-export function collect(project, { termasukTrash = false } = {}) {
+export function collect(project, { termasukTrash = false, user = null } = {}) {
   const list = (project.files || []).map((f) => ({ ...f, key: `p:${f.id}`, kind: 'project', subId: f.sub_id, source: 'Manajemen file' }))
   const seen = new Map(list.map((f) => [fileIdentity(f), f]))
   for (const s of project.sub_projects || []) {
@@ -52,7 +57,9 @@ export function collect(project, { termasukTrash = false } = {}) {
       }
     }
   }
-  const hasil = termasukTrash ? list : list.filter((f) => !f.trashed_at)
+  // Dokumen Apostille & Legalisasi disembunyikan dari yang tidak berizin (server juga menolak unduhannya)
+  const tampak = user && !bolehAL(user) ? list.filter((f) => !fileAL(project, f)) : list
+  const hasil = termasukTrash ? tampak : tampak.filter((f) => !f.trashed_at)
   return hasil.sort((a, b) => new Date(b.uploaded_at || 0) - new Date(a.uploaded_at || 0))
 }
 
@@ -85,14 +92,17 @@ export default function FileManager({ project, readOnly }) {
   const [preview, setPreview] = useState(null)
   const inputRef = useRef(null)
 
-  const all = useMemo(() => collect(project), [project])
+  const all = useMemo(() => collect(project, { user }), [project, user])
   const [reviewNames, namerDialog] = useUploadNamer({ existing: all.map((f) => f.name), invoice: project.invoice_no })
   const subs = project.sub_projects || []
-  const subLabel = (id) => { const i = subs.findIndex((s) => s.id === id); return i < 0 ? 'Umum' : `Sub ${i + 1} · ${subs[i].title}` }
-  const shown = all.filter((f) => folder === 'all' || (folder === 'umum' ? !f.subId : f.subId === folder))
+  const subLabel = (id) => { if (id === SUB_AL) return LABEL_AL; const i = subs.findIndex((s) => s.id === id); return i < 0 ? 'Umum' : `Sub ${i + 1} · ${subs[i].title}` }
+  // Dokumen Apostille & Legalisasi: satu folder sendiri per project (hanya untuk yang berizin)
+  const isAL = (f) => fileAL(project, f)
+  const diFolder = (f, id) => (id === SUB_AL ? isAL(f) : !isAL(f) && (id === 'umum' ? !f.subId : f.subId === id))
+  const shown = all.filter((f) => folder === 'all' || diFolder(f, folder))
   // Upload selalu masuk ke folder yang sedang terlihat. Di tampilan "semua
   // file" belum ada folder yang dituju, jadi diarahkan ke Umum.
-  const uploadSub = folder === 'all' || folder === 'umum' ? '' : folder
+  const uploadSub = folder === 'all' || folder === 'umum' || folder === SUB_AL ? '' : folder
   const folderLabel = folder === 'all' ? 'Semua file' : folder === 'umum' ? 'Umum' : subLabel(folder)
   const toggle = (k) => setSelected((s) => { const n = new Set(s); n.has(k) ? n.delete(k) : n.add(k); return n })
 
@@ -108,7 +118,7 @@ export default function FileManager({ project, readOnly }) {
     const picked = [...(fileList || [])]; if (inputRef.current) inputRef.current.value = ''
     const files = await reviewNames(picked); if (!files) return
     try {
-      const added = await uploadProjectFiles(files.map(({ file, name }) => ({ file, name, sub_id: uploadSub })), { branch: project.branch, invoice: project.invoice_no, by: user.name },
+      const added = await uploadProjectFiles(files.map(({ file, name }) => ({ file, name, sub_id: uploadSub, folder: folder === SUB_AL ? FOLDER_AL : '' })), { branch: project.branch, invoice: project.invoice_no, by: user.name, subs: project.sub_projects },
         (i, n) => setBusy(`Mengunggah ${i}/${n}…`))
       await applyChanges((n) => { n.files.push(...added) })
       notify(`${added.length} file diunggah`)
@@ -153,7 +163,7 @@ export default function FileManager({ project, readOnly }) {
       for (let i = 0; i < files.length; i++) {
         const f = files[i]; setBusy(`Mengemas ZIP ${i + 1}/${files.length}…`)
         let blob; try { blob = await drive.blob(f) } catch { skipped++; continue }
-        const namaFolder = subLabel(f.subId).replace(/[\\/:*?"<>|]/g, '-').slice(0, 60)
+        const namaFolder = subLabel(isAL(f) ? SUB_AL : f.subId).replace(/[\\/:*?"<>|]/g, '-').slice(0, 60)
         let path = `${namaFolder}/${f.name}`; let k = 1
         while (used.has(path)) path = `${namaFolder}/${f.name.replace(/(\.[^.]+)?$/, ` (${k++})$1`)}`
         used.add(path); zip.file(path, blob)
@@ -172,8 +182,11 @@ export default function FileManager({ project, readOnly }) {
   const [tampil, setTampil] = useState(() => { try { return localStorage.getItem('atlas-dok-tampil') || 'detail' } catch { return 'detail' } })
   const gantiTampil = (v) => { setTampil(v); try { localStorage.setItem('atlas-dok-tampil', v) } catch { /* abaikan */ } }
   const diAkar = folder === 'all'
-  const isiFolder = (id) => all.filter((f) => (id === 'umum' ? !f.subId : f.subId === id))
-  const daftarFolder = diAkar ? [{ id: 'umum', nama: 'Umum' }, ...subs.map((sb, i) => ({ id: sb.id, nama: `Sub ${i + 1} · ${sb.title}` }))].map((x) => ({ ...x, n: isiFolder(x.id).length })) : []
+  const isiFolder = (id) => all.filter((f) => diFolder(f, id))
+  const daftarFolder = diAkar ? [{ id: 'umum', nama: 'Umum' },
+    ...subs.map((sb, i) => ({ id: sb.id, nama: `Sub ${i + 1} · ${sb.title}`, al: subAL(sb) })).filter((x) => !x.al),
+    ...(bolehAL(user) && (subs.some(subAL) || all.some(isAL)) ? [{ id: SUB_AL, nama: LABEL_AL }] : []),
+  ].map((x) => ({ ...x, n: isiFolder(x.id).length })) : []
   const berkas = diAkar ? [] : shown
   const buka = (id) => { setFolder(id); setSelected(new Set()) }
   const klik = (f, e) => { if (e.ctrlKey || e.metaKey || e.shiftKey) toggle(f.key); else setSelected(new Set([f.key])) }

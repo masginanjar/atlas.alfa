@@ -96,6 +96,9 @@ export const MODUL = [
     f('register', 'Nomor Register', ['menu', 'lihat', 'tambah', 'ubah', 'ekspor'], { semua: dari(canSeeRegister) }),
     f('otorisasi', 'Laporan Otorisasi', ['menu', 'lihat', 'laporan', 'ekspor'], { semua: dari(canSeeLaporanOto) }),
     f('dokumen', 'Dokumen', ['menu', 'lihat', 'lampiran_lihat', 'lampiran_kelola'], { semua: plus(SEMUA, 'dokumen') }),
+    // 15 Nov 2026: dokumen Apostille & Legalisasi punya folder sendiri per project. Pelaksana (penerjemah,
+    // proofreader, otorisator) tidak perlu tahu — aturan lama: semua role lain boleh.
+    f('dokumen-al', 'Dokumen Apostille & Legalisasi', ['lihat', 'lampiran_kelola'], { semua: SEMUA.filter((r) => !PELAKSANA.includes(r)) }),
     f('affidavit', 'Affidavit', ['menu', 'lihat', 'tambah', 'ubah', 'laporan'], { semua: dari(canSeeAffidavit) }),
   ], field: [
     { id: 'project.biaya', label: 'Biaya / fee vendor & penerjemah (harga modal)', asal: { lihat: dari(can.seeBiaya), edit: dari(can.editBiaya) } },
@@ -185,7 +188,9 @@ export function konfigAsal(role) {
   const cak = cakupanAsal(role)
   for (const m of MODUL) for (const x of m.fitur) for (const a of x.aksi) {
     const daftar = x.asal[a] ?? x.asal._lain ?? x.asal.semua ?? []
-    if (role === 'superadmin' || daftar.includes(role)) izin[`${x.id}.${a}`] = a === 'menu' ? { aktif: true } : { aktif: true, cakupan: cak }
+    // Otorisator bekerja dari antrian bersama (tahap Otorisasi semua project) → project-nya tidak dibatasi "ditugaskan".
+    const c = x.id === 'project' && role === 'otorisator' ? 'semua' : cak
+    if (role === 'superadmin' || daftar.includes(role)) izin[`${x.id}.${a}`] = a === 'menu' ? { aktif: true } : { aktif: true, cakupan: c }
   }
   const field = {}
   for (const m of MODUL) for (const x of m.field || []) {

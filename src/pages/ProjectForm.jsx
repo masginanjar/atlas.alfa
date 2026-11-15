@@ -191,7 +191,7 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
       const docUploads = subs.flatMap((s, si) => (usesDocs(s.type) && s.docs ? s.docs : []).filter((d) => d.desc.trim() && d.file)
         .map((d) => ({ file: d.file, name: docFileName(d), sub_id: sub_projects[si].id, si })))
       if (docUploads.length) {
-        const added = await uploadProjectFiles(docUploads, { branch, invoice: inv, by: user.name }, (i, n) => setProgress(`Mengunggah dokumen ${i}/${n}…`))
+        const added = await uploadProjectFiles(docUploads, { branch, invoice: inv, by: user.name, subs: sub_projects }, (i, n) => setProgress(`Mengunggah dokumen ${i}/${n}…`))
         added.forEach((f, k) => {
           const sp = sub_projects[docUploads[k].si]; const list = [...(sp.data.dokumen_sumber_list || (sp.data.dokumen_sumber ? [sp.data.dokumen_sumber] : [])), f]
           sp.data = { ...sp.data, dokumen_sumber: sp.data.dokumen_sumber || f, dokumen_sumber_list: list }
@@ -201,14 +201,14 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
       // Scan ID / dokumen pemohon (apostille & legalisasi) → File Project + data.dokumen_id
       const idUploads = subs.flatMap((s, si) => (s.applicant_file ? [{ file: s.applicant_file, name: `ID Pemohon - ${safeName(s.applicant_file.name)}`, sub_id: sub_projects[si].id, si }] : []))
       if (idUploads.length) {
-        const added = await uploadProjectFiles(idUploads, { branch, invoice: inv, by: user.name }, (i, n) => setProgress(`Mengunggah ID pemohon ${i}/${n}…`))
+        const added = await uploadProjectFiles(idUploads, { branch, invoice: inv, by: user.name, subs: sub_projects }, (i, n) => setProgress(`Mengunggah ID pemohon ${i}/${n}…`))
         added.forEach((f, k) => { const sp = sub_projects[idUploads[k].si]; sp.data = { ...sp.data, dokumen_id: f } })
         row.files = [...(row.files || project?.files || []), ...added]
       }
       if (queue.length) {
         const refToId = (ref) => { const i = subs.findIndex((x) => String(x.id ?? x._k) === String(ref)); return i < 0 ? null : sub_projects[i].id }
         const added = await uploadProjectFiles(queue.map((q) => ({ file: q.file, name: q.name.trim() || q.file.name, sub_id: refToId(q.sub_ref) })),
-          { branch, invoice: inv, by: user.name }, (i, n) => setProgress(`Mengunggah file ${i}/${n}…`))
+          { branch, invoice: inv, by: user.name, subs: sub_projects }, (i, n) => setProgress(`Mengunggah file ${i}/${n}…`))
         row.files = [...(row.files || project?.files || []), ...added]
       }
       // Dokumen sudah diunggah saat project dibuat → tahap "CS Input/Upload" dianggap selesai:

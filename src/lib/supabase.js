@@ -92,6 +92,8 @@ export const supabaseDb = {
   async reset() {},
   async cleanup() { return 0 },
   /** klaim otorisasi atomik di server */
+  /** Penerjemah menolak tugas (dijalankan di server: setelah ditolak project tak lagi terlihat olehnya). */
+  async tolakTugas(projectId, subId, alasan) { return unwrap(await sb().rpc('app_tolak_tugas', { p_project: projectId, p_sub: subId, p_alasan: alasan })) },
   async claim(projectId, subId) { return unwrap(await sb().rpc('claim_sub', { p_project: projectId, p_sub: subId })) },
   /**
    * Pakai lembar affidavit — atomik di server:
@@ -159,9 +161,9 @@ export const supabaseDb = {
 const BUCKET = 'files'
 const safe = (s = '') => String(s).replace(/[^\w.\-()\[\] ]+/g, '_').trim()
 export const supabaseDrive = {
-  async upload(file, { branch, invoice } = {}, name) {
+  async upload(file, { branch, invoice, folder } = {}, name) {
     const fname = safe(name || file.name)
-    const path = `${safe(branch || 'umum')}/${safe(invoice || 'tanpa-invoice')}/${Date.now().toString(36)}-${fname}`
+    const path = `${safe(branch || 'umum')}/${safe(invoice || 'tanpa-invoice')}/${folder ? `${safe(folder)}/` : ''}${Date.now().toString(36)}-${fname}`
     unwrap(await sb().storage.from(BUCKET).upload(path, file, { contentType: file.type || 'application/octet-stream', upsert: false }))
     return { name: fname, size: file.size, url: null, path, bucket: BUCKET, uploaded_at: new Date().toISOString() }
   },

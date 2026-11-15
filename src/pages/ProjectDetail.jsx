@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { subTerlihat } from '../lib/dokumenAL.js'
 import { Share2, ArrowLeft, Pencil, Trash2, Upload, FileText, Download, Check, Lock, History, CalendarClock, Loader2, UserRound, Truck, Printer, Hand, Unlock, Eye, FolderOpen, FastForward, StickyNote } from 'lucide-react'
 import { useApp } from '../lib/store.jsx'
 import { go } from '../lib/router.js'
@@ -88,7 +89,8 @@ export default function ProjectDetail({ id, embedded, focusSub }) {
   const kota = project.customer?.ship?.city
   const kurir = data.couriers?.find((k) => k.id === project.about?.courier)?.name
   const prog = progressOf(project)
-  const subs = project.sub_projects || []
+  // Sub Apostille & Legalisasi tidak ditampilkan ke yang tidak berizin (pelaksana)
+  const subs = subTerlihat(user, project.sub_projects)
 
   if (!embedded) return <DetailCanvas project={project} focusSub={focusSub} tab={tab} setTab={setTab} del={del} setEditing={setEditing} setSharing={setSharing} editing={editing} sharing={sharing} />
 
@@ -213,7 +215,7 @@ function DetailCanvas({ project, focusSub, tab, setTab, del, setEditing, setShar
   const { user, data, nameOf } = useApp()
   const [kerja, setKerja] = useState(focusSub || null) // sub yang dibuka di layar kerja (panel samping)
   useEffect(() => { if (focusSub) setKerja(focusSub) }, [focusSub])
-  const subs = project.sub_projects || []
+  const subs = subTerlihat(user, project.sub_projects)
   const dl = infoDeadline(project)
   const print = project.about?.print_location || project.branch
   const cs = String(project.about?.cs_name || '').replace(/\s*\(.*\)\s*$/, '')
@@ -856,7 +858,7 @@ function StageFiles({ project, sub, list, onChange, onBusy, accept }) {
     const arr = await reviewNames(files); if (!arr) return
     onBusy(true)
     try {
-      const up = await uploadProjectFiles(arr.map(({ file, name }) => ({ file, name, sub_id: sub.id })), { branch: project.branch, invoice: project.invoice_no, by: user.name }, (i, n) => setBusy(`Mengunggah ${i}/${n}…`))
+      const up = await uploadProjectFiles(arr.map(({ file, name }) => ({ file, name, sub_id: sub.id })), { branch: project.branch, invoice: project.invoice_no, by: user.name, subs: project.sub_projects }, (i, n) => setBusy(`Mengunggah ${i}/${n}…`))
       onChange([...list, ...up]); notify(`${up.length} file ditambahkan`)
     } catch (e) { notify(e.message, 'err') } finally { setBusy(null); onBusy(false) }
   }
@@ -994,7 +996,7 @@ export function UnggahDialog({ project, sub, field, awal, onClose }) {
     kunci.current = true
     setFase('unggah'); setGalat(''); setProg([0, valid.length])
     try {
-      const up = await uploadProjectFiles(valid.map((file) => ({ file, name: file.name, sub_id: sub.id })), { branch: project.branch, invoice: project.invoice_no, by: user.name }, (i, n) => setProg([i, n]))
+      const up = await uploadProjectFiles(valid.map((file) => ({ file, name: file.name, sub_id: sub.id })), { branch: project.branch, invoice: project.invoice_no, by: user.name, subs: project.sub_projects }, (i, n) => setProg([i, n]))
       const list = [...fieldFiles(sub.data, field.key), ...up]
       await processStage(project, sub.id, { [field.key]: list[0], [`${field.key}_list`]: list }, false)
       notify(`${up.length} file tersimpan · ${sub.title}`)

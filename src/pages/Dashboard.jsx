@@ -1,3 +1,4 @@
+import { subAL, FOLDER_AL } from '../lib/dokumenAL.js'
 import { useMemo } from 'react'
 import { FolderKanban, CheckCircle2, AlarmClock, Wallet, Banknote, ArrowRight, Inbox, Stamp, ChevronDown, Hand, Upload, Loader2, FileCheck2, Send, Languages, ChevronUp, Users, Undo2, CalendarDays, X , Sunrise, Moon, Waves, Activity, Target, Sprout, Sparkles, Coffee, ReceiptText, ArrowUp, ArrowDown, StickyNote} from 'lucide-react'
 import LayarKerja from './LayarKerja.jsx'
@@ -623,7 +624,7 @@ function PayTable({ rows, paid, bare }) {
   const upload = async (r, file) => {
     if (!file) return
     set(r.id, { uploading: true })
-    try { set(r.id, { file: await drive.upload(file, { branch: r.project.branch, invoice: r.project.invoice_no }), uploading: false }) }
+    try { set(r.id, { file: await drive.upload(file, { branch: r.project.branch, invoice: r.project.invoice_no, folder: subAL(r) ? FOLDER_AL : "" }), uploading: false }) }
     catch (e) { notify(e.message, 'err'); set(r.id, { uploading: false }) }
   }
   const pay = async (r) => {
@@ -784,7 +785,7 @@ function CoordBoard({ lang }) {
   const upload = async (r, file) => {
     if (!file) return
     set(r.id, { busy: true })
-    try { set(r.id, { file: await drive.upload(file, { branch: r.project.branch, invoice: r.project.invoice_no }), busy: false }) } catch (e) { notify(e.message, 'err'); set(r.id, { busy: false }) }
+    try { set(r.id, { file: await drive.upload(file, { branch: r.project.branch, invoice: r.project.invoice_no, folder: subAL(r) ? FOLDER_AL : "" }), busy: false }) } catch (e) { notify(e.message, 'err'); set(r.id, { busy: false }) }
   }
   const submit = async (r) => {
     const f = get(r.id); const v = vendors.find((x) => x.id === f.vendor); const service = v?.services?.[Number(f.svc)]

@@ -88,7 +88,7 @@ function useTask(project, sub, onDone) {
     const picked = await reviewNames(fileList) // kesempatan ganti nama file dulu
     if (!picked?.length) return false
     return run('up', async () => {
-      const added = await uploadProjectFiles(picked.map(({ file, name }) => ({ file, name, sub_id: sub.id })), { branch: project.branch, invoice: project.invoice_no, by: user.name })
+      const added = await uploadProjectFiles(picked.map(({ file, name }) => ({ file, name, sub_id: sub.id })), { branch: project.branch, invoice: project.invoice_no, by: user.name, subs: project.sub_projects })
       const all = [...files, ...added]
       await processStage(project, sub.id, { [fileKey]: all[0], [`${fileKey}_list`]: all }, false)
     }, 'Hasil terunggah')
@@ -98,7 +98,7 @@ function useTask(project, sub, onDone) {
     const picked = await reviewNames([fileList[0]])
     if (!picked?.length) return false
     return run('up', async () => {
-      const added = await uploadProjectFiles(picked.map(({ file, name }) => ({ file, name, sub_id: sub.id })), { branch: project.branch, invoice: project.invoice_no, by: user.name })
+      const added = await uploadProjectFiles(picked.map(({ file, name }) => ({ file, name, sub_id: sub.id })), { branch: project.branch, invoice: project.invoice_no, by: user.name, subs: project.sub_projects })
       const all = files.map((f, i) => (i === index ? added[0] : f))
       await processStage(project, sub.id, { [fileKey]: all[0], [`${fileKey}_list`]: all }, false)
     }, 'File hasil diganti')

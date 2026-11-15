@@ -129,12 +129,12 @@ function OrderCard({ project, sub, cfg }) {
   // bisa banyak file; replace=true → ganti semua
   const [reviewNames, namerDialog] = useUploadNamer({ existing: collect(project).map((f) => f.name), invoice: project.invoice_no })
   const upload = async (fileList, replace) => { const files = await reviewNames(fileList); return files && run('up', async () => {
-    const added = await uploadProjectFiles(files.map(({ file, name }) => ({ file, name, sub_id: sub.id })), { branch: project.branch, invoice: project.invoice_no, by: user.name })
+    const added = await uploadProjectFiles(files.map(({ file, name }) => ({ file, name, sub_id: sub.id })), { branch: project.branch, invoice: project.invoice_no, by: user.name, subs: project.sub_projects })
     const list = [...(replace ? [] : upList), ...added]
     await processStage(project, sub.id, { [cfg.fileKey]: list[0], [`${cfg.fileKey}_list`]: list }, false)
   }, `${files.length} file terunggah`) }
   const gantiSatu = async (i, fileList) => { const files = await reviewNames([fileList[0]]); return files && run('up', async () => {
-    const added = await uploadProjectFiles(files.map(({ file, name }) => ({ file, name, sub_id: sub.id })), { branch: project.branch, invoice: project.invoice_no, by: user.name })
+    const added = await uploadProjectFiles(files.map(({ file, name }) => ({ file, name, sub_id: sub.id })), { branch: project.branch, invoice: project.invoice_no, by: user.name, subs: project.sub_projects })
     const list = upList.map((f, k) => (k === i ? added[0] : f))
     await processStage(project, sub.id, { [cfg.fileKey]: list[0], [`${cfg.fileKey}_list`]: list }, false)
   }, 'File diganti') }

@@ -513,7 +513,14 @@ export function AppProvider({ children }) {
         data: { ...x.data, translator: '', tolak_note: why, tolak_by: user.id, tolak_name: user.name, tolak_at: now, tolak_count: (Number(x.data?.tolak_count) || 0) + 1, penerjemahan_work_started_at: '' },
         history: [...(x.history || []), { at: now, by: user.name, by_id: user.id, role: user.role, action: `Tugas ditolak penerjemah → kembali ke Pilih Penerjemah · alasan: ${why}`, rejected: true, reason: why }] }
     })
-    const saved = await save('projects', { ...project, sub_projects: subs })
+    let saved
+    if (MODE === 'supabase' && db.tolakTugas) {
+      // Server yang mengubah: setelah ditolak, project ini bukan lagi tugasnya (tak terlihat olehnya).
+      tolakHantu()
+      await db.tolakTugas(project.id, subId, why)
+      await refreshTables(['projects'])
+      saved = { ...project, sub_projects: subs }
+    } else saved = await save('projects', { ...project, sub_projects: subs })
     const text = `${project.invoice_no} · ${title}: ${user.name} menolak tugas terjemahan — ${why}`
     await save('notifications', { to_role: 'supervisor', to_branch: project.branch, kind: 'revision', text, project_id: project.id, by: user.name, read_by: [] }).catch(() => {})
     if (project.created_by && project.created_by !== user.id) {

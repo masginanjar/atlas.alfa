@@ -249,7 +249,7 @@ function IsianRingkas({ f, v, set, project, sub, stage }) {
         <input type="file" multiple className="sr-only" accept={f.accept || 'image/*,application/pdf,.doc,.docx'} onChange={async (e) => {
           const fl = [...e.target.files]; e.target.value = ''; if (!fl.length) return
           setUp(true)
-          try { const hasil = await uploadProjectFiles(fl.map((file) => ({ file, name: file.name, sub_id: sub.id })), { branch: project.branch, invoice: project.invoice_no, by: user.name }); const n = [...list, ...hasil]; set({ [f.key]: n[0], [`${f.key}_list`]: n }) }
+          try { const hasil = await uploadProjectFiles(fl.map((file) => ({ file, name: file.name, sub_id: sub.id })), { branch: project.branch, invoice: project.invoice_no, by: user.name, subs: project.sub_projects }); const n = [...list, ...hasil]; set({ [f.key]: n[0], [`${f.key}_list`]: n }) }
           catch (er) { notify(er.message, 'err') } finally { setUp(false) }
         }} />
       </label>
