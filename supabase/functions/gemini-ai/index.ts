@@ -52,6 +52,7 @@ const AKTA_KOLOM: [string, string][] = [
 const KK_KEPALA: [string, string][] = [
   ["no_kk", "Nomor KK (16 angka di bawah judul)"], ["kepala", "Nama Kepala Keluarga"], ["alamat", "Alamat"], ["rtrw", "RT/RW"], ["kodepos", "Kode Pos"], ["kel", "Desa/Kelurahan"], ["kec", "Kecamatan"], ["kab", "Kabupaten/Kota seperti tercetak"], ["prov", "Provinsi"],
   ["tgl_terbit", "Tanggal dikeluarkan DD-MM-YYYY"], ["jabatan", "Jabatan penanda tangan dinas, mis. KEPALA DINAS KEPENDUDUKAN DAN PENCATATAN SIPIL KOTA ..."], ["pejabat", "Nama pejabat penanda tangan"], ["nip", "NIP pejabat (angka saja)"], ["tte", "YA atau TIDAK"],
+  ["baris", "Hitung baris yang BENAR-BENAR tergambar pada tabel anggota (tabel atas): baris terisi + baris kosong, tanpa baris judul dan baris nomor kolom. Bila tidak ada baris kosong, nilainya sama dengan jumlah anggota. Jangan mengasumsikan 10. Angka saja"], ["kosong_no", "YA bila baris kosong tetap dicetak nomor urutnya, TIDAK bila baris kosong tanpa nomor, kosong bila tidak ada baris kosong"],
 ];
 const KK_ANGGOTA: [string, string][] = [
   ["nama", "Nama Lengkap"], ["nik", "NIK"], ["jk", "Jenis Kelamin"], ["tempat_lahir", "Tempat Lahir"], ["tgl_lahir", "Tanggal Lahir DD-MM-YYYY"], ["agama", "Agama"], ["pendidikan", "Pendidikan"], ["kerja", "Jenis Pekerjaan"], ["gol", "Golongan Darah"],
@@ -75,7 +76,7 @@ const TUGAS: Record<string, { prompt: string; skema: unknown; maksKeluar: number
   },
   kk: {
     prompt: "Gambar ini seharusnya Kartu Keluarga (KK) Indonesia. Salin isi tiap kolom PERSIS seperti tercetak, huruf demi huruf, tanpa memperbaiki ejaan, tanpa menerjemahkan, tanpa melengkapi, tanpa menebak. " +
-      "\"anggota\" = SEMUA baris anggota keluarga, urut dari nomor 1; gabungkan tabel atas (nama s.d. golongan darah) dan tabel bawah (status perkawinan s.d. nama ibu) berdasarkan nomor urut baris. Sel yang tercetak tanda strip tulis -. " +
+      "\"anggota\" = SEMUA baris anggota keluarga yang TERISI, urut dari nomor 1 (baris kosong tidak dimasukkan, tetapi dihitung di \"baris\"); gabungkan tabel atas (nama s.d. golongan darah) dan tabel bawah (status perkawinan s.d. nama ibu) berdasarkan nomor urut baris. Sel yang tercetak tanda strip tulis -. " +
       "Kolom yang tidak ada: string kosong. Yang tidak terbaca dengan yakin: salin yang terlihat atau kosongkan, lalu masukkan ke daftar \"ragu\" dengan bentuk nama kolom untuk bagian kepala (mis. no_kk) atau m<nomor urut>_<kolom> untuk anggota (mis. m2_nik). " +
       "NIK dan nomor KK: salin karakter yang terlihat saja; jangan menambah, membuang, atau mengganti karakter. Tanggal ditulis seperti tercetak (DD-MM-YYYY). tte = YA bila ada kode QR / keterangan tanda tangan elektronik, selain itu TIDAK. " +
       "\"jenis\": tulis KARTU KELUARGA bila ini KK, selain itu nama jenis dokumennya.",

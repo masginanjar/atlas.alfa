@@ -406,11 +406,12 @@ const FIELDS_AKTA=[
 const KK_KEPALA=[
 {key:'k_no_kk',label:'No. KK',kind:'tetap',req:1,val:'nik'},{key:'k_kepala',label:'Kepala keluarga',kind:'tetap',req:1},{key:'k_alamat',label:'Alamat',kind:'tetap',req:1},
 {key:'k_rtrw',label:'RT/RW',kind:'tetap',val:'rtrw'},{key:'k_kodepos',label:'Kode pos',kind:'tetap'},{key:'k_kel',label:'Desa/Kelurahan',kind:'tetap'},{key:'k_kec',label:'Kecamatan',kind:'tetap'},
-{key:'k_kab',label:'Kabupaten/Kota',kind:'kota',req:1},{key:'k_prov',label:'Provinsi',kind:'prov',req:1}];
+{key:'k_kab',label:'Kabupaten/Kota',kind:'kota',req:1},{key:'k_prov',label:'Provinsi',kind:'prov',req:1},
+{key:'k_baris',label:'Jumlah baris tabel (termasuk kosong)',kind:'tetap',val:'baris'},{key:'k_kosong_no',label:'Baris kosong bernomor (YA/TIDAK)',kind:'tetap',val:'ya'}];
 const KK_EKOR=[{key:'k_tgl_terbit',label:'Dikeluarkan tanggal',kind:'tetap',req:1,val:'tgl'},{key:'k_jabatan',label:'Jabatan penanda tangan',kind:'jabatan',req:1},{key:'k_pejabat',label:'Nama pejabat',kind:'tetap',req:1},{key:'k_nip',label:'NIP',kind:'tetap'},{key:'k_tte',label:'TTE / QR (YA/TIDAK)',kind:'tetap',val:'ya'}];
 const KK_KOLOM=[['nama','Nama lengkap','tetap',1,'nama'],['nik','NIK','tetap',1,'nik'],['jk','Jenis kelamin','kamus',1,'jk','jk'],['tempat_lahir','Tempat lahir','tetap',1],['tgl_lahir','Tanggal lahir','tetap',1,'tgl'],['agama','Agama','kamus',1,'','agama'],['pendidikan','Pendidikan','kamus',1,'','pendidikan'],['kerja','Jenis pekerjaan','kamus',1,'','kerja'],['gol','Gol. darah','kamus',0,'','gol'],
  ['status','Status perkawinan','kamus',1,'','status'],['tgl_kawin','Tgl perkawinan','tetap',0],['hub','Hubungan keluarga','hub',1],['wn','Kewarganegaraan','kamus',1,'wn','wn'],['paspor','No. paspor','tetap',0],['kitap','No. KITAP','tetap',0],['ayah','Nama ayah','tetap',1],['ibu','Nama ibu','tetap',1]];
-const KK_MAKS=12;
+const KK_MAKS=12,KK_BARIS_MAKS=20;
 const kkAnggota=n=>KK_KOLOM.map(([k,l,kind,req,val,g])=>({key:'m'+n+'_'+k,label:'#'+n+' '+l,kind,req:req||0,val:val||null,g:g||null,anggota:n,kol:k}));
 const DEF=Object.fromEntries([...FIELDS,...FIELDS_AKTA,...KK_KEPALA,...KK_EKOR,...Array.from({length:KK_MAKS},(_,i)=>kkAnggota(i+1)).flat()].map(f=>[f.key,f]));
 /** Daftar kolom untuk satu dokumen sesuai jenisnya. KK: jumlah anggota mengikuti hasil baca (minimal 1). */
@@ -424,6 +425,7 @@ const jumlahAnggota=d=>d.fields.reduce((a,f)=>Math.max(a,(DEF[f.key]&&DEF[f.key]
 const VAL_ALIAS={nik:'nik',nama:'nama',jk:'jk',rtrw:'rtrw',tgl:'tanggal_lahir',wn:'wn'};
 function validasi(key,v){const df=DEF[key];if(!df||FIELDS.includes(df))return OCRCORE.validasi(key,v);const s=String(v||'').trim();if(!s||s==='-')return{ok:true};
   if(df.val==='ya')return /^(YA|TIDAK)$/i.test(s)?{ok:true}:{ok:false,alasan:'Isi YA atau TIDAK'};
+  if(df.val==='baris')return /^\d{1,2}$/.test(s)&&+s>=1&&+s<=KK_BARIS_MAKS?{ok:true}:{ok:false,alasan:'Isi angka 1–'+KK_BARIS_MAKS};
   if(df.val==='nik'){const r=OCRCORE.validasi('nik',s);return r.ok?{ok:true,catatan:'16 digit (bentuk sesuai; kebenaran tetap dicek di dokumen)'}:{ok:false,alasan:r.alasan.replace('NIK berbentuk','nomor ini berbentuk')}}
   return df.val?OCRCORE.validasi(VAL_ALIAS[df.val],s):{ok:true}}
 /* Angka tertulis (Indonesia) → angka → kata Inggris. Dipakai tanggal/tahun akta yang ditulis dengan huruf. */
@@ -519,7 +521,7 @@ function statusOf(f){
   if(!s)return{t:'kosong',x:f.labelAda?'Label terbaca, nilai belum terbaca':'Belum terdeteksi',block:d.req?1:0,ulang:1};
   const v=validasi(f.key,s);if(!v.ok)return{t:'salah',x:'Tidak lolos validasi: '+v.alasan,block:1,ulang:1};
   if(f.beda&&!f.checked)return{t:'cek',x:'Hasil baca berbeda — pilih yang sesuai dokumen',block:1,tick:1};
-  if(!f.srcEdited&&!f.checked&&f.conf!=null&&f.mesin&&f.conf<(AMBANG[f.mesin]||80))return{t:'cek',x:f.mesin==='gemini'?'AI ragu pada kolom ini — cocokkan dengan dokumen':'Skor OCR rendah — cocokkan dengan dokumen',block:1,tick:1,ulang:1};
+  if(!f.srcEdited&&!f.checked&&f.conf!=null&&f.mesin&&f.conf<(AMBANG[f.mesin]||80))return{t:'cek',x:f.key==='k_baris'?'Jumlah baris tabel berbeda dengan jumlah anggota (ada baris kosong?) — hitung di dokumen, lalu tandai sudah dicek':f.mesin==='gemini'?'AI ragu pada kolom ini — cocokkan dengan dokumen':'Skor OCR rendah — cocokkan dengan dokumen',block:1,tick:1,ulang:f.key!=='k_baris'};
   if(f.review)return{t:'cek',x:'Sumber berubah — periksa terjemahan',block:1,tick:1};
   if(needsTr(f.key)&&!String(f.en||'').trim())return{t:'manual',x:'Terjemahkan manual (sumber tidak bermasalah)',block:1};
   return{t:'ok',x:f.checked?'Sudah diperiksa':f.srcEdited?'Dikoreksi pengguna':'',block:0};
@@ -610,7 +612,9 @@ function petaAi(p){const nilai={},label={};const x=p.aiData||{},t=p.tipe||'ktp',
   const isi=(key,v,r)=>{v=String(v==null?'':v).trim();if(!v||!DEF[key])return;label[key]=true;nilai[key]={v,raw:v,conf:r?0:null,box:null,mesin}};
   if(t==='ktp'){for(const df of FIELDS)isi(df.key,x[df.key],ragu.has(df.key))}
   else if(t==='akta'){for(const df of FIELDS_AKTA){const k=df.key.slice(2);isi(df.key,x[k],ragu.has(k)||ragu.has(df.key))}}
-  else{for(const df of [...KK_KEPALA,...KK_EKOR]){const k=df.key.slice(2);isi(df.key,x[k],ragu.has(k)||ragu.has(df.key))}
+  else{const nIsi=(Array.isArray(x.anggota)?x.anggota:[]).filter(a=>a&&(String(a.nama||'').trim()||String(a.nik||'').trim())).length;
+    // Jumlah baris tabel dari AI yang berbeda dengan jumlah anggota (ada baris kosong) selalu minta dicocokkan dengan dokumen.
+    for(const df of [...KK_KEPALA,...KK_EKOR]){const k=df.key.slice(2);isi(df.key,x[k],ragu.has(k)||ragu.has(df.key)||(k==='baris'&&parseInt(x[k],10)!==nIsi))}
     (Array.isArray(x.anggota)?x.anggota:[]).filter(a=>a&&(String(a.nama||'').trim()||String(a.nik||'').trim())).slice(0,KK_MAKS).forEach((a,i)=>{for(const [k] of KK_KOLOM)isi('m'+(i+1)+'_'+k,a[k],ragu.has('m'+(i+1)+'_'+k))})}
   return{nilai,label}}
 async function aiPanggil(body){const s=sesiAtlas();if(!s)return null;try{const r=await fetch(s.url.replace('vision-ocr','gemini-ai'),{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+s.token},body:JSON.stringify(body)});return await r.json()}catch(e){return{ok:false,alasan:'Koneksi ke server AI gagal'}}}
@@ -907,12 +911,16 @@ function sheetAkta(v){
 const KK_T1=[['No',3],['Full Name',17],['Personal Identity Number',13],['Sex',6],['Place of Birth',11],['Date of Birth',8],['Religion',8],['Education',14],['Occupation',12],['Blood Type',8]];
 const KK_T2=[['No',3],['Marital Status',11],['Date of Marriage',9],['Relationship in Family',12],['Nationality',9],['Passport No.',10],['KITAP No.',10],['Father',18],['Mother',18]];
 function valsKK(d,draft){const {g,t}=ambilNilai(d,draft);const n=jumlahAnggota(d);const A=[];
-  for(let i=1;i<=n;i++){const m=k=>'m'+i+'_'+k,z=k=>t(m(k))||'-';
-    A.push({t1:[String(i),g(m('nama')),g(m('nik')),z('jk'),g(m('tempat_lahir')),g(m('tgl_lahir')),z('agama'),z('pendidikan'),z('kerja'),z('gol')],t2:[String(i),z('status'),g(m('tgl_kawin'))||'-',z('hub'),z('wn'),g(m('paspor'))||'-',g(m('kitap'))||'-',g(m('ayah'))||'-',g(m('ibu'))||'-']})}
+  // Isi sel mengikuti sumber apa adanya: sel kosong tetap kosong, tanda strip tetap strip.
+  for(let i=1;i<=n;i++){const m=k=>'m'+i+'_'+k;
+    A.push({t1:[String(i),g(m('nama')),g(m('nik')),t(m('jk')),g(m('tempat_lahir')),g(m('tgl_lahir')),t(m('agama')),t(m('pendidikan')),t(m('kerja')),t(m('gol'))],t2:[String(i),t(m('status')),g(m('tgl_kawin')),t(m('hub')),t(m('wn')),g(m('paspor')),g(m('kitap')),g(m('ayah')),g(m('ibu'))]})}
+  // Jumlah baris tabel sama dengan dokumen sumber: baris kosong di sumber tetap ada di terjemahan (tidak dihilangkan).
+  const total=Math.min(KK_BARIS_MAKS,Math.max(n,parseInt(g('k_baris'),10)||0)),bernomor=!/^TIDAK$/i.test(g('k_kosong_no'));
+  for(let i=n+1;i<=total;i++){const no=bernomor?String(i):'';A.push({kosong:true,t1:[no,...Array(KK_T1.length-1).fill('')],t2:[no,...Array(KK_T2.length-1).fill('')]})}
   return{tipe:'kk',tanda_draf:draft?'DRAFT — NOT YET REVIEWED':'',no:g('k_no_kk'),kepala:g('k_kepala'),alamat:g('k_alamat'),rtrw:g('k_rtrw'),kodepos:g('k_kodepos'),kel:g('k_kel'),kec:g('k_kec'),kab:t('k_kab'),prov:t('k_prov'),tgl:g('k_tgl_terbit'),jabatan:t('k_jabatan'),pejabat:g('k_pejabat'),nip:g('k_nip'),tte:/^YA$/i.test(g('k_tte')),anggota:A}}
 const kkInfo=v=>[[['Head of Family',v.kepala],['Address',v.alamat],['RT/RW',v.rtrw],['Zip Code',v.kodepos]],[['Village/Sub-district',v.kel],['District',v.kec],['Regency/City',v.kab],['Province',v.prov]]];
 function sheetKK(v){
-  const tb=(H,rows,mulai)=>`<table style="width:100%;border-collapse:collapse;table-layout:fixed;margin-top:8px;font-size:10.5px;line-height:1.15"><colgroup>${H.map(([,w])=>`<col style="width:${w}%">`).join('')}</colgroup><tr>${H.map(([h])=>`<th style="border:1px solid #000;padding:3px 2px;font-weight:700">${h}</th>`).join('')}</tr><tr>${H.map((h,i)=>`<td style="border:1px solid #000;text-align:center;font-size:9px">${i?'('+(mulai+i-1)+')':''}</td>`).join('')}</tr>${rows.map(r=>`<tr>${r.map((c,i)=>`<td style="border:1px solid #000;padding:3px 3px;overflow-wrap:anywhere;${i===0?'text-align:center':''}">${esc(c)}</td>`).join('')}</tr>`).join('')}</table>`;
+  const tb=(H,rows,mulai)=>`<table style="width:100%;border-collapse:collapse;table-layout:fixed;margin-top:8px;font-size:10.5px;line-height:1.15"><colgroup>${H.map(([,w])=>`<col style="width:${w}%">`).join('')}</colgroup><tr>${H.map(([h])=>`<th style="border:1px solid #000;padding:3px 2px;font-weight:700">${h}</th>`).join('')}</tr><tr>${H.map((h,i)=>`<td style="border:1px solid #000;text-align:center;font-size:9px">${i?'('+(mulai+i-1)+')':''}</td>`).join('')}</tr>${rows.map(r=>`<tr>${r.map((c,i)=>`<td style="border:1px solid #000;padding:3px 3px;height:19px;overflow-wrap:anywhere;${i===0?'text-align:center':''}">${esc(c)}</td>`).join('')}</tr>`).join('')}</table>`;
   const info=kkInfo(v).map(col=>`<div style="flex:1;min-width:0">${col.map(([l,x])=>`<div style="display:grid;grid-template-columns:128px 8px minmax(0,1fr)"><span>${l}</span><span>:</span><span style="overflow-wrap:anywhere">${esc(x)}</span></div>`).join('')}</div>`).join('');
   return `<div data-sheet="kk" style="font-size:12px;line-height:1.3"><div style="display:flex;justify-content:space-between;align-items:flex-start"><span style="color:#B00020;font-weight:700;font-size:11px">${esc(v.tanda_draf)}</span><span style="border:1px solid #000;padding:3px 10px">TRANSLATION</span></div>
   <div style="text-align:center"><div>(Logo)</div><div style="font-weight:700;font-size:20px">FAMILY CARD</div><div style="font-weight:700;font-size:14px">No. ${esc(v.no)}</div></div>
@@ -928,7 +936,7 @@ function docxBuat(body,datar){
   const z=new PizZip();
   z.file('[Content_Types].xml','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>');
   z.file('_rels/.rels','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>');
-  const sek=datar?'<w:pgSz w:w="16838" w:h="11906" w:orient="landscape"/><w:pgMar w:top="720" w:right="720" w:bottom="720" w:left="720" w:header="400" w:footer="400" w:gutter="0"/>':'<w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="708" w:footer="708" w:gutter="0"/>';
+  const sek=datar?'<w:pgSz w:w="16838" w:h="11906" w:orient="landscape"/><w:pgMar w:top="510" w:right="720" w:bottom="510" w:left="720" w:header="300" w:footer="300" w:gutter="0"/>':'<w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="708" w:footer="708" w:gutter="0"/>';
   z.file('word/document.xml','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>'+body+'<w:sectPr>'+sek+'</w:sectPr></w:body></w:document>');
   return z.generate({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document',compression:'DEFLATE'})}
 const wKotakTr=(lebarHal,sz)=>wTbl([[wP('TRANSLATION',{al:'center',after:0,sz})]],[2200],{al:'right'});
@@ -940,11 +948,11 @@ function docxKK(v){
   const W=15398,sz=16;const lb=H=>{const l=H.map(([,p])=>Math.floor(W*p/100));l[1]+=W-l.reduce((a,b)=>a+b,0);return l};
   const tb=(H,rows,mulai)=>wTbl([H.map(([h])=>wP(h,{al:'center',b:1,sz,after:0})),H.map((h,i)=>wP(i?'('+(mulai+i-1)+')':'',{al:'center',sz:14,after:0})),...rows.map(r=>r.map((c,i)=>wP(c,{al:i?'left':'center',sz,after:0})))],lb(H));
   const inf=kkInfo(v),half=Math.floor(W/2),li=[1900,200,half-2100,1900,200,W-half-2100];
-  let b=(v.tanda_draf?wP(v.tanda_draf,{b:1,merah:1,sz:16,after:0}):'')+wKotakTr()+wP('(Logo)',{al:'center',sz:18,after:0})+wP('FAMILY CARD',{al:'center',b:1,sz:32,after:0})+wP('No. '+v.no,{al:'center',b:1,sz:22,after:100});
-  b+=wTbl(inf[0].map((x,i)=>[wP(x[0],{sz:18,after:0}),wP(':',{sz:18,after:0}),wP(x[1],{sz:18,after:0}),wP(inf[1][i][0],{sz:18,after:0}),wP(':',{sz:18,after:0}),wP(inf[1][i][1],{sz:18,after:0})]),li,{polos:1})+wP('',{sz:10,after:0});
-  b+=tb(KK_T1,v.anggota.map(a=>a.t1),1)+wP('',{sz:10,after:0})+tb(KK_T2,v.anggota.map(a=>a.t2),10)+wP('',{sz:10,after:0});
+  let b=(v.tanda_draf?wP(v.tanda_draf,{b:1,merah:1,sz:16,after:0}):'')+wKotakTr()+wP('(Logo)',{al:'center',sz:16,after:0})+wP('FAMILY CARD',{al:'center',b:1,sz:28,after:0})+wP('No. '+v.no,{al:'center',b:1,sz:20,after:60});
+  b+=wTbl(inf[0].map((x,i)=>[wP(x[0],{sz:18,after:0}),wP(':',{sz:18,after:0}),wP(x[1],{sz:18,after:0}),wP(inf[1][i][0],{sz:18,after:0}),wP(':',{sz:18,after:0}),wP(inf[1][i][1],{sz:18,after:0})]),li,{polos:1})+wP('',{sz:8,after:0});
+  b+=tb(KK_T1,v.anggota.map(a=>a.t1),1)+wP('',{sz:8,after:0})+tb(KK_T2,v.anggota.map(a=>a.t2),10)+wP('',{sz:8,after:0});
   const k3=[Math.floor(W*.3),Math.floor(W*.3),W-2*Math.floor(W*.3)],c=(t,o={})=>wP(t,{al:'center',sz:18,after:0,...o});
-  b+=wTbl([[wP('Issued on Date : '+v.tgl,{sz:18,after:0}),c('HEAD OF FAMILY')+c('')+c('')+c(v.kepala)+c('Signature/Thumb Print',{sz:14}),c(v.jabatan)+c(v.tte?'(QR Code)':'(Stamp and signature)')+c(v.pejabat)+(v.nip?c('REG.NO. '+v.nip):'')]],k3,{polos:1});
+  b+=wTbl([[wP('Issued on Date : '+v.tgl,{sz:18,after:0}),c('HEAD OF FAMILY')+c('')+c(v.kepala)+c('Signature/Thumb Print',{sz:14}),c(v.jabatan)+c(v.tte?'(QR Code)':'(Stamp and signature)')+c(v.pejabat)+(v.nip?c('REG.NO. '+v.nip):'')]],k3,{polos:1});
   if(v.tte)b+=wP(TTE_EN,{sz:14,after:0});
   return docxBuat(b,true)}
 function pdfAkta(v){
@@ -955,19 +963,19 @@ function pdfAkta(v){
     if(!t){y+=10;continue}const ls=doc.splitTextToSize(t,W);for(const l of ls){if(g==='kiri')doc.text(l,M,y);else doc.text(l,M+W/2,y,{align:'center'});y+=sz*1.5}if(g==='j')y+=4}
   return doc.output('blob')}
 function pdfKK(v){
-  const {jsPDF}=window.jspdf;const doc=new jsPDF({unit:'pt',format:'a4',orientation:'landscape'});const M=36,PW=841.89,PH=595.28,W=PW-2*M;let y=M;
+  const {jsPDF}=window.jspdf;const doc=new jsPDF({unit:'pt',format:'a4',orientation:'landscape'});const M=28,PW=841.89,PH=595.28,W=PW-2*M;let y=M;
   const F=(sz,b)=>{doc.setFont('times',b?'bold':'normal');doc.setFontSize(sz)};
   F(8,1);doc.setTextColor(176,0,32);if(v.tanda_draf)doc.text(v.tanda_draf.replace('—','-'),M,y+8);doc.setTextColor(0);
   F(10);const tw=doc.getTextWidth('TRANSLATION')+14;doc.rect(M+W-tw,y,tw,16);doc.text('TRANSLATION',M+W-tw+7,y+11.5);y+=14;
   F(9);doc.text('(Logo)',PW/2,y,{align:'center'});y+=16;F(15,1);doc.text('FAMILY CARD',PW/2,y,{align:'center'});y+=14;F(11,1);doc.text('No. '+v.no,PW/2,y,{align:'center'});y+=16;
   F(9);const inf=kkInfo(v);let yi=y;for(let i=0;i<4;i++){let h=11;[[M,inf[0][i]],[M+W/2+10,inf[1][i]]].forEach(([x,[l,t]])=>{doc.text(l,x,yi);doc.text(':',x+92,yi);const ls=doc.splitTextToSize(t||' ',W/2-112);doc.text(ls,x+100,yi);h=Math.max(h,ls.length*11)});yi+=h}y=yi+4;
-  const tabel=(H,rows,mulai)=>{const ws=H.map(([,p])=>W*p/100);const baris=(sel,o)=>{F(o.sz,o.b);const pecah=sel.map((t,i)=>doc.splitTextToSize(String(t==null?'':t)||' ',ws[i]-6));const h=Math.max(...pecah.map(l=>l.length))*(o.sz+1.5)+5;
-      if(y+h>PH-M){doc.addPage();y=M}let x=M;pecah.forEach((ls,i)=>{doc.rect(x,y,ws[i],h);if(o.tengah||i===0)doc.text(ls,x+ws[i]/2,y+o.sz+1.5,{align:'center'});else doc.text(ls,x+3,y+o.sz+1.5);x+=ws[i]});y+=h};
-    baris(H.map(([h])=>h),{sz:8,b:1,tengah:1});baris(H.map((h,i)=>i?'('+(mulai+i-1)+')':''),{sz:7,tengah:1});rows.forEach(r=>baris(r,{sz:8}));y+=8};
+  const tabel=(H,rows,mulai)=>{const ws=H.map(([,p])=>W*p/100);const baris=(sel,o)=>{F(o.sz,o.b);const pecah=sel.map((t,i)=>doc.splitTextToSize(String(t==null?'':t)||' ',ws[i]-6));const h=Math.max(...pecah.map(l=>l.length))*(o.sz+1)+4;
+      if(y+h>PH-M){doc.addPage();y=M}let x=M;pecah.forEach((ls,i)=>{doc.rect(x,y,ws[i],h);if(o.tengah||i===0)doc.text(ls,x+ws[i]/2,y+o.sz+0.5,{align:'center'});else doc.text(ls,x+3,y+o.sz+0.5);x+=ws[i]});y+=h};
+    baris(H.map(([h])=>h),{sz:8,b:1,tengah:1});baris(H.map((h,i)=>i?'('+(mulai+i-1)+')':''),{sz:7,tengah:1});rows.forEach(r=>baris(r,{sz:8}));y+=6};
   tabel(KK_T1,v.anggota.map(a=>a.t1),1);tabel(KK_T2,v.anggota.map(a=>a.t2),10);
-  if(y+86>PH-M){doc.addPage();y=M}F(9);y+=10;doc.text('Issued on Date : '+v.tgl,M,y);const c2=M+W*.45,c3=M+W*.8;doc.text('HEAD OF FAMILY',c2,y,{align:'center'});
-  const jb=doc.splitTextToSize(v.jabatan||' ',W*.38);doc.text(jb,c3,y,{align:'center'});let y3=y+jb.length*11+4;doc.text(v.tte?'(QR Code)':'(Stamp and signature)',c3,y3,{align:'center'});y3+=14;doc.text(v.pejabat||' ',c3,y3,{align:'center'});if(v.nip){y3+=11;doc.text('REG.NO. '+v.nip,c3,y3,{align:'center'})}
-  doc.text(v.kepala||' ',c2,y+40,{align:'center'});F(7);doc.text('Signature/Thumb Print',c2,y+49,{align:'center'});y=Math.max(y+56,y3+12);
+  if(y+66>PH-M){doc.addPage();y=M}F(9);y+=8;doc.text('Issued on Date : '+v.tgl,M,y);const c2=M+W*.45,c3=M+W*.8;doc.text('HEAD OF FAMILY',c2,y,{align:'center'});
+  const jb=doc.splitTextToSize(v.jabatan||' ',W*.38);doc.text(jb,c3,y,{align:'center'});let y3=y+jb.length*10+2;doc.text(v.tte?'(QR Code)':'(Stamp and signature)',c3,y3,{align:'center'});y3+=12;doc.text(v.pejabat||' ',c3,y3,{align:'center'});if(v.nip){y3+=11;doc.text('REG.NO. '+v.nip,c3,y3,{align:'center'})}
+  doc.text(v.kepala||' ',c2,y+34,{align:'center'});F(7);doc.text('Signature/Thumb Print',c2,y+42,{align:'center'});y=Math.max(y+50,y3+10);
   if(v.tte){F(7);doc.text(doc.splitTextToSize(TTE_EN,W),M,y)}
   return doc.output('blob')}
 const sheetDok=(d,v)=>d.tipe==='akta'?sheetAkta(v):d.tipe==='kk'?sheetKK(v):sheetHTML(v,d.tpl==='belakang');
@@ -1268,7 +1276,7 @@ window.addEventListener('resize',()=>{if(S.view==='proses'&&S.step===3)fitSheet(
 /* ---------- KTP contoh (data buatan, bukan data orang) ---------- */
 const CONTOH_DATA={
  akta:{nik:'5171010203190001',wn:'WARGA NEGARA INDONESIA',no:'5171-LT-02032019-0001',stbld:'',tempat_lahir:'DENPASAR',tgl_lahir:'DUA MARET',thn_lahir:'DUA RIBU SEMBILAN BELAS',nama:'BUDI CONTOH SANTOSO',anak_ke:'KESATU',jk:'LAKI-LAKI',ayah:'AGUS CONTOH SANTOSO',ibu:'SARI DEWI LESTARI CONTOH',kota_terbit:'KOTA DENPASAR',tgl_terbit:'DUA PULUH MARET',thn_terbit:'DUA RIBU SEMBILAN BELAS',jabatan:'PEJABAT PENCATATAN SIPIL',pejabat:'I MADE CONTOH, S.H.',nip:'197001011995031001',tte:'YA',catatan:''},
- kk:{no_kk:'5171010101190002',kepala:'AGUS CONTOH SANTOSO',alamat:'JL. CONTOH RAYA NO. 12',rtrw:'003/007',kodepos:'80111',kel:'PEMECUTAN KAJA',kec:'DENPASAR UTARA',kab:'KOTA DENPASAR',prov:'BALI',tgl_terbit:'12-03-2021',jabatan:'KEPALA DINAS KEPENDUDUKAN DAN PENCATATAN SIPIL KOTA DENPASAR',pejabat:'I MADE CONTOH, S.H.',nip:'197001011995031001',tte:'YA',anggota:[
+ kk:{no_kk:'5171010101190002',kepala:'AGUS CONTOH SANTOSO',alamat:'JL. CONTOH RAYA NO. 12',rtrw:'003/007',kodepos:'80111',kel:'PEMECUTAN KAJA',kec:'DENPASAR UTARA',kab:'KOTA DENPASAR',prov:'BALI',tgl_terbit:'12-03-2021',jabatan:'KEPALA DINAS KEPENDUDUKAN DAN PENCATATAN SIPIL KOTA DENPASAR',pejabat:'I MADE CONTOH, S.H.',nip:'197001011995031001',tte:'YA',baris:'8',kosong_no:'YA',anggota:[
   {nama:'AGUS CONTOH SANTOSO',nik:'5171010101850001',jk:'LAKI-LAKI',tempat_lahir:'DENPASAR',tgl_lahir:'01-01-1985',agama:'HINDU',pendidikan:'DIPLOMA IV/STRATA I',kerja:'KARYAWAN SWASTA',gol:'O',status:'KAWIN TERCATAT',tgl_kawin:'10-10-2015',hub:'KEPALA KELUARGA',wn:'WNI',paspor:'-',kitap:'-',ayah:'KETUT CONTOH',ibu:'NYOMAN CONTOH'},
   {nama:'SARI DEWI LESTARI CONTOH',nik:'5171014107900001',jk:'PEREMPUAN',tempat_lahir:'DENPASAR',tgl_lahir:'01-07-1990',agama:'HINDU',pendidikan:'SLTA/SEDERAJAT',kerja:'MENGURUS RUMAH TANGGA',gol:'TIDAK TAHU',status:'KAWIN TERCATAT',tgl_kawin:'10-10-2015',hub:'ISTRI',wn:'WNI',paspor:'-',kitap:'-',ayah:'WAYAN CONTOH',ibu:'MADE CONTOH'},
   {nama:'BUDI CONTOH SANTOSO',nik:'5171010203190001',jk:'LAKI-LAKI',tempat_lahir:'DENPASAR',tgl_lahir:'02-03-2019',agama:'HINDU',pendidikan:'TIDAK/BELUM SEKOLAH',kerja:'BELUM/TIDAK BEKERJA',gol:'TIDAK TAHU',status:'BELUM KAWIN',tgl_kawin:'-',hub:'ANAK',wn:'WNI',paspor:'-',kitap:'-',ayah:'AGUS CONTOH SANTOSO',ibu:'SARI DEWI LESTARI CONTOH'}]}};
