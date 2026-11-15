@@ -948,6 +948,22 @@ function pdfAkta(v){
   for(const [t,g] of barisAkta(v)){const sz=g==='j'?14:g==='k'?10:12;doc.setFont('times',g==='j'||g==='b'?'bold':'normal');doc.setFontSize(sz);
     if(!t){y+=10;continue}const ls=doc.splitTextToSize(t,W);for(const l of ls){if(g==='kiri')doc.text(l,M,y);else doc.text(l,M+W/2,y,{align:'center'});y+=sz*1.5}if(g==='j')y+=4}
   return doc.output('blob')}
+function pdfKK(v){
+  const {jsPDF}=window.jspdf;const doc=new jsPDF({unit:'pt',format:'a4',orientation:'landscape'});const M=36,PW=841.89,PH=595.28,W=PW-2*M;let y=M;
+  const F=(sz,b)=>{doc.setFont('times',b?'bold':'normal');doc.setFontSize(sz)};
+  F(8,1);doc.setTextColor(176,0,32);if(v.tanda_draf)doc.text(v.tanda_draf.replace('—','-'),M,y+8);doc.setTextColor(0);
+  F(10);const tw=doc.getTextWidth('TRANSLATION')+14;doc.rect(M+W-tw,y,tw,16);doc.text('TRANSLATION',M+W-tw+7,y+11.5);y+=14;
+  F(9);doc.text('(Logo)',PW/2,y,{align:'center'});y+=16;F(15,1);doc.text('FAMILY CARD',PW/2,y,{align:'center'});y+=14;F(11,1);doc.text('No. '+v.no,PW/2,y,{align:'center'});y+=16;
+  F(9);const inf=kkInfo(v);let yi=y;for(let i=0;i<4;i++){let h=11;[[M,inf[0][i]],[M+W/2+10,inf[1][i]]].forEach(([x,[l,t]])=>{doc.text(l,x,yi);doc.text(':',x+92,yi);const ls=doc.splitTextToSize(t||' ',W/2-112);doc.text(ls,x+100,yi);h=Math.max(h,ls.length*11)});yi+=h}y=yi+4;
+  const tabel=(H,rows,mulai)=>{const ws=H.map(([,p])=>W*p/100);const baris=(sel,o)=>{F(o.sz,o.b);const pecah=sel.map((t,i)=>doc.splitTextToSize(String(t==null?'':t)||' ',ws[i]-6));const h=Math.max(...pecah.map(l=>l.length))*(o.sz+1.5)+5;
+      if(y+h>PH-M){doc.addPage();y=M}let x=M;pecah.forEach((ls,i)=>{doc.rect(x,y,ws[i],h);if(o.tengah||i===0)doc.text(ls,x+ws[i]/2,y+o.sz+1.5,{align:'center'});else doc.text(ls,x+3,y+o.sz+1.5);x+=ws[i]});y+=h};
+    baris(H.map(([h])=>h),{sz:8,b:1,tengah:1});baris(H.map((h,i)=>i?'('+(mulai+i-1)+')':''),{sz:7,tengah:1});rows.forEach(r=>baris(r,{sz:8}));y+=8};
+  tabel(KK_T1,v.anggota.map(a=>a.t1),1);tabel(KK_T2,v.anggota.map(a=>a.t2),10);
+  if(y+86>PH-M){doc.addPage();y=M}F(9);y+=10;doc.text('Issued on Date : '+v.tgl,M,y);const c2=M+W*.45,c3=M+W*.8;doc.text('HEAD OF FAMILY',c2,y,{align:'center'});
+  const jb=doc.splitTextToSize(v.jabatan||' ',W*.38);doc.text(jb,c3,y,{align:'center'});let y3=y+jb.length*11+4;doc.text(v.tte?'(QR Code)':'(Stamp and signature)',c3,y3,{align:'center'});y3+=14;doc.text(v.pejabat||' ',c3,y3,{align:'center'});if(v.nip){y3+=11;doc.text('REG.NO. '+v.nip,c3,y3,{align:'center'})}
+  doc.text(v.kepala||' ',c2,y+40,{align:'center'});F(7);doc.text('Signature/Thumb Print',c2,y+49,{align:'center'});y=Math.max(y+56,y3+12);
+  if(v.tte){F(7);doc.text(doc.splitTextToSize(TTE_EN,W),M,y)}
+  return doc.output('blob')}
 const sheetDok=(d,v)=>d.tipe==='akta'?sheetAkta(v):d.tipe==='kk'?sheetKK(v):sheetHTML(v,d.tpl==='belakang');
 function tplBytes(d){if(d.tpl==='khusus'&&S.customTpl)return S.customTpl.bytes;return b64bytes(TPL_B64[d.tpl==='belakang'?'belakang':'depan'])}
 function makePDF(v,back){
@@ -988,8 +1004,8 @@ async function unduh(kind,draft){
   const d=curDoc();if(!d||!d.fields)return;const is=issues(d);
   if(!draft&&(is.length||!d.confirmed)){toast('Final belum bisa: bereskan catatan dan centang "sudah diperiksa".');return}
   const v=vals(d,draft);
-  if(d.tipe==='akta'||d.tipe==='kk'){if(kind!=='docx'&&d.tipe==='kk'){toast('PDF Kartu Keluarga belum tersedia — unduh Word, lalu simpan sebagai PDF dari Word.');return}
-    const blob=kind==='docx'?(d.tipe==='akta'?docxAkta(v):docxKK(v)):pdfAkta(v);if(await simpanHasil(fileBase(d,draft)+'.'+kind,blob,draft))done(d,draft);return}
+  if(d.tipe==='akta'||d.tipe==='kk'){
+    const blob=kind==='docx'?(d.tipe==='akta'?docxAkta(v):docxKK(v)):(d.tipe==='akta'?pdfAkta(v):pdfKK(v));if(await simpanHasil(fileBase(d,draft)+'.'+kind,blob,draft))done(d,draft);return}
   if(kind==='docx'){const r=fillDocx(tplBytes(d),v);if(r.leftovers.length){toast('Template masih punya placeholder tak dikenal: '+r.leftovers.join(', '));if(!draft)return}
     if(await simpanHasil(fileBase(d,draft)+'.docx',r.blob,draft))done(d,draft)}
   else{if(d.tpl==='khusus'){toast('PDF hanya untuk template master.');return}if(await simpanHasil(fileBase(d,draft)+'.pdf',makePDF(v,d.tpl==='belakang'),draft))done(d,draft)}
@@ -998,7 +1014,7 @@ function done(d,draft){if(!draft)d.finalDone=true;saveJob(d,true);if(S.view==='p
 function viewHasil(){
   const d=curDoc();if(!d||!d.fields)return steps()+`<section class="c20">Belum ada data.</section>`;
   const is=issues(d),okFinal=!is.length&&d.confirmed,draft=!okFinal;const v=vals(d,draft);
-  const lain=d.tipe==='akta'||d.tipe==='kk';const tp=lain?[[d.tipe,TIPE[d.tipe].nama+' — Inggris',(d.tipe==='kk'?'A4 mendatar · ':'A4 · ')+TIPE[d.tipe].versi]]:[['depan','KTP — depan saja','Inggris · A4 · '+TPL_VERSION],['belakang','KTP — depan + belakang','Inggris · A4 · '+TPL_VERSION]];if(S.customTpl&&!lain)tp.push(['khusus','Template unggahan',S.customTpl.name]);const tanpaPdf=d.tpl==='khusus'||d.tipe==='kk';
+  const lain=d.tipe==='akta'||d.tipe==='kk';const tp=lain?[[d.tipe,TIPE[d.tipe].nama+' — Inggris',(d.tipe==='kk'?'A4 mendatar · ':'A4 · ')+TIPE[d.tipe].versi]]:[['depan','KTP — depan saja','Inggris · A4 · '+TPL_VERSION],['belakang','KTP — depan + belakang','Inggris · A4 · '+TPL_VERSION]];if(S.customTpl&&!lain)tp.push(['khusus','Template unggahan',S.customTpl.name]);const tanpaPdf=d.tpl==='khusus';
   const ck=(ok,t,k='')=>`<div class="ck"><i style="background:${ok?'#E3F5EC':'#FFF1C7'};color:${ok?'#136C3F':'#6B4600'}">${ok?'✓':'!'}</i><span class="grow">${t}</span>${k?`<span class="small">${esc(k)}</span>`:''}</div>`;
   const reqMiss=d.fields.filter(f=>DEF[f.key].req&&!String(f.src).trim()).length,man=d.fields.filter(f=>statusOf(f).t==='manual').length,cek=d.fields.filter(f=>statusOf(f).t==='cek').length,nikBad=d.fields.filter(f=>(f.key==='nik'||DEF[f.key].val==='nik')&&String(f.src).trim()&&!validasi(f.key,f.src).ok).length;
   const glos=d.fields.filter(f=>f.src&&f.en&&f.src.toUpperCase()!==f.en.toUpperCase()&&!f.enManual).slice(0,3).map(f=>chip(f.src+' → '+f.en,'biru')).join('');
@@ -1017,7 +1033,7 @@ function viewHasil(){
     <label class="cekbox"><input type="checkbox" id="konf" ${d.confirmed?'checked':''}>Saya sudah memeriksa data ini</label></section>
    <section class="c20" aria-label="Unduh" style="gap:10px"><h2>Unduh</h2>
     <button type="button" class="btn dark lg" data-act="dl" data-k="docx" data-f="1" ${okFinal?'':'disabled'}>${ic(I.down,18)}${TUGAS?'Kirim Word (.docx) ke tugas':'Unduh Word (.docx)'}</button>
-    <button type="button" class="btn lg" data-act="dl" data-k="pdf" data-f="1" ${okFinal&&!tanpaPdf?'':'disabled'} ${d.tipe==='kk'?'title="PDF Kartu Keluarga belum tersedia — pakai Word"':''}>${TUGAS?'Kirim PDF ke tugas':'Unduh PDF'}</button>
+    <button type="button" class="btn lg" data-act="dl" data-k="pdf" data-f="1" ${okFinal&&!tanpaPdf?'':'disabled'}>${TUGAS?'Kirim PDF ke tugas':'Unduh PDF'}</button>
     <div class="row" style="gap:8px"><button type="button" class="btn sm grow" data-act="dl" data-k="docx">Draf .docx</button><button type="button" class="btn sm grow" data-act="dl" data-k="pdf" ${!tanpaPdf?'':'disabled'}>Draf PDF</button></div>
     ${TUGAS?'<span class="small"><b>Final</b> langsung masuk ke “Hasil pekerjaan Anda” di ATLAS. Draf terunduh ke perangkat.</span>':''}<span class="small">Pernyataan, tanda tangan, dan cap tidak dibuat otomatis.</span></section>
   </aside></div>`;

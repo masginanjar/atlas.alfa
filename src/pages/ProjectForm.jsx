@@ -13,6 +13,7 @@ import { Button, Field, FieldError, Input, Select, Sheet, SectionCard, cx, Texta
 import SubProjectEditor, { newSub, validateSub, docFileName, safeName } from '../components/SubProjectEditor.jsx'
 import { SUB_TYPES, points } from '../config/subtypes.js'
 import { uploadProjectFiles } from '../components/FileManager.jsx'
+import { boleh as bolehIzin } from '../lib/izin.js'
 import { kb } from '../lib/format.js'
 import { PrioritySelect, PRIORITY_META } from '../components/Priority.jsx'
 const LANGS_MIN = ['Indonesia', 'Inggris', 'Mandarin', 'Jepang', 'Korea', 'Arab', 'Belanda', 'Jerman', 'Prancis', 'Spanyol', 'Rusia', 'Lainnya']
@@ -241,7 +242,11 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
       }
       if (!editing) { try { localStorage.removeItem(DRAF_KEY) } catch { /* abaikan */ } }
       notify(editing ? 'Project diperbarui' : `Project ${inv} dibuat`)
-      if (onSaved) onSaved(saved); onClose(); if (!onSaved && !editing) go(`projects/${saved.id}`)
+      // Apostille/Legalisasi dengan scan ID pemohon baru → langsung sambung ke pembuatan Surat Kuasa (KTP & nomor ID terbawa).
+      const keSK = idUploads.length > 0 && bolehIzin(user, 'surat-kuasa.tambah') && !(data.surat_kuasa || []).some((r) => r.project_id === saved.id)
+      if (onSaved) onSaved(saved); onClose()
+      if (keSK) { notify('Lanjut ke Surat Kuasa — scan ID & nomor ID dari form sudah disambungkan'); go(`surat-kuasa/new/${saved.id}`) }
+      else if (!onSaved && !editing) go(`projects/${saved.id}`)
     } catch (e) { notify(e.message, 'err') } finally { setBusy(false); setProgress('') }
   }
 

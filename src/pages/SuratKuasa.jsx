@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { FileSignature, Plus, Trash2, ArrowUp, ArrowDown, Printer, Download, Save, ScanLine, Upload, UserCog, ArrowLeft, AlertTriangle, CheckCircle2, Settings2, Lock, Loader2, FolderOpen } from 'lucide-react'
+import { FileSignature, Plus, Trash2, ArrowUp, ArrowDown, Printer, Download, Save, ScanLine, Upload, UserCog, ArrowLeft, AlertTriangle, CheckCircle2, Settings2, Lock, Loader2, FolderOpen, FolderInput } from 'lucide-react'
 import { useApp } from '../lib/store.jsx'
 import { boleh } from '../lib/izin.js'
 import { go } from '../lib/router.js'
 import { scopeByBranch, invoiceLabel } from '../config/access.js'
 import { SUB_TYPES } from '../config/subtypes.js'
-import { collect } from '../components/FileManager.jsx'
+import { collect, uploadProjectFiles } from '../components/FileManager.jsx'
 import { drive } from '../lib/integrations.js'
 import { saveBlob, dataUrlToBlob } from '../lib/download.js'
 import { printBlob } from '../lib/printing.js'
@@ -121,6 +121,9 @@ function Editor({ id, projectId }) {
       const subs = project.sub_projects || []
       const ap = subs.some((x) => x.type === 'apostille'), lg = subs.some((x) => x.type === 'legalisasi')
       b.layanan = ap && lg ? 'keduanya' : lg ? 'legalisasi' : 'apostille'; b.layanan_dari = ap || lg ? 'pekerjaan' : ''
+      // Nomor ID dari form Apostille/Legalisasi (bila berbentuk NIK 16 angka) → NIK pemberi kuasa; tetap dicocokkan dengan KTP.
+      const idForm = subs.map((x) => String(x.applicant_id || '').replace(/\s/g, '')).find((t) => /^\d{16}$/.test(t))
+      if (idForm) b.pemberi.nik = idForm
     }
     return b
   })
@@ -148,7 +151,9 @@ function Editor({ id, projectId }) {
       const r = await bacaKtp(blob, nama)
       const k = Math.min(1, 900 / r.kanvas.width); const c = document.createElement('canvas'); c.width = Math.round(r.kanvas.width * k); c.height = Math.round(r.kanvas.height * k); c.getContext('2d').drawImage(r.kanvas, 0, 0, c.width, c.height)
       const cek = {}; let terisi = 0, dilewati = 0
+      const idForm = (project?.sub_projects || []).map((x) => String(x.applicant_id || '').replace(/\s/g, '')).find((t) => /^\d{16}$/.test(t))
       setS((v) => { const p = { ...v.pemberi }; for (const [kol, o] of Object.entries(r.nilai)) { if ((v.pemberi_diedit || []).includes(kol)) { dilewati++; continue } if (o.v) { p[kol] = o.v; terisi++ } if (o.perlu_cek) cek[kol] = o.alasan }
+        if (idForm && p.nik && p.nik !== idForm && !(v.pemberi_diedit || []).includes('nik')) cek.nik = `Berbeda dengan Nomor ID di form project (${idForm}) — cocokkan dengan KTP`
         if (!v.alamat_manual) p.alamat_surat = rangkaiAlamat(p); return { ...v, pemberi: p, ktp_sumber: nama || 'unggahan', ktp_mesin: r.mesin, ktp_mesin_label: r.mesinLabel, status: v.status === 'siap_cetak' ? 'perlu_diperiksa' : v.status } })
       kotor.current = true
       setKtp({ gambar: c.toDataURL('image/jpeg', 0.85), mesin: r.mesin, catatan: r.catatan, cek })
@@ -157,6 +162,39 @@ function Editor({ id, projectId }) {
   }
   const berkasProject = useMemo(() => (project ? collect(project, { user }).filter((f) => /\.(jpe?g|png|pdf)$/i.test(f.name || '')) : []), [project, user])
   const suratLain = useMemo(() => (project ? (data.surat_kuasa || []).filter((r) => r.project_id === project.id && r.id !== id && r.pemberi?.nama) : []), [project, data.surat_kuasa, id])
+
+  // Sambungan otomatis dari form Apostille/Legalisasi: surat baru untuk sebuah project → dokumen diambil dari pekerjaan
+  // dan scan ID pemohon langsung dibaca sebagai KTP. Sekali saja; hasilnya tetap harus diperiksa.
+  const sambung = useRef(false)
+  useEffect(() => {
+    if (id || !project || sambung.current || !bolehUbah) return
+    sambung.current = true
+    if ((project.sub_projects || []).some((x) => ['apostille', 'legalisasi'].includes(x.type))) ambilDok()
+    const f = (project.sub_projects || []).map((x) => ['apostille', 'legalisasi'].includes(x.type) && x.data?.dokumen_id).find(Boolean)
+    if (!f) return
+    if (!/\.(jpe?g|png|webp|pdf)$/i.test(f.name || '')) { notify('Scan ID pemohon bukan gambar/PDF — unggah KTP manual di bawah'); return }
+    ;(async () => { setSibuk('ktp'); try { await tarikKtp(f.url?.startsWith('data:') ? dataUrlToBlob(f.url) : await drive.blob(f), f.name) } catch { notify('Scan ID pemohon tidak bisa dibuka otomatis — pilih dari lampiran atau unggah KTP', 'err') } finally { setSibuk('') } })()
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  /** Simpan PDF surat kuasa ke File Project milik invoice-nya (PDF dibangun ulang dari isi terakhir). */
+  const bolehBerkas = !!project && bolehCetak && boleh(user, 'project.lampiran_kelola')
+  const simpanKeInvoice = async () => {
+    if (!project) return notify('Surat ini belum terhubung ke project / nomor invoice', 'err')
+    if (kurang.length) return notify(`Lengkapi dulu: ${kurang.join(', ')}`, 'err')
+    const r = buatPdf(s, red)
+    if (!r.muat || r.halaman !== 1) return notify('Isi melebihi satu halaman A4 — lihat peringatan di pratinjau', 'err')
+    setSibuk('invoice')
+    try {
+      const nama = namaFile({ ...s, invoice_no: project.invoice_no })
+      const subAL = (project.sub_projects || []).find((x) => ['apostille', 'legalisasi'].includes(x.type))
+      const [f] = await uploadProjectFiles([{ file: new File([r.blob], nama, { type: 'application/pdf' }), name: nama, sub_id: subAL?.id || null }], { branch: project.branch, invoice: project.invoice_no, by: user.name, subs: project.sub_projects })
+      const kini = (data.projects || []).find((p) => p.id === project.id) || project
+      await save('projects', { id: project.id, files: [...(kini.files || []), { ...f, jenis: 'surat_kuasa', surat_kuasa_id: s.id }] })
+      const saved = await save('surat_kuasa', { id: s.id, file_invoice: { name: f.name, at: new Date().toISOString(), by: user.name, versi: s.versi || 0 } })
+      setS((v) => ({ ...v, file_invoice: saved?.file_invoice || { name: f.name, at: new Date().toISOString(), by: user.name, versi: v.versi || 0 } }))
+      notify(`Surat Kuasa tersimpan di File Project ${invoiceLabel(project.invoice_no)}`)
+    } catch (e) { notify(`Gagal menyimpan ke invoice: ${e.message}`, 'err') } finally { setSibuk('') }
+  }
 
   const kurang = kekurangan(s)
   const nik = cekNik(s.pemberi.nik)
@@ -194,13 +232,13 @@ function Editor({ id, projectId }) {
         {boleh(user, 'surat-kuasa.atur') && <Button size="sm" variant="outline" className="max-md:min-h-11" onClick={() => setAturRed(true)}><Settings2 className="h-4 w-4" />Redaksi</Button>}
       </div>
 
-      <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)]">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)]">
         <div className="space-y-3">
           <Bagian no="1" judul="Pemberi kuasa (dari KTP)" sisi={<span className="text-[11px] text-ink-mute">{s.ktp_mesin ? `Dibaca ${s.ktp_mesin_label || (s.ktp_mesin === 'gemini' ? 'AI Gemini' : 'Tesseract (di perangkat)')}` : 'Belum ada KTP dibaca'}</span>}>
             <div className="flex flex-wrap gap-2">
               <label className={cx('inline-flex min-h-10 cursor-pointer items-center gap-1.5 rounded-xl bg-[#141B34] px-3 text-sm font-semibold text-white max-md:min-h-11', sibuk === 'ktp' && 'pointer-events-none opacity-60')}>{sibuk === 'ktp' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}{sibuk === 'ktp' ? 'Membaca KTP…' : 'Unggah KTP'}<input type="file" accept="image/jpeg,image/png,application/pdf,.jpg,.jpeg,.png,.pdf" className="hidden" aria-label="Unggah KTP" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) tarikKtp(f, f.name) }} /></label>
-              {berkasProject.length > 0 && <Select aria-label="Pilih KTP dari lampiran pekerjaan" value="" disabled={sibuk === 'ktp'} onChange={async (e) => { const f = berkasProject.find((x) => x.key === e.target.value); if (!f) return; setSibuk('ktp'); try { await tarikKtp(f.url?.startsWith('data:') ? dataUrlToBlob(f.url) : await drive.blob(f), f.name) } catch (er) { notify(er.message, 'err'); setSibuk('') } }} className="!w-auto max-w-full flex-1 basis-48"><option value="">Pilih KTP dari lampiran pekerjaan…</option>{berkasProject.map((f) => <option key={f.key} value={f.key}>{f.name}</option>)}</Select>}
-              {suratLain.length > 0 && <Select aria-label="Pakai identitas yang sudah diperiksa" value="" onChange={(e) => { const r = suratLain.find((x) => x.id === e.target.value); if (r) { ubah({ pemberi: { ...r.pemberi }, alamat_manual: r.alamat_manual, pemberi_diedit: Object.keys(r.pemberi), ktp_sumber: 'surat sebelumnya' }); notify('Identitas diambil dari surat sebelumnya (tanpa OCR ulang)') } }} className="!w-auto max-w-full flex-1 basis-48"><option value="">Pakai identitas yang sudah diperiksa…</option>{suratLain.map((r) => <option key={r.id} value={r.id}>{r.pemberi.nama}</option>)}</Select>}
+              {berkasProject.length > 0 && <Select aria-label="Pilih KTP dari lampiran pekerjaan" value="" disabled={sibuk === 'ktp'} onChange={async (e) => { const f = berkasProject.find((x) => x.key === e.target.value); if (!f) return; setSibuk('ktp'); try { await tarikKtp(f.url?.startsWith('data:') ? dataUrlToBlob(f.url) : await drive.blob(f), f.name) } catch (er) { notify(er.message, 'err'); setSibuk('') } }} className="!w-auto min-w-0 max-w-full flex-1 basis-48"><option value="">Pilih KTP dari lampiran pekerjaan…</option>{berkasProject.map((f) => <option key={f.key} value={f.key}>{f.name}</option>)}</Select>}
+              {suratLain.length > 0 && <Select aria-label="Pakai identitas yang sudah diperiksa" value="" onChange={(e) => { const r = suratLain.find((x) => x.id === e.target.value); if (r) { ubah({ pemberi: { ...r.pemberi }, alamat_manual: r.alamat_manual, pemberi_diedit: Object.keys(r.pemberi), ktp_sumber: 'surat sebelumnya' }); notify('Identitas diambil dari surat sebelumnya (tanpa OCR ulang)') } }} className="!w-auto min-w-0 max-w-full flex-1 basis-48"><option value="">Pakai identitas yang sudah diperiksa…</option>{suratLain.map((r) => <option key={r.id} value={r.id}>{r.pemberi.nama}</option>)}</Select>}
             </div>
             {ktp?.catatan && <p className="rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-900 ring-1 ring-amber-200">{ktp.catatan}</p>}
             <div className={cx('grid gap-3', ktp?.gambar && 'md:grid-cols-[minmax(0,0.8fr)_minmax(0,1fr)]')}>
@@ -220,7 +258,7 @@ function Editor({ id, projectId }) {
             {master.length === 0 && <p className="rounded-xl bg-slate-50 px-3 py-2 text-xs text-ink-mute">Master Penerima Kuasa masih kosong — isi manual di bawah, atau minta admin menambahkannya.</p>}
             {Array.from({ length: n }, (_, i) => { const p = s.penerima?.[i] || {}; const np = cekNik(p.nik); return (
               <div key={i} className="space-y-2 rounded-xl bg-slate-50/70 p-3 ring-1 ring-slate-200">
-                <div className="flex flex-wrap items-center gap-2"><b className="text-xs">Penerima kuasa {n === 2 ? i + 1 : ''}</b>{master.length > 0 && <Select aria-label={`Pilih penerima kuasa ${i + 1} dari master`} value={p.master_id || ''} onChange={(e) => setPenerima(i, e.target.value)} className="!h-9 !w-auto flex-1 basis-40 max-md:!h-11"><option value="">— isi manual —</option>{master.map((m) => <option key={m.id} value={m.id}>{m.nama}{m.bawaan ? ` (bawaan ${m.bawaan})` : ''}</option>)}</Select>}</div>
+                <div className="flex flex-wrap items-center gap-2"><b className="text-xs">Penerima kuasa {n === 2 ? i + 1 : ''}</b>{master.length > 0 && <Select aria-label={`Pilih penerima kuasa ${i + 1} dari master`} value={p.master_id || ''} onChange={(e) => setPenerima(i, e.target.value)} className="!h-9 !w-auto min-w-0 max-w-full flex-1 basis-40 max-md:!h-11"><option value="">— isi manual —</option>{master.map((m) => <option key={m.id} value={m.id}>{m.nama}{m.bawaan ? ` (bawaan ${m.bawaan})` : ''}</option>)}</Select>}</div>
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   {[['nama', 'Nama'], ['nik', 'NIK'], ['pekerjaan', 'Pekerjaan']].map(([k, l]) => <div key={k}><Lbl htmlFor={`pn-${i}-${k}`}>{l}</Lbl><Input id={`pn-${i}-${k}`} value={p[k] || ''} disabled={!bolehUbah} inputMode={k === 'nik' ? 'numeric' : undefined} onChange={(e) => ubah((v) => { const a = [...(v.penerima || [])]; a[i] = { ...(a[i] || {}), [k]: e.target.value }; return { penerima: a } })} className="max-md:text-base" />{k === 'nik' && p.nik && !np.ok ? <p className="mt-1 text-[11px] font-semibold text-amber-700">{np.x}</p> : null}</div>)}
                   <div className="sm:col-span-2"><Lbl htmlFor={`pn-${i}-al`}>Alamat</Lbl><Textarea id={`pn-${i}-al`} rows={2} value={p.alamat || ''} disabled={!bolehUbah} onChange={(e) => ubah((v) => { const a = [...(v.penerima || [])]; a[i] = { ...(a[i] || {}), alamat: e.target.value }; return { penerima: a } })} className="max-md:text-base" /></div>
@@ -275,6 +313,8 @@ function Editor({ id, projectId }) {
             {bolehUbah && s.status !== 'siap_cetak' && <Button variant="outline" className="flex-1 max-md:min-h-11" disabled={kurang.length > 0 || !hasil?.muat || !nik.ok} title={!nik.ok ? 'NIK pemberi kuasa belum valid' : ''} onClick={() => simpan('siap_cetak')}><CheckCircle2 className="h-4 w-4" />Sudah diperiksa</Button>}
             {bolehCetak && <Button variant="outline" className="flex-1 max-md:min-h-11" disabled={kurang.length > 0 || !hasil?.muat} loading={sibuk === 'cetak'} onClick={() => ekspor('cetak')} data-aksi="sk-cetak"><Printer className="h-4 w-4" />Cetak</Button>}
             {bolehCetak && <Button variant="dark" className="flex-1 max-md:min-h-11" disabled={kurang.length > 0 || !hasil?.muat} loading={sibuk === 'pdf'} onClick={() => ekspor('pdf')} data-aksi="sk-pdf"><Download className="h-4 w-4" />Unduh PDF</Button>}
+            {bolehBerkas && <Button variant="outline" className="basis-full max-md:min-h-11" disabled={!s.id || kotor.current || kurang.length > 0 || !hasil?.muat || sibuk === 'invoice'} loading={sibuk === 'invoice'} title={!s.id || kotor.current ? 'Simpan draf dulu, lalu simpan ke invoice' : ''} onClick={simpanKeInvoice} data-aksi="sk-ke-invoice"><FolderInput className="h-4 w-4" />Simpan ke No. Invoice {invoiceLabel(project.invoice_no)}</Button>}
+            {bolehBerkas && (s.file_invoice ? <p className="basis-full text-[11px] text-emerald-700" data-sk-di-invoice>✓ Tersimpan di File Project {invoiceLabel(project.invoice_no)} · {tglIndo(String(s.file_invoice.at).slice(0, 10))} oleh {s.file_invoice.by}{(s.versi || 0) > (s.file_invoice.versi || 0) ? ' — isi surat berubah sesudahnya, simpan ulang bila perlu' : ''}</p> : (!s.id || kotor.current) ? <p className="basis-full text-[11px] text-ink-mute">Simpan draf dulu, baru bisa disimpan ke invoice.</p> : null)}
           </div>
         </div>
       </div>
