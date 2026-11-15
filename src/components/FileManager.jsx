@@ -19,6 +19,7 @@ const uid = () => crypto.randomUUID?.() ?? String(Date.now() + Math.random())
 const ext = (n) => (n.match(/\.[^.]+$/)?.[0] ?? '')
 
 /** Upload banyak file ke Drive → objek file project. */
+const KUNCI_KOLOM = 'atlas-fm-kolom', SISA_AWAL = 56
 export async function uploadProjectFiles(items, { branch, invoice, by, subs }, onProgress) {
   const out = []
   for (let i = 0; i < items.length; i++) {
@@ -199,6 +200,17 @@ export default function FileManager({ project, readOnly }) {
       <I className="h-4 w-4" aria-hidden="true" /><span className="hidden sm:inline">{label}</span>
     </button>
   )
+  // Lebar kolom tabel Detail: porsi (%) untuk Tanggal+Jenis+Ukuran; sisanya milik kolom Nama. Diingat per perangkat.
+  const tabelRef = useRef(null)
+  const [sisaKolom, setSisaKolom] = useState(() => { try { const v = Number(localStorage.getItem(KUNCI_KOLOM)); return v >= 18 && v <= 70 ? v : SISA_AWAL } catch { return SISA_AWAL } })
+  const simpanSisa = (v) => { const n = Math.max(18, Math.min(70, Math.round(v))); setSisaKolom(n); try { localStorage.setItem(KUNCI_KOLOM, String(n)) } catch { /* abaikan */ } }
+  const mulaiGeser = (e) => {
+    e.preventDefault(); e.stopPropagation()
+    const x0 = e.clientX, awal = sisaKolom, lebar = tabelRef.current?.offsetWidth || 600
+    const gerak = (ev) => simpanSisa(awal - ((ev.clientX - x0) / lebar) * 100)
+    const lepas = () => { window.removeEventListener('pointermove', gerak); window.removeEventListener('pointerup', lepas); window.removeEventListener('pointercancel', lepas) }
+    window.addEventListener('pointermove', gerak); window.addEventListener('pointerup', lepas); window.addEventListener('pointercancel', lepas)
+  }
   const NamaAtauUbah = ({ f }) => renaming === f.key ? (
     <form className="flex items-center gap-1" onSubmit={(e) => { e.preventDefault(); doRename(f) }} onClick={(e) => e.stopPropagation()}>
       <input autoFocus value={newName} onChange={(e) => setNewName(e.target.value)} aria-label="Nama file baru"
@@ -206,7 +218,7 @@ export default function FileManager({ project, readOnly }) {
       <button className="rounded p-1 text-emerald-600" aria-label="Simpan nama"><Check className="h-4 w-4" /></button>
       <button type="button" onClick={() => setRenaming(null)} className="rounded p-1 text-ink-mute" aria-label="Batal"><X className="h-4 w-4" /></button>
     </form>
-  ) : <span className="min-w-0 truncate" title={f.name}>{f.name}</span>
+  ) : <span className="min-w-0 [overflow-wrap:anywhere]" title={f.name} data-nama-berkas>{f.name}</span>
   const bukaPratinjau = (f) => { if (canPreview(f)) setPreview(f); else download(f) }
 
   return (
@@ -281,21 +293,26 @@ export default function FileManager({ project, readOnly }) {
             ))}
           </ul>
         ) : (
-          <table className="w-full table-fixed text-[13px]" data-tampil-detail>
+          <table ref={tabelRef} className="w-full table-fixed text-[13px]" data-tampil-detail>
             <thead className="text-left text-[12px] text-ink-soft">
               <tr className="border-b border-slate-200 dark:border-white/10">
                 <th className="w-9 px-3 py-1.5">{berkas.length > 0 && <input type="checkbox" checked={berkas.every((f) => selected.has(f.key))} onChange={(e) => setSelected(e.target.checked ? new Set(berkas.map((f) => f.key)) : new Set())} aria-label="Pilih semua" className="h-4 w-4 rounded" />}</th>
-                <th className="py-1.5 font-normal">Nama</th>
-                <th className="hidden w-[26%] font-normal md:table-cell">Tanggal diubah</th>
-                <th className="hidden w-[17%] font-normal md:table-cell">Jenis</th>
-                <th className="hidden w-[13%] font-normal md:table-cell">Ukuran</th>
+                <th className="relative py-1.5 font-normal">Nama
+                  {/* Geser batas kolom Nama (tablet & desktop). Klik dua kali = kembali ke ukuran awal. Nama panjang tetap terbaca penuh (turun baris). */}
+                  <span role="separator" aria-orientation="vertical" aria-label="Geser lebar kolom Nama" title="Geser untuk mengubah lebar kolom · klik dua kali untuk ukuran awal" tabIndex={0} data-geser-kolom
+                    onPointerDown={mulaiGeser} onDoubleClick={() => simpanSisa(SISA_AWAL)}
+                    onKeyDown={(e) => { if (e.key === 'ArrowLeft') { e.preventDefault(); simpanSisa(sisaKolom + 3) } else if (e.key === 'ArrowRight') { e.preventDefault(); simpanSisa(sisaKolom - 3) } }}
+                    className="absolute -right-1 top-0 hidden h-full w-3 cursor-col-resize touch-none select-none items-center justify-center md:flex"><span className="h-4 w-[3px] rounded bg-slate-300" aria-hidden="true" /></span></th>
+                <th className="hidden font-normal md:table-cell" style={{ width: `${(sisaKolom * 26) / 56}%` }}>Tanggal diubah</th>
+                <th className="hidden font-normal md:table-cell" style={{ width: `${(sisaKolom * 17) / 56}%` }}>Jenis</th>
+                <th className="hidden font-normal md:table-cell" style={{ width: `${(sisaKolom * 13) / 56}%` }}>Ukuran</th>
               </tr>
             </thead>
             <tbody>
               {daftarFolder.map((x) => (
                 <tr key={x.id} className="cursor-default hover:bg-[#e5f1fb]" onDoubleClick={() => buka(x.id)} data-folder>
                   <td className="px-3 py-1.5" />
-                  <td className="overflow-hidden py-1.5 pr-3"><button type="button" onClick={() => buka(x.id)} title={x.nama} className="flex min-h-[28px] w-full min-w-0 items-center gap-2 text-left"><IkonFolder /><span className="min-w-0 truncate font-medium text-ink">{x.nama}</span></button></td>
+                  <td className="overflow-hidden py-1.5 pr-3"><button type="button" onClick={() => buka(x.id)} title={x.nama} className="flex min-h-[28px] w-full min-w-0 items-center gap-2 text-left"><IkonFolder /><span className="min-w-0 font-medium text-ink [overflow-wrap:anywhere]">{x.nama}</span></button></td>
                   <td className="hidden text-ink-mute md:table-cell" /><td className="hidden text-ink-mute md:table-cell">Folder</td><td className="hidden text-ink-mute md:table-cell">{x.n} berkas</td>
                 </tr>
               ))}

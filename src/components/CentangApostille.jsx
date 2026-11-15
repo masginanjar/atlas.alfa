@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Play, Check, Flag, Loader2 } from 'lucide-react'
 import { useApp } from '../lib/store.jsx'
 import { go } from '../lib/router.js'
@@ -58,6 +59,9 @@ export function bolehCentang(user, sb) {
 export default function CentangApostille({ p, sb, label, bulat, onPanel }) {
   const { user, data, processStage, patchSubData, notify } = useApp()
   const [sibuk, setSibuk] = useState('')
+  const [tip, setTip] = useState(null) // { it, rect } — popup daftar langkah (muncul seketika saat diarahkan / difokus / diketuk)
+  const tipTimer = useRef(null)
+  useEffect(() => () => clearTimeout(tipTimer.current), [])
   const info = infoAlur(sb, p)
   const teks = label ?? stageLabel(flowOf(sb, p), sb.stage)
   if (!info || (!info.sebelum && !info.sedang) || !lihatTahapApostille(user, data)) return <span className="text-brand">{teks}</span>
@@ -92,19 +96,39 @@ export default function CentangApostille({ p, sb, label, bulat, onPanel }) {
     try { await patchSubData(p, sb.id, { [f.key]: n }, `${cur.includes(it) ? 'Batal centang' : 'Centang'} ${it} (${f.label})`) }
     catch (er) { notify(er.message, 'err') } finally { setSibuk('') }
   }
-  if (bulat) return (
-    <span className="inline-flex items-center gap-1" onClick={stop} role="group" aria-label="Langkah proses" data-centang-apostille={sb.id}>
-      {items.map((it) => {
-        const on = cur.includes(it)
-        return (
-          <button key={it} type="button" onClick={(e) => toggle(e, it)} disabled={!boleh || !!sibuk} aria-pressed={on} aria-label={it} title={`${it}${(f.opsional || []).includes(it) ? ' (opsional)' : ''}`} data-centang={it}
-            className={cx('grid h-8 w-8 shrink-0 place-items-center rounded-full border text-[12px] font-bold transition', on ? 'border-[#141B34] bg-[#141B34] text-white' : 'border-[#D9DBE7] bg-white text-[#141B34]', boleh && !on && 'hover:border-[#4169E1]', !boleh && 'cursor-default')}>
-            {sibuk === it ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : on ? '✓' : it[0]}
-          </button>
-        )
-      })}
-    </span>
-  )
+  if (bulat) {
+    const buka = (e, it) => { clearTimeout(tipTimer.current); setTip({ it, rect: e.currentTarget.parentElement.getBoundingClientRect() }) }
+    const tutup = () => { clearTimeout(tipTimer.current); setTip(null) }
+    const nBeres = items.filter((it) => cur.includes(it)).length
+    return (
+      <span className="inline-flex items-center gap-1" onClick={stop} onMouseLeave={tutup} role="group" aria-label="Langkah proses" data-centang-apostille={sb.id}>
+        {items.map((it) => {
+          const on = cur.includes(it)
+          return (
+            <button key={it} type="button" onClick={(e) => { buka(e, it); tipTimer.current = setTimeout(() => setTip(null), 2200); toggle(e, it) }} onMouseEnter={(e) => buka(e, it)} onFocus={(e) => buka(e, it)} onBlur={tutup}
+              disabled={!!sibuk} aria-disabled={!boleh} aria-pressed={on} aria-label={`${it}${(f.opsional || []).includes(it) ? ' (opsional)' : ''}${on ? ' — sudah' : ' — belum'}`} data-centang={it}
+              className={cx('grid h-8 w-8 shrink-0 place-items-center rounded-full border text-[12px] font-bold transition', on ? 'border-[#141B34] bg-[#141B34] text-white' : 'border-[#D9DBE7] bg-white text-[#141B34]', boleh && !on && 'hover:border-[#4169E1]', !boleh && 'cursor-default', tip?.it === it && 'ring-2 ring-[#4169E1]/40')}>
+              {sibuk === it ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : on ? '✓' : it[0]}
+            </button>
+          )
+        })}
+        {tip && createPortal(
+          <div role="tooltip" data-popup-langkah style={{ position: 'fixed', zIndex: 200, top: tip.rect.bottom + 8 + 34 * items.length + 60 > window.innerHeight ? undefined : tip.rect.bottom + 8, bottom: tip.rect.bottom + 8 + 34 * items.length + 60 > window.innerHeight ? window.innerHeight - tip.rect.top + 8 : undefined, left: Math.max(8, Math.min(tip.rect.left, window.innerWidth - 268)), width: 260, pointerEvents: 'none' }}
+            className="rounded-2xl bg-[#141B34] p-3 text-white shadow-2xl ring-1 ring-black/10">
+            <p className="mb-2 flex items-center justify-between gap-2 text-[11px] font-bold uppercase tracking-wide text-white/70"><span>{f.label || 'To-do proses'}</span><span className="tabular-nums text-white">{nBeres}/{items.length}</span></p>
+            <ul className="space-y-1">
+              {items.map((it) => { const on = cur.includes(it); return (
+                <li key={it} className={cx('flex items-center gap-2 rounded-lg px-2 py-1.5 text-[13px] font-semibold', tip.it === it ? 'bg-white text-[#141B34]' : on ? 'text-white/60' : 'text-white')}>
+                  <span className={cx('grid h-5 w-5 shrink-0 place-items-center rounded-full text-[11px] font-bold', on ? 'bg-emerald-400 text-[#0B2A1B]' : tip.it === it ? 'ring-2 ring-[#141B34]' : 'ring-2 ring-white/60')}>{on ? '✓' : it[0]}</span>
+                  <span className={cx('min-w-0 flex-1', on && tip.it !== it && 'line-through')}>{it}</span>
+                  {(f.opsional || []).includes(it) && <span className="shrink-0 text-[10px] font-semibold opacity-70">opsional</span>}
+                </li>) })}
+            </ul>
+            <p className="mt-2 text-[11px] text-white/70">{!boleh ? 'Hanya melihat — bukan tugas Anda.' : tip.it && f.itemForm?.[tip.it]?.length && !cur.includes(tip.it) ? 'Langkah ini butuh isian/berkas — klik untuk membuka panel kerja.' : tip.it && cur.includes(tip.it) ? 'Klik untuk membatalkan centang.' : 'Klik untuk mencentang.'}</p>
+          </div>, document.body)}
+      </span>
+    )
+  }
   return (
     <span className="inline-flex flex-wrap items-center gap-1" onClick={stop} data-centang-apostille={sb.id}>
       {items.map((it) => {

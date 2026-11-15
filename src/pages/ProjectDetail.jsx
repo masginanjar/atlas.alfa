@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { subTerlihat } from '../lib/dokumenAL.js'
-import { Share2, ArrowLeft, Pencil, Trash2, Upload, FileText, Download, Check, Lock, History, CalendarClock, Loader2, UserRound, Truck, Printer, Hand, Unlock, Eye, FolderOpen, FastForward, StickyNote, FileSignature } from 'lucide-react'
+import { Share2, ArrowLeft, Pencil, Trash2, Upload, FileText, Download, Check, Lock, History, CalendarClock, Loader2, UserRound, Truck, Printer, Hand, Unlock, Eye, FolderOpen, FastForward, StickyNote, FileSignature, IdCard } from 'lucide-react'
 import { useApp } from '../lib/store.jsx'
 import { boleh } from '../lib/izin.js'
 import { go } from '../lib/router.js'
@@ -339,6 +339,7 @@ export function SubProject({ n, project, sub, compact, tanpaTahap, ringkas }) {
   if (ringkas) return (
     <div data-sub-card={sub.id} data-panel-ringkas>
       {['ap_int', 'lg_int'].includes(flow) && <BiayaPanel project={project} sub={sub} ringkas />}
+      <SambungSuratKuasa project={project} sub={sub} ringkas />
       {done ? <p className="px-4 py-3 text-[13px] font-semibold text-emerald-700">Sub project ini sudah selesai.</p> : <StagePanel project={project} sub={sub} stage={stages[idx]} ringkas />}
     </div>
   )
@@ -388,6 +389,7 @@ export function SubProject({ n, project, sub, compact, tanpaTahap, ringkas }) {
         </div>
       )}
       {['ap_int', 'lg_int'].includes(flow) && <BiayaPanel project={project} sub={sub} />}
+      <SambungSuratKuasa project={project} sub={sub} />
       <Collected project={project} sub={sub} />
       {!done && <StagePanel project={project} sub={sub} stage={stages[idx]} />}
 
@@ -402,6 +404,33 @@ export function SubProject({ n, project, sub, compact, tanpaTahap, ringkas }) {
         )}
       </div>
     </Card>
+  )
+}
+
+/**
+ * Apostille / Legalisasi: ID pemohon (unduh) + jalan pintas Surat Kuasa untuk project ini.
+ * "Buat Surat Kuasa" membuka editor yang langsung membaca scan ID pemohon; di sana ada "Simpan ke No. Invoice".
+ * Tombol mengikuti izin surat-kuasa.tambah / surat-kuasa.lihat (Pengaturan → Role & Hak Akses).
+ */
+function SambungSuratKuasa({ project, sub, ringkas }) {
+  const { user, data } = useApp()
+  if (!['apostille', 'legalisasi'].includes(sub.type)) return null
+  const idFile = sub.data?.dokumen_id
+  const surat = (data.surat_kuasa || []).filter((r) => r.project_id === project.id).sort((a, b) => String(b.updated_at || b.created_at || '').localeCompare(String(a.updated_at || a.created_at || '')))[0]
+  const bisaBuat = boleh(user, 'surat-kuasa.tambah'), bisaLihat = boleh(user, 'surat-kuasa.lihat')
+  if (!idFile && !sub.applicant_id && !(surat && bisaLihat) && !bisaBuat) return null
+  return (
+    <div className={cx('flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-[#E7E8F0] px-3 py-2', !ringkas && 'mx-4 mb-3 rounded-xl border-b-0 bg-slate-50 ring-1 ring-slate-200')} data-sambung-surat-kuasa>
+      <span className="inline-flex items-center gap-1.5 text-[13px] font-semibold"><IdCard className="h-4 w-4 text-brand" />ID pemohon</span>
+      {idFile ? <span className="inline-flex min-h-9 min-w-0 max-w-full items-center rounded-lg bg-white px-2.5 ring-1 ring-slate-200 max-md:min-h-11" data-id-pemohon><FileChip file={idFile} /></span>
+        : <span className="text-xs text-ink-mute">scan belum diunggah</span>}
+      {sub.applicant_id && <span className="text-xs text-ink-mute">No. ID <b className="font-mono text-ink">{sub.applicant_id}</b></span>}
+      <span className="ml-auto flex flex-wrap items-center gap-2">
+        {surat && bisaLihat && <span className="text-[11px] text-ink-mute">{surat.file_invoice ? <span className="font-semibold text-emerald-700">✓ Surat kuasa tersimpan di invoice</span> : 'Surat kuasa sudah dibuat — belum disimpan ke invoice'}</span>}
+        {surat && bisaLihat ? <Button size="sm" variant="outline" className="max-md:min-h-11" onClick={() => go(`surat-kuasa/${surat.id}`)} data-aksi="buka-surat-kuasa"><FileSignature className="h-4 w-4" />Buka Surat Kuasa</Button>
+          : bisaBuat ? <Button size="sm" variant="outline" className="max-md:min-h-11" onClick={() => go(`surat-kuasa/new/${project.id}`)} title={idFile ? 'Scan ID pemohon langsung dibaca sebagai KTP' : 'Scan ID belum ada — KTP diunggah di halaman Surat Kuasa'} data-aksi="buat-surat-kuasa"><FileSignature className="h-4 w-4" />Buat Surat Kuasa</Button> : null}
+      </span>
+    </div>
   )
 }
 

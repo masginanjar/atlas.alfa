@@ -59,7 +59,7 @@ select.inp{border-radius:12px}
 .srcbox{flex:1 1 320px;min-width:0;position:sticky;top:12px;overflow:hidden}
 .srcview{background:#EEF0F6;padding:12px;max-height:70vh;overflow:auto}
 .srcinner{position:relative;width:100%}
-.srcinner.zoom{width:220%}
+.dvwrap{position:relative;flex:1;min-height:0;display:flex;flex-direction:column}.zoombar{position:absolute;right:10px;bottom:10px;z-index:3;display:flex;gap:2px;padding:3px;border-radius:9px;background:rgba(255,255,255,.94);box-shadow:0 1px 6px rgba(20,27,52,.22)}.zoombar .mb{min-width:28px;font-size:14px}.zoombar #zoomlbl{min-width:48px;font-size:12px}.docview.geser{cursor:grab}.docview.menggeser{cursor:grabbing;user-select:none}.docview.pilih.geser{cursor:crosshair}
 .srcinner canvas{display:block;width:100%;height:auto;border-radius:8px}
 .hl{position:absolute;border:2px solid #D9534A;background:rgba(217,83,74,.14);border-radius:4px;pointer-events:none;display:none}
 .raw{margin:0;padding:12px;white-space:pre-wrap;font:12px/1.5 ui-monospace,Menlo,Consolas,monospace;max-height:70vh;overflow:auto;background:#FAFBFD}
@@ -819,11 +819,12 @@ function viewPeriksa(){
   const kiri=pg?`<section class="pn" aria-label="Dokumen sumber" data-pn="0" style="flex:${L[0]} 1 0">
     <div class="pnh"><b>Dokumen sumber</b><span class="kn"><span class="ket" title="${esc(d.name||pg.name)}">${esc(d.name||pg.name)} · ${pi}/${d.pages.length}</span>
       <button type="button" class="mb" role="tab" aria-pressed="${S.srcTab==='gambar'}" data-act="srctab" data-t="gambar">Gambar</button><button type="button" class="mb" role="tab" aria-pressed="${S.srcTab==='teks'}" data-act="srctab" data-t="teks">Teks</button>
-      <button type="button" class="mb" data-act="zoom" aria-label="Perbesar" aria-pressed="${S.zoom}" title="Perbesar / sesuaikan">${ic(I.zoom)}</button><button type="button" class="mb" data-act="putarcur" aria-label="Putar 90° lalu baca ulang" title="Putar 90° lalu baca ulang">${ic(I.rot)}</button></span></div>
+      <button type="button" class="mb" data-act="putarcur" aria-label="Putar 90° lalu baca ulang" title="Putar 90° lalu baca ulang">${ic(I.rot)}</button></span></div>
     ${pg.engineNote?`<div class="cat3 merah" title="${esc(pg.engineNote)}">${esc(pg.engineNote)}</div>`:''}
     ${pg.aiCatatan?`<div class="cat3" data-ai-catatan title="${esc(pg.aiCatatan)}">${esc(pg.aiCatatan)}</div>`:''}
     ${q.length?`<details class="cat3"><summary>${q.length} indikasi kualitas gambar (pemeriksaan otomatis, bukan skor)</summary>${q.map(c=>'<div>• '+esc(c.x)+'</div>').join('')}</details>`:''}
-    ${S.srcTab==='gambar'?`<div class="docview ${S.pilihArea?'pilih':''}" id="docview"><div class="srcinner ${S.zoom?'zoom':''}" id="srcinner"><div class="hl" id="hl"></div></div></div>`:`<pre class="raw">${esc(pg.text||'(tidak ada teks)')}</pre>`}
+    ${S.srcTab==='gambar'?`<div class="dvwrap"><div class="docview ${S.pilihArea?'pilih':''}" id="docview"><div class="srcinner" id="srcinner"><div class="hl" id="hl"></div></div></div>
+      <div class="zoombar" role="group" aria-label="Perbesar dokumen sumber"><button type="button" class="mb" data-act="zoomout" aria-label="Perkecil" title="Perkecil" ${(S.zoomK||1)<=1?'disabled':''}>−</button><button type="button" class="mb" id="zoomlbl" data-act="zoomfit" title="Kembali pas layar" aria-label="Ukuran saat ini — klik untuk pas layar">${Math.round((S.zoomK||1)*100)}%</button><button type="button" class="mb" data-act="zoomin" aria-label="Perbesar" title="Perbesar (atau Ctrl + gulir)" ${(S.zoomK||1)>=ZOOM_MAKS?'disabled':''}>+</button></div></div>`:`<pre class="raw">${esc(pg.text||'(tidak ada teks)')}</pre>`}
     <div class="pot3" id="potbox" ${S.selField?'':'hidden'}><span>Potongan sumber</span><canvas id="potongan" width="10" height="10"></canvas></div>
     <div class="detil" id="detil"><span class="kos" id="detilkos">Klik satu kolom untuk melihat asal bacaan, pilihan bacaan lain, dan tindakannya.</span>${d.fields.map(metaKolom).join('')}</div>
     <div class="pnf"><span style="display:flex;align-items:center;gap:6px"><button type="button" class="mb" data-act="pilihArea" aria-pressed="${!!S.pilihArea}" ${S.selField&&pg.ocrCanvas?'':'disabled'} title="Tarik kotak di gambar untuk membaca ulang area itu ke kolom terpilih">${S.pilihArea?'Batal pilih area':'Pilih area'}</button><span>${S.selField?'Kolom terpilih: <b>'+esc(DEF[S.selField].label)+'</b>':'Klik satu kolom dulu'}</span></span><span>dibaca ${esc(mesinNama(pg.engine))}${pg.ulang?' · '+pg.ulang+' potongan diulang':''}</span></div></section>`:'';
@@ -847,12 +848,28 @@ function viewPeriksa(){
 function tandaiPilih(k){document.querySelectorAll('.r3.sel').forEach(x=>x.classList.remove('sel'));document.querySelectorAll('.detil .meta.on').forEach(x=>x.classList.remove('on'));
   if(!k)return;for(const id of ['row-'+k,'rowt-'+k]){const n=document.getElementById(id);if(n)n.classList.add('sel')}const m=document.getElementById('meta-'+k);if(m)m.classList.add('on');const ks=document.getElementById('detilkos');if(ks)ks.hidden=true}
 /** Paskan gambar sumber ke ruang panel (tanpa memotong, rasio tetap). Zoom = sengaja diperbesar, bisa digeser. */
-function pasGambar(){const dv=$('#docview'),box=$('#srcinner'),c=$('#srccanvas');if(!dv||!box||!c)return;if(S.zoom||window.innerWidth<1000){box.style.width='';return}
-  const aw=dv.clientWidth-20,ah=dv.clientHeight-20;if(aw<50||ah<50)return;box.style.width=Math.max(120,Math.min(aw,ah*c.width/c.height))+'px'}
+/* Perbesar / perkecil dokumen sumber: 100% = pas panel. Tombol − % +, Ctrl/⌘ + gulir, dan geser (tarik) saat diperbesar. */
+const ZOOM_LANGKAH=[1,1.5,2,3,4],ZOOM_MAKS=4;
+function pasGambar(){const dv=$('#docview'),box=$('#srcinner'),c=$('#srccanvas');if(!dv||!box||!c)return;const k=S.zoomK||1;box.style.flexShrink='0';dv.style.justifyContent=k>1?'flex-start':'';
+  if(window.innerWidth<1000){box.style.width=k>1?(k*100)+'%':'';return}
+  const aw=dv.clientWidth-20,ah=dv.clientHeight-20;if(aw<50||ah<50)return;box.style.width=Math.max(120,Math.min(aw,ah*c.width/c.height))*k+'px'}
+function setZoom(k){k=Math.max(1,Math.min(ZOOM_MAKS,k));const dv=$('#docview');if(!dv){S.zoomK=k;return}
+  const fx=(dv.scrollLeft+dv.clientWidth/2)/Math.max(1,dv.scrollWidth),fy=(dv.scrollTop+dv.clientHeight/2)/Math.max(1,dv.scrollHeight);S.zoomK=k;
+  const c=$('#srccanvas'),d=curDoc(),pg=d&&(d.pages.find(p=>p.id===d.fieldPage)||d.pages[0]);
+  if(c&&pg&&k>1&&c.dataset.tajam!=='1'){const n=drawRot(pg.src,pg.rot,3200);n.id='srccanvas';n.dataset.tajam='1';c.replaceWith(n)} // gambar lebih tajam saat diperbesar
+  pasGambar();dv.classList.toggle('geser',k>1);dv.scrollLeft=fx*dv.scrollWidth-dv.clientWidth/2;dv.scrollTop=fy*dv.scrollHeight-dv.clientHeight/2;
+  const l=$('#zoomlbl');if(l)l.textContent=Math.round(k*100)+'%';const m=$('[data-act=zoomout]'),p=$('[data-act=zoomin]');if(m)m.disabled=k<=1;if(p)p.disabled=k>=ZOOM_MAKS}
+const zoomLangkah=arah=>{const k=S.zoomK||1;const n=arah>0?ZOOM_LANGKAH.find(x=>x>k+.01):[...ZOOM_LANGKAH].reverse().find(x=>x<k-.01);setZoom(n||k)};
+document.addEventListener('wheel',e=>{const dv=e.target.closest&&e.target.closest('#docview');if(!dv||!(e.ctrlKey||e.metaKey))return;e.preventDefault();zoomLangkah(e.deltaY<0?1:-1)},{passive:false});
+/* Geser gambar dengan tarik saat diperbesar (tidak aktif ketika sedang "Pilih area"). */
+document.addEventListener('pointerdown',e=>{const dv=e.target.closest&&e.target.closest('#docview');if(!dv||(S.zoomK||1)<=1||S.pilihArea||e.button!==0||e.pointerType==='touch')return;
+  const x0=e.clientX,y0=e.clientY,sl=dv.scrollLeft,st=dv.scrollTop;dv.classList.add('menggeser');
+  const g=ev=>{dv.scrollLeft=sl-(ev.clientX-x0);dv.scrollTop=st-(ev.clientY-y0)},l=()=>{dv.classList.remove('menggeser');window.removeEventListener('pointermove',g);window.removeEventListener('pointerup',l);window.removeEventListener('pointercancel',l)};
+  window.addEventListener('pointermove',g);window.addEventListener('pointerup',l);window.addEventListener('pointercancel',l)});
 function afterPeriksa(){
   const d=curDoc();if(!d)return;const pg=d.pages.find(p=>p.id===d.fieldPage)||d.pages[0];const box=$('#srcinner');
   if(box&&pg){const c=drawRot(pg.src,pg.rot,1400);c.id='srccanvas';box.insertBefore(c,box.firstChild)}
-  pasGambar();tandaiPilih(S.selField);if(SIMPAN.st)setSimpan(SIMPAN.st);
+  pasGambar();if((S.zoomK||1)>1)setZoom(S.zoomK);tandaiPilih(S.selField);if(SIMPAN.st)setSimpan(SIMPAN.st);
   const a=$('#pnb-src'),b2=$('#pnb-en');if(a&&b2){let kunci=false;const sink=(x,y)=>()=>{if(kunci)return;kunci=true;y.scrollTop=x.scrollTop;requestAnimationFrame(()=>{kunci=false})};a.addEventListener('scroll',sink(a,b2));b2.addEventListener('scroll',sink(b2,a))}
   if(S.selField)showHL(S.selField);
 }
@@ -1197,7 +1214,9 @@ document.addEventListener('click',async e=>{
   else if(a==='bacasemua'){S.docs.forEach(d=>d.pages.forEach(p=>p.status='antre'));render();runQueue()}
   else if(a==='cur'){S.cur=di;render()}
   else if(a==='srctab'){S.srcTab=b.dataset.t;render()}
-  else if(a==='zoom'){S.zoom=!S.zoom;render()}
+  else if(a==='zoomin')zoomLangkah(1);
+  else if(a==='zoomout')zoomLangkah(-1);
+  else if(a==='zoomfit')setZoom(1);
   else if(a==='putarcur'||a==='bacacur'){const d=curDoc();const p=d.pages.find(x=>x.id===d.fieldPage)||d.pages[0];if(!p)return;if(a==='putarcur')p.rot=(p.rot+90)%360;if(d.sid){d.asalId=d.sid;d.sid=null;d.rev=null;d.versiProses=(d.versiProses||1)+1}p.status='antre';toast('Membaca ulang… koreksi manual tidak ditimpa');S.step=1;render();runQueue()}
   else if(a==='tick'){const f=curDoc().fields.find(x=>x.key===b.dataset.k);f.review=false;f.beda=false;f.checked=true;f.hist.push({at:Date.now(),ke:f.src,oleh:'pengguna (sudah dicek)'});refreshStatus(f.key)}
   else if(a==='absen'){const f=curDoc().fields.find(x=>x.key===b.dataset.k);f.absen=f.absen?null:'tidak-tercantum';f.hist.push({at:Date.now(),ke:f.absen||'(dibatalkan)',oleh:'pengguna'});refreshStatus(f.key)}

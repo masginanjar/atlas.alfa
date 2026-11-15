@@ -110,7 +110,8 @@ export const MODUL = [
   // 15 Nov 2026: menu Alat. Fitur baru → bawaan hanya Superadmin (default deny); role lain diberi lewat Role & Hak Akses.
   { id: 'alat', label: 'Alat', fitur: [
     f('smart-translator', 'Smart Translator', ['menu', 'lihat']),
-    f('surat-kuasa', 'Surat Kuasa', ['menu', 'lihat', 'tambah', 'ubah', 'hapus', 'cetak', 'atur']),
+    // 15 Nov 2026 (keputusan pemilik): Staf Apostille/Legalisasi membuat surat kuasa dari baris pekerjaannya → lihat, tambah, ubah, cetak. Menu, hapus, atur tetap hanya Superadmin.
+    f('surat-kuasa', 'Surat Kuasa', ['menu', 'lihat', 'tambah', 'ubah', 'hapus', 'cetak', 'atur'], { lihat: ['staf_apostille'], tambah: ['staf_apostille'], ubah: ['staf_apostille'], cetak: ['staf_apostille'] }),
   ] },
   { id: 'keuangan', label: 'Keuangan', fitur: [
     f('keuangan', 'Ringkasan Keuangan', ['menu', 'lihat', 'laporan'], { menu: plus(SEMUA, 'keuangan'), lihat: plus(SEMUA, 'keuangan'), laporan: dari(canSeeKeuangan) }),
