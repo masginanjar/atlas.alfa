@@ -10,9 +10,11 @@ import { Truck, Loader2 } from 'lucide-react'
 import { useApp } from '../lib/store.jsx'
 import { Tabs, Empty } from '../components/ui.jsx'
 import { go } from '../lib/router.js'
-import { bolehOps, bolehKeu, bolehPenting, PERAN_OPS, PERAN_KEU } from '../lib/kirim.js'
+import { PERAN_OPS, PERAN_KEU } from '../lib/kirim.js'
+import { boleh } from '../lib/izin.js'
 import { IS_DEMO } from '../lib/kirim.js'
 
+const BelumBayar = lazy(() => import('../components/kirim/BelumBayar.jsx'))
 const Ringkasan = lazy(() => import('../components/kirim/Ringkasan.jsx'))
 const Daftar = lazy(() => import('../components/kirim/Daftar.jsx'))
 const Buat = lazy(() => import('../components/kirim/Buat.jsx'))
@@ -26,7 +28,7 @@ const Kendala = lazy(() => import('../components/kirim/Lainnya.jsx').then((m) =>
 const PengaturanKirim = lazy(() => import('../components/kirim/Lainnya.jsx').then((m) => ({ default: m.PengaturanKirim })))
 
 export const PERAN_PENGIRIMAN = [...new Set([...PERAN_OPS, ...PERAN_KEU])]
-export const canSeePengiriman = (u) => PERAN_PENGIRIMAN.includes(u?.role)
+export const canSeePengiriman = (u) => ['ringkasan', 'daftar', 'buat', 'ongkir', 'draft', 'alamat', 'label', 'kendala', 'saldo', 'laporan', 'pengaturan'].some((t) => boleh(u, `pengiriman.${t}.lihat`))
 
 export default function Pengiriman({ tab, id }) {
   const { user } = useApp()
@@ -34,16 +36,16 @@ export default function Pengiriman({ tab, id }) {
   const tabs = [
     { value: 'ringkasan', label: 'Ringkasan' },
     { value: 'daftar', label: 'Daftar Pengiriman' },
-    bolehOps(user) && { value: 'buat', label: 'Buat Pengiriman' },
+    { value: 'buat', label: 'Buat Pengiriman' },
     { value: 'ongkir', label: 'Cek Ongkir' },
-    bolehOps(user) && { value: 'draft', label: 'Draft & Impor' },
+    { value: 'draft', label: 'Draft & Impor' },
     { value: 'alamat', label: 'Buku Alamat & Cabang' },
-    bolehOps(user) && { value: 'label', label: 'Label & Serah Terima' },
+    { value: 'label', label: 'Label & Serah Terima' },
     { value: 'kendala', label: 'Kendala, Retur & Klaim' },
-    bolehKeu(user) && { value: 'saldo', label: 'Saldo & Mutasi' },
-    bolehPenting(user) && { value: 'laporan', label: 'Laporan' },
-    bolehPenting(user) && { value: 'pengaturan', label: 'Pengaturan' },
-  ].filter(Boolean)
+    { value: 'saldo', label: 'Saldo & Mutasi' },
+    { value: 'laporan', label: 'Laporan' },
+    { value: 'pengaturan', label: 'Pengaturan' },
+  ].filter((t) => boleh(user, `pengiriman.${t.value}.menu`) && boleh(user, `pengiriman.${t.value}.lihat`))
   const aktif = tabs.some((t) => t.value === tab) ? tab : tab === 'kurir' ? 'pengaturan' : 'ringkasan'
   useEffect(() => { if (tab !== 'daftar') setFilterDaftar(null) }, [tab])
   if (!canSeePengiriman(user)) return <Empty icon={Truck} title="Tidak ada akses" text="Menu Pengiriman untuk tim operasional dan keuangan." />
@@ -55,6 +57,7 @@ export default function Pengiriman({ tab, id }) {
         {IS_DEMO && <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-800 ring-1 ring-amber-200">Demo: data & tarif contoh, tanpa booking sungguhan</span>}
       </div>
       <Tabs tabs={tabs} value={aktif} onChange={pilih} />
+      <Suspense fallback={null}><BelumBayar /></Suspense>
       <Suspense fallback={<p className="flex items-center gap-2 p-4 text-sm"><Loader2 className="h-4 w-4 animate-spin" />Memuat…</p>}>
         {aktif === 'ringkasan' && <Ringkasan bukaDaftar={(f) => { setFilterDaftar(f); go('pengiriman/daftar') }} />}
         {aktif === 'daftar' && <Daftar awal={filterDaftar} onBuat={() => go('pengiriman/buat')} />}

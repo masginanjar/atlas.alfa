@@ -1,0 +1,8 @@
+-- ROLE & HAK AKSES — tahap 2 (Pengiriman). SUDAH dijalankan di live 15 Nov 2026.
+-- 1) Role bawaan diisi ke akses_role dari aturan lama (scripts/seed-akses.mjs → konfigAsal), 10 role.
+-- 2) public.app_lingkup(kode, cabang): cakupan semua / cabang / cabang_pilihan (+ pengecualian pengguna).
+-- 3) Kebijakan tabel kirim, kirim_event, kirim_alamat, kirim_kendala, kirim_mutasi (+ kirim_mutasi_baca baru), kirim_templat
+--    diubah (ALTER POLICY) memakai app_izin('pengiriman.<fitur>.<aksi>') + app_lingkup.
+--    Diuji: jumlah baris terlihat & hak tulis untuk 11 role = identik dengan aturan lama.
+-- 4) Edge function `kirim` v6: semua aksi memeriksa app_izin (buat.tambah, label.cetak, daftar.batal, sinkron.kelola, saldo.lihat).
+-- Fungsi lama app_kirim_ops/app_kirim_keu/app_kirim_cabang tidak dipakai kebijakan lagi (dibiarkan untuk kompatibilitas).

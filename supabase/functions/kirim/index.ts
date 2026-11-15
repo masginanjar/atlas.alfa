@@ -44,12 +44,11 @@ async function jadwalJemput(t: string, rate: string, zona: string) {
 }
 
 // ---------- Modul Pengiriman (tabel kirim) ----------
-const OPS = ["superadmin", "direktur", "admin_pusat", "supervisor", "cs", "helper", "staf_apostille"];
-const KEU = ["superadmin", "direktur", "admin_pusat"]; // fitur penting: batal, tarik semua data
+// Hak akses: katalog izin (Pengaturan → Role & Hak Akses) lewat fungsi database app_izin.
 /** status_id Everpro → tahap internal. Kode yang tidak dikenal → "perlu_dicek" (tidak dipaksa selesai). */
 function tahapDariId(id: unknown): string {
   const n = Number(id);
-  if ([100, 101, 102].includes(n)) return "diproses";
+  if ([100, 101, 102].includes(n)) return "belum_bayar"; // prepaid: order dari API harus dibayar di dashboard Everpro
   if ([200, 201].includes(n)) return "dibuat";
   if (n === 202) return "gagal_resi";
   if ([300, 301].includes(n)) return "menunggu_jemput";
@@ -123,7 +122,8 @@ Deno.serve(async (req: Request) => {
   try {
     const t = await token();
     // ================= MODUL PENGIRIMAN (tabel kirim) =================
-    const peran = String(user?.role ?? "");
+    /** Izin dari katalog Role & Hak Akses (fungsi database app_izin, atas nama pengguna) — default tolak. */
+    const izin = async (k: string) => { if (!user) return false; const { data } = await db.rpc("app_izin", { kode: k }); return data === true; };
     if (aksi === "tarif") return json({ ok: true, ...(await tarifLengkap(t, b)) });
     if (aksi === "lokasi") {
       const q = String(b.q ?? "").trim(), kp = String(b.kodepos ?? "").trim();
@@ -133,7 +133,7 @@ Deno.serve(async (req: Request) => {
     }
     const saldoEverpro = async () => { const x = await ep(t, "/balance/v1/detail"); return { cash: Number(x?.data?.cash ?? 0), nama: x?.data?.name ?? "" }; };
     if (aksi === "saldo") {
-      if (user && !KEU.includes(peran)) return json({ ok: false, alasan: "Khusus Superadmin, Direktur & Admin Pusat" }, 403);
+      if (user && !(await izin("pengiriman.saldo.lihat"))) return json({ ok: false, alasan: "Role Anda tidak diberi izin melihat saldo" }, 403);
       return json({ ok: true, ...(await saldoEverpro()), diambil_at: new Date().toISOString() });
     }
     if (aksi === "jemput_cabang") return json({ ok: true, slot: await jadwalJemput(t, String(b.rate_code), ZONA[String(b.cabang)] ?? "Asia/Jakarta"), zona: ZONA[String(b.cabang)] ?? "Asia/Jakarta" });
@@ -190,7 +190,7 @@ Deno.serve(async (req: Request) => {
     });
 
     if (aksi === "pesan_kirim") {
-      if (!OPS.includes(peran)) return json({ ok: false, alasan: "Peran Anda tidak boleh membuat pengiriman" }, 403);
+      if (!(await izin("pengiriman.buat.tambah"))) return json({ ok: false, alasan: "Role Anda tidak diberi izin membuat pengiriman" }, 403);
       const k = await bacaKirim(String(b.kirim_id ?? "")); const d = k.doc;
       if (!["draft", "siap", "diproses", "gagal_order"].includes(String(d.tahap))) return json({ ok: false, alasan: "Pengiriman ini sudah dibuat sebelumnya" }, 409);
       // 1) Percobaan sebelumnya belum pasti? cek dulu di Everpro, jangan pesan ulang
@@ -257,13 +257,13 @@ Deno.serve(async (req: Request) => {
       }
       const noEv = o.client_order_no || no;
       let awb: string | null = o.awb_number || null;
-      if (!awb) { try { await ep(t, `/shipment/v1/orders/${encodeURIComponent(noEv)}/generate`, { method: "POST", body: "{}" }); } catch (_) { /* resi bisa menyusul (callback AWB) */ } }
-      if (!awb) { try { const a = await ep(t, `/shipment/v1/orders/${encodeURIComponent(noEv)}/awb`); awb = a?.data?.awb_number ?? null; } catch (_) { /* belum ada */ } }
+      if (!awb && Number(o.status_id) >= 200) { try { await ep(t, `/shipment/v1/orders/${encodeURIComponent(noEv)}/generate`, { method: "POST", body: "{}" }); } catch (_) { /* resi bisa menyusul (callback AWB) */ } }
+      if (!awb && Number(o.status_id) >= 200) { try { const a = await ep(t, `/shipment/v1/orders/${encodeURIComponent(noEv)}/awb`); awb = a?.data?.awb_number ?? null; } catch (_) { /* belum ada */ } }
       const u = dariOrder({ ...o, awb_number: awb ?? o.awb_number });
       const patch = {
         ...u, tahap: awb ? (u.tahap === "dibuat" || u.tahap === "diproses" ? "menunggu_jemput" : u.tahap) : (u.tahap === "perlu_dicek" ? "dibuat" : u.tahap),
         dipesan_at: sekarang, dipesan_oleh: user?.name ?? "", everpro: { ...(d.everpro ?? {}), ...u.everpro, client_order_no: noEv, awb: awb ?? "", menunggu_cocok: false }, biaya,
-        riwayat: catat({ riwayat: [...(d.riwayat ?? []), { at: sekarang, by: user?.name ?? "ATLAS", aksi: `Permintaan dikirim ke Everpro` }] }, `Order dibuat di Everpro (${noEv})${awb ? ` · resi ${awb}` : " · menunggu resi"}`),
+        riwayat: catat({ riwayat: [...(d.riwayat ?? []), { at: sekarang, by: user?.name ?? "ATLAS", aksi: `Permintaan dikirim ke Everpro` }] }, `Order dibuat di Everpro (${noEv})${awb ? ` · resi ${awb}` : u.tahap === "belum_bayar" ? " · belum dibayar (bayar di dashboard Everpro)" : " · menunggu resi"}`),
       };
       await patchKirim(k.id, patch);
       if (d.project_id && d.jenis_kirim === "keluar") {
@@ -283,14 +283,15 @@ Deno.serve(async (req: Request) => {
       if (o.awb_number) { try { const tr = await ep(t, `/shipment/v1/orders/${encodeURIComponent(o.awb_number)}/track`); u.timeline = await simpanLacak(k, tr?.data); u.lacak_url = tr?.data?.tracking_url ?? ""; u.dikirim_at = tr?.data?.dispatch_at ?? null; u.diterima_at = tr?.data?.delivered_at ?? null; } catch (_) { /* lacak belum ada */ } }
       if (["menunggu_jemput", "dikirim"].includes(String(d.tahap)) && u.tahap === "dibuat") u.tahap = d.tahap; // jangan mundur
       u.everpro = { ...(d.everpro ?? {}), ...u.everpro, menunggu_cocok: false };
-      if (!u.everpro.awb && u.everpro.client_order_no) { try { const a = await ep(t, `/shipment/v1/orders/${encodeURIComponent(u.everpro.client_order_no)}/awb`); if (a?.data?.awb_number) { u.everpro.awb = a.data.awb_number; if (["dibuat", "diproses"].includes(u.tahap)) u.tahap = "menunggu_jemput"; } } catch (_) { /* belum ada */ } }
-      if (d.tahap !== u.tahap) u.riwayat = catat(d, `Status diperbarui dari Everpro: ${o.status ?? u.tahap}`);
+      if (!u.everpro.awb && u.everpro.client_order_no && u.tahap !== "belum_bayar") { try { if ([200, 201].includes(Number(o.status_id))) await ep(t, `/shipment/v1/orders/${encodeURIComponent(u.everpro.client_order_no)}/generate`, { method: "POST", body: "{}" }).catch(() => null); const a = await ep(t, `/shipment/v1/orders/${encodeURIComponent(u.everpro.client_order_no)}/awb`); if (a?.data?.awb_number) { u.everpro.awb = a.data.awb_number; if (["dibuat", "diproses"].includes(u.tahap)) u.tahap = "menunggu_jemput"; } } catch (_) { /* belum ada */ } }
+      if (u.everpro.awb && ["dibuat", "diproses"].includes(u.tahap)) u.tahap = "menunggu_jemput";
+      if (d.tahap !== u.tahap) u.riwayat = catat(d, d.tahap === "belum_bayar" && u.tahap !== "belum_bayar" ? `Sudah dibayar di Everpro${u.everpro.awb ? ` · resi ${u.everpro.awb}` : ""}` : `Status diperbarui dari Everpro: ${o.status ?? u.tahap}`);
       await patchKirim(k.id, u);
       return json({ ok: true, ...u });
     }
 
     if (aksi === "label_kirim") {
-      if (!OPS.includes(peran)) return json({ ok: false, alasan: "Peran Anda tidak boleh mencetak label" }, 403);
+      if (!(await izin("pengiriman.label.cetak"))) return json({ ok: false, alasan: "Role Anda tidak diberi izin mencetak label" }, 403);
       const ids = (Array.isArray(b.kirim_ids) ? b.kirim_ids : []).map(String).slice(0, 50);
       const rows: { id: string; doc: Record<string, any> }[] = [];
       for (const id of ids) { try { rows.push(await bacaKirim(id)); } catch (_) { /* lewati */ } }
@@ -306,7 +307,7 @@ Deno.serve(async (req: Request) => {
     }
 
     if (aksi === "batal_kirim") {
-      if (!KEU.includes(peran)) return json({ ok: false, alasan: "Pembatalan khusus Superadmin, Direktur & Admin Pusat" }, 403);
+      if (!(await izin("pengiriman.daftar.batal"))) return json({ ok: false, alasan: "Role Anda tidak diberi izin membatalkan pengiriman" }, 403);
       const k = await bacaKirim(String(b.kirim_id ?? "")); const d = k.doc; const id = d.everpro?.awb || d.everpro?.client_order_no;
       if (!id) return json({ ok: false, alasan: "Belum ada order Everpro" });
       const alasan = String(b.alasan || "").trim(); if (alasan.length < 5) return json({ ok: false, alasan: "Tulis alasan pembatalan (min. 5 huruf)" });
@@ -316,7 +317,7 @@ Deno.serve(async (req: Request) => {
     }
 
     if (aksi === "sinkron_semua") {
-      if (!KEU.includes(peran)) return json({ ok: false, alasan: "Khusus Superadmin, Direktur & Admin Pusat" }, 403);
+      if (!(await izin("pengiriman.sinkron.kelola"))) return json({ ok: false, alasan: "Role Anda tidak diberi izin menarik data Everpro" }, 403);
       const dari = String(b.dari || tgPakai(new Date(Date.now() - 30 * 864e5))), sampai = String(b.sampai || tgPakai(new Date()));
       const { data: setRow } = await admin.from("app_settings").select("doc").eq("id", "alamat_kirim").maybeSingle();
       const cab = Object.entries((setRow?.doc?.cabang ?? {}) as Record<string, any>);

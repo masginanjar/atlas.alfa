@@ -5,9 +5,10 @@ import { useApp } from '../../lib/store.jsx'
 import { Button, Input, Select, Sheet, Empty, Textarea, Tabs, cx } from '../ui.jsx'
 import { rupiah } from '../../lib/format.js'
 import { go } from '../../lib/router.js'
-import { kelompokTahap, labelTahap, TAHAP, JENIS_KIRIM, PENANGGUNG, fmtWaktu, zonaCabang, bolehOps, nomorKode, normalHp, IS_DEMO, resiOf, isEverpro, bolehPenting, PENYEDIA, TAHAP_MANUAL } from '../../lib/kirim.js'
+import { kelompokTahap, labelTahap, TAHAP, JENIS_KIRIM, PENANGGUNG, fmtWaktu, zonaCabang, bolehOps, nomorKode, normalHp, IS_DEMO, resiOf, isEverpro, bolehPenting, bolehIzin, PENYEDIA, TAHAP_MANUAL } from '../../lib/kirim.js'
 import { sinkronKirim, batalKirim, sinkronSemua } from '../../lib/kirimApi.js'
 import CetakLabel from './CetakLabel.jsx'
+import { aksesField } from '../../lib/izin.js'
 import { bukuExcel } from '../UnduhData.jsx'
 import { drive } from '../../lib/integrations.js'
 import { saveBlob } from '../../lib/download.js'
@@ -63,6 +64,8 @@ export default function Daftar({ awal, onBuat }) {
   const [buka, setBuka] = useState(null)
   const [sibuk, setSibuk] = useState('')
   const [cetak, setCetak] = useState(null)
+  const rupiahB = rpBiaya(user)
+  const [filterHp, setFilterHp] = useState(false)
   const PER = 25
 
   const hasil = useMemo(() => {
@@ -75,11 +78,13 @@ export default function Daftar({ awal, onBuat }) {
   const totalHal = Math.max(1, Math.ceil(hasil.length / PER))
   useEffect(() => { setHal(1) }, [f, urut])
   const opsi = (fn) => [...new Set(kirim.map(fn).filter(Boolean))].sort()
-  const tampil = (k) => kolom.includes(k)
+  const tampil = (k) => kolom.includes(k) && !(['biaya', 'cashback'].includes(k) && aksesField(user, 'pengiriman.biaya') === 'sembunyi')
   const salin = async (t) => { try { await navigator.clipboard.writeText(t); notify('Disalin') } catch { notify('Gagal menyalin', 'err') } }
   const ganti = (id) => setPilih((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
   const semua = halaman.length > 0 && halaman.every((r) => pilih.has(r.id))
 
+  const nFilter = ['dari', 'sampai', 'kurir', 'layanan', 'label', 'bayar', 'pic', 'penyedia'].filter((k) => f[k]).length + (f.tahap?.length ? 1 : 0) + (urut !== 'baru' ? 1 : 0)
+  const hpSembunyi = filterHp ? '' : ' max-md:hidden'
   const sinkronAll = async () => {
     setSibuk('sinkron'); const x = await sinkronSemua(f.dari, f.sampai); setSibuk('')
     if (!x.ok) return notify(x.alasan || 'Gagal menarik data Everpro', 'err')
@@ -87,7 +92,7 @@ export default function Daftar({ awal, onBuat }) {
   }
   const unduh = async () => {
     const head = ['Kode', 'Order Everpro', 'Resi', 'Tanggal', 'Status', 'Status asli Everpro', 'Cabang', 'Jenis', 'Pelanggan', 'Penerima', 'Kota tujuan', 'Kurir', 'Layanan', 'Biaya estimasi', 'Biaya aktual', 'Cashback estimasi', 'Penanggung jawab', 'Sumber data', 'Diperbarui']
-    const rows = hasil.map((r) => [r.kode, r.everpro?.client_order_no || '', resiOf(r) || '', tgl10(waktuBaris(r)), labelTahap(r.tahap), r.status_everpro || '', r.cabang || '', JENIS_KIRIM[r.jenis_kirim] || '', r.pelanggan || '', r.penerima?.nama || '', r.penerima?.lokasi || r.penerima?.kelurahan || '', r.kurir?.kurir || '', r.kurir?.layanan || '', Math.round(r.biaya?.total || 0), Math.round(r.biaya_aktual?.total || 0), Math.round(r.biaya?.cashback_estimasi || 0), r.pic || r.dipesan_oleh || '', r.sumber_status || r.sumber || '', r.diperbarui_at || ''])
+    const rows = hasil.map((r) => [r.kode, r.everpro?.client_order_no || '', resiOf(r) || '', tgl10(waktuBaris(r)), labelTahap(r.tahap), r.status_everpro || '', r.cabang || '', JENIS_KIRIM[r.jenis_kirim] || '', r.pelanggan || '', r.penerima?.nama || '', r.penerima?.lokasi || r.penerima?.kelurahan || '', r.kurir?.kurir || '', r.kurir?.layanan || '', ...(aksesField(user, 'pengiriman.biaya') === 'lihat' || aksesField(user, 'pengiriman.biaya') === 'edit' ? [Math.round(r.biaya?.total || 0), Math.round(r.biaya_aktual?.total || 0), Math.round(r.biaya?.cashback_estimasi || 0)] : [rupiahB(0), rupiahB(0), rupiahB(0)]), r.pic || r.dipesan_oleh || '', r.sumber_status || r.sumber || '', r.diperbarui_at || ''])
     await saveBlob(`Pengiriman ${f.dari || 'awal'} sd ${f.sampai || 'kini'}.xlsx`, await bukuExcel([{ judul: 'Pengiriman', head, rows }]))
   }
 
@@ -96,10 +101,10 @@ export default function Daftar({ awal, onBuat }) {
       <div className="flex flex-wrap items-center gap-2">
         <Tabs value={f.tab} onChange={(v) => setF((x) => ({ ...x, tab: v, tahap: undefined }))} tabs={[['semua', 'Semua'], ['berlangsung', 'Berlangsung'], ['selesai', 'Selesai'], ['draft', 'Draft']].map(([value, label]) => ({ value, label, count: jumlahTab[value] || 0 }))} />
         <div className="ml-auto flex flex-wrap gap-1.5">
-          {bolehOps(user) && <Button size="sm" onClick={() => onBuat?.()}><Package className="h-4 w-4" />Buat pengiriman</Button>}
-          {bolehPenting(user) && <Button size="sm" variant="outline" loading={sibuk === 'sinkron'} onClick={sinkronAll} title="Tarik order & status terbaru dari akun Everpro"><RefreshCw className="h-4 w-4" />Tarik dari Everpro</Button>}
-          <Button size="sm" variant="outline" onClick={unduh} disabled={!hasil.length}><Download className="h-4 w-4" />Excel</Button>
-          <Button size="sm" variant="ghost" onClick={() => setAtur(true)} aria-label="Pilih kolom"><Columns3 className="h-4 w-4" /></Button>
+          {bolehIzin(user, 'pengiriman.buat.tambah') && <Button size="sm" onClick={() => onBuat?.()}><Package className="h-4 w-4" />Buat pengiriman</Button>}
+          {bolehIzin(user, 'pengiriman.sinkron.kelola') && <Button size="sm" variant="outline" loading={sibuk === 'sinkron'} onClick={sinkronAll} title="Tarik order & status terbaru dari akun Everpro"><RefreshCw className="h-4 w-4" />Tarik dari Everpro</Button>}
+          {bolehIzin(user, 'pengiriman.daftar.ekspor') && <Button size="sm" variant="outline" onClick={unduh} disabled={!hasil.length}><Download className="h-4 w-4" />Excel</Button>}
+          <Button size="sm" variant="ghost" className="max-md:hidden" onClick={() => setAtur(true)} aria-label="Pilih kolom"><Columns3 className="h-4 w-4" /></Button>
         </div>
       </div>
       {f.tahap?.length > 0 && <p className="text-xs text-ink-soft">Saringan dari ringkasan: <b>{f.tahap.map(labelTahap).join(', ')}</b> <button type="button" className="ml-1 underline" onClick={() => setF((x) => ({ ...x, tahap: undefined }))}>hapus</button></p>}
@@ -108,26 +113,42 @@ export default function Daftar({ awal, onBuat }) {
         <label className="text-[11px] font-semibold text-ink-mute sm:col-span-2">Cari order / resi / resi retur / pelanggan / No. HP
           <div className="relative mt-0.5"><Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-mute" /><Input value={f.q} onChange={(e) => setF((x) => ({ ...x, q: e.target.value }))} className="pl-8" placeholder="KRM-… · ATLAS-… · JO… · nama · 0812…" data-cari /></div>
         </label>
-        <label className="text-[11px] font-semibold text-ink-mute">Dari<Input type="date" value={f.dari || ''} onChange={(e) => setF((x) => ({ ...x, dari: e.target.value }))} className="mt-0.5" /></label>
-        <label className="text-[11px] font-semibold text-ink-mute">Sampai<Input type="date" value={f.sampai || ''} onChange={(e) => setF((x) => ({ ...x, sampai: e.target.value }))} className="mt-0.5" /></label>
-        <label className="text-[11px] font-semibold text-ink-mute">Kurir<Select value={f.kurir || ''} onChange={(e) => setF((x) => ({ ...x, kurir: e.target.value, layanan: '' }))} className="mt-0.5"><option value="">Semua</option>{opsi((r) => r.kurir?.kurir).map((k) => <option key={k}>{k}</option>)}</Select></label>
-        <label className="text-[11px] font-semibold text-ink-mute">Layanan<Select value={f.layanan || ''} onChange={(e) => setF((x) => ({ ...x, layanan: e.target.value }))} className="mt-0.5"><option value="">Semua</option>{opsi((r) => (!f.kurir || r.kurir?.kurir === f.kurir) && r.kurir?.layanan).map((k) => <option key={k}>{k}</option>)}</Select></label>
-        <label className="text-[11px] font-semibold text-ink-mute">Status<Select value={f.tahap?.length === 1 ? f.tahap[0] : ''} onChange={(e) => setF((x) => ({ ...x, tahap: e.target.value ? [e.target.value] : undefined }))} className="mt-0.5"><option value="">Semua</option>{Object.keys(TAHAP).map((k) => <option key={k} value={k}>{labelTahap(k)}</option>)}</Select></label>
-        <label className="text-[11px] font-semibold text-ink-mute">Label<Select value={f.label || ''} onChange={(e) => setF((x) => ({ ...x, label: e.target.value }))} className="mt-0.5"><option value="">Semua</option><option value="belum">Punya resi, label belum dibuka</option><option value="sudah">Label sudah dibuka/diunduh</option></Select></label>
-        <label className="text-[11px] font-semibold text-ink-mute">Ongkir ditanggung<Select value={f.bayar || ''} onChange={(e) => setF((x) => ({ ...x, bayar: e.target.value }))} className="mt-0.5"><option value="">Semua</option>{Object.entries(PENANGGUNG).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</Select></label>
-        <label className="text-[11px] font-semibold text-ink-mute">Pembuat / PIC<Select value={f.pic || ''} onChange={(e) => setF((x) => ({ ...x, pic: e.target.value }))} className="mt-0.5"><option value="">Semua</option>{opsi((r) => r.pic || r.dipesan_oleh).map((k) => <option key={k}>{k}</option>)}</Select></label>
-        <label className="text-[11px] font-semibold text-ink-mute">Ekspedisi<Select value={f.penyedia || ''} onChange={(e) => setF((x) => ({ ...x, penyedia: e.target.value }))} className="mt-0.5"><option value="">Semua</option>{Object.entries(PENYEDIA).map(([k, v]) => <option key={k} value={k}>{v.singkat}</option>)}</Select></label>
-        <label className="text-[11px] font-semibold text-ink-mute">Urutkan<Select value={urut} onChange={(e) => setUrut(e.target.value)} className="mt-0.5"><option value="baru">Terbaru</option><option value="lama">Terlama</option><option value="mahal">Biaya tertinggi</option><option value="murah">Biaya terendah</option></Select></label>
+        <label className={'text-[11px] font-semibold text-ink-mute' + hpSembunyi}>Dari<Input type="date" value={f.dari || ''} onChange={(e) => setF((x) => ({ ...x, dari: e.target.value }))} className="mt-0.5" /></label>
+        <label className={'text-[11px] font-semibold text-ink-mute' + hpSembunyi}>Sampai<Input type="date" value={f.sampai || ''} onChange={(e) => setF((x) => ({ ...x, sampai: e.target.value }))} className="mt-0.5" /></label>
+        <label className={'text-[11px] font-semibold text-ink-mute' + hpSembunyi}>Kurir<Select value={f.kurir || ''} onChange={(e) => setF((x) => ({ ...x, kurir: e.target.value, layanan: '' }))} className="mt-0.5"><option value="">Semua</option>{opsi((r) => r.kurir?.kurir).map((k) => <option key={k}>{k}</option>)}</Select></label>
+        <label className={'text-[11px] font-semibold text-ink-mute' + hpSembunyi}>Layanan<Select value={f.layanan || ''} onChange={(e) => setF((x) => ({ ...x, layanan: e.target.value }))} className="mt-0.5"><option value="">Semua</option>{opsi((r) => (!f.kurir || r.kurir?.kurir === f.kurir) && r.kurir?.layanan).map((k) => <option key={k}>{k}</option>)}</Select></label>
+        <label className={'text-[11px] font-semibold text-ink-mute' + hpSembunyi}>Status<Select value={f.tahap?.length === 1 ? f.tahap[0] : ''} onChange={(e) => setF((x) => ({ ...x, tahap: e.target.value ? [e.target.value] : undefined }))} className="mt-0.5"><option value="">Semua</option>{Object.keys(TAHAP).map((k) => <option key={k} value={k}>{labelTahap(k)}</option>)}</Select></label>
+        <label className={'text-[11px] font-semibold text-ink-mute' + hpSembunyi}>Label<Select value={f.label || ''} onChange={(e) => setF((x) => ({ ...x, label: e.target.value }))} className="mt-0.5"><option value="">Semua</option><option value="belum">Punya resi, label belum dibuka</option><option value="sudah">Label sudah dibuka/diunduh</option></Select></label>
+        <label className={'text-[11px] font-semibold text-ink-mute' + hpSembunyi}>Ongkir ditanggung<Select value={f.bayar || ''} onChange={(e) => setF((x) => ({ ...x, bayar: e.target.value }))} className="mt-0.5"><option value="">Semua</option>{Object.entries(PENANGGUNG).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</Select></label>
+        <label className={'text-[11px] font-semibold text-ink-mute' + hpSembunyi}>Pembuat / PIC<Select value={f.pic || ''} onChange={(e) => setF((x) => ({ ...x, pic: e.target.value }))} className="mt-0.5"><option value="">Semua</option>{opsi((r) => r.pic || r.dipesan_oleh).map((k) => <option key={k}>{k}</option>)}</Select></label>
+        <label className={'text-[11px] font-semibold text-ink-mute' + hpSembunyi}>Ekspedisi<Select value={f.penyedia || ''} onChange={(e) => setF((x) => ({ ...x, penyedia: e.target.value }))} className="mt-0.5"><option value="">Semua</option>{Object.entries(PENYEDIA).map(([k, v]) => <option key={k} value={k}>{v.singkat}</option>)}</Select></label>
+        <label className={'text-[11px] font-semibold text-ink-mute' + hpSembunyi}>Urutkan<Select value={urut} onChange={(e) => setUrut(e.target.value)} className="mt-0.5"><option value="baru">Terbaru</option><option value="lama">Terlama</option><option value="mahal">Biaya tertinggi</option><option value="murah">Biaya terendah</option></Select></label>
+        <button type="button" onClick={() => setFilterHp((v) => !v)} aria-expanded={filterHp} className="flex min-h-11 items-center justify-center gap-1.5 rounded-xl text-[13px] font-semibold text-brand ring-1 ring-slate-200 md:hidden" data-aksi="filter-hp">{filterHp ? 'Sembunyikan filter' : `Filter & urutan${nFilter ? ` (${nFilter} aktif)` : ''}`}</button>
       </Kotak>
 
       <div className="flex flex-wrap items-center gap-2 text-xs text-ink-mute">
-        <span>{hasil.length} pengiriman · biaya estimasi {rupiah(hasil.filter((r) => r.tahap !== 'dibatalkan').reduce((a, r) => a + Number(r.biaya?.total || 0), 0))}</span>
+        <span>{hasil.length} pengiriman · biaya estimasi {rupiahB(hasil.filter((r) => r.tahap !== 'dibatalkan').reduce((a, r) => a + Number(r.biaya?.total || 0), 0))}</span>
         {sinkron?.at && <span>· tarik Everpro terakhir {fmtWaktu(sinkron.at)} oleh {sinkron.oleh}</span>}
-        <Button size="sm" className="ml-auto" disabled={!pilih.size} onClick={() => setCetak(kirim.filter((r) => pilih.has(r.id)))} data-aksi="label-massal"><Printer className="h-4 w-4" />Cetak label{pilih.size ? ` (${pilih.size})` : ''}</Button>
+        <Button size="sm" className="ml-auto max-md:hidden" disabled={!pilih.size} onClick={() => setCetak(kirim.filter((r) => pilih.has(r.id)))} data-aksi="label-massal"><Printer className="h-4 w-4" />Cetak label{pilih.size ? ` (${pilih.size})` : ''}</Button>
       </div>
 
       {!hasil.length ? <Empty icon={Package} title="Belum ada pengiriman" text={kirim.length ? 'Tidak ada yang cocok dengan saringan.' : 'Buat pengiriman baru, atau tarik data dari Everpro.'} /> : (
-        <div className="overflow-x-auto rounded-2xl ring-1 ring-[#E7E8F0] dark:ring-white/10">
+        <>
+        {/* HP: kartu ringkas (tabel tetap untuk tablet/desktop) */}
+        <ul className="grid gap-2 md:hidden" data-kartu-kirim>
+          {halaman.map((r) => (
+            <li key={r.id} className="flex rounded-2xl bg-white ring-1 ring-[#E7E8F0] dark:bg-white/5 dark:ring-white/10" data-baris-kirim={r.id}>
+              <label className="grid w-11 shrink-0 place-items-start justify-center pt-3.5"><input type="checkbox" className="h-5 w-5" aria-label={`Pilih ${r.kode}`} checked={pilih.has(r.id)} onChange={() => ganti(r.id)} /></label>
+              <button type="button" onClick={() => setBuka(r.id)} className="min-w-0 flex-1 py-3 pr-3 text-left">
+                <div className="flex flex-wrap items-start justify-between gap-x-2 gap-y-1"><span className="min-w-0 break-all text-[15px] font-bold">{r.kode || r.everpro?.client_order_no || '-'}</span><BadgeTahap tahap={r.tahap} /></div>
+                <p className="mt-0.5 truncate text-[13px]">{r.penerima?.nama || '-'}<span className="text-ink-mute"> · {r.cabang || 'Cabang ?'}</span></p>
+                <div className="mt-1.5 flex items-center gap-2 text-[12px] text-ink-soft">{r.kurir?.kurir && <LogoKurir nama={r.kurir.kurir} logo={r.kurir.logo} />}<span className="min-w-0 truncate">{r.kurir?.kurir || 'Kurir belum dipilih'} {r.kurir?.layanan || ''}</span><span className="ml-auto shrink-0 font-semibold text-ink">{rupiahB(r.biaya_aktual?.total || r.biaya?.total || 0)}</span></div>
+                <div className="mt-1 flex items-center justify-between gap-2 text-[12px] text-ink-mute"><span className="truncate font-mono font-semibold text-ink-soft">{resiOf(r) || 'resi belum ada'}</span><span className="shrink-0">{fmtWaktu(waktuBaris(r), zonaCabang(r.cabang))}</span></div>
+              </button>
+            </li>
+          ))}
+        </ul>
+        <div className="overflow-x-auto rounded-2xl ring-1 ring-[#E7E8F0] max-md:hidden dark:ring-white/10">
           <table className="w-full min-w-[900px] bg-white text-left text-[13px] dark:bg-white/5">
             <thead className="bg-slate-50 text-[11px] uppercase tracking-wide text-ink-mute dark:bg-white/5">
               <tr>
@@ -147,14 +168,22 @@ export default function Daftar({ awal, onBuat }) {
                   {tampil('paket') && <td className="p-2 text-[12px]">{r.paket?.isi || '-'}<div className="text-[11px] text-ink-mute">{r.paket?.berat_gram ? `${r.paket.berat_gram} g` : ''}{r.paket?.jumlah > 1 ? ` · ${r.paket.jumlah} koli` : ''}</div></td>}
                   {tampil('kurir') && <td className="p-2 text-[12px]"><div className="flex items-center gap-2">{r.kurir?.kurir && <LogoKurir nama={r.kurir.kurir} logo={r.kurir.logo} />}<div>{r.kurir?.kurir || '-'}<div className="text-[11px] text-ink-mute">{r.kurir?.layanan}{r.kurir?.jenis ? ` · ${r.kurir.jenis === 'DROP' ? 'drop-off' : 'pickup'}` : ''}</div></div></div></td>}
                   {tampil('resi') && <td className="p-2">{resiOf(r) ? <button type="button" className="inline-flex items-center gap-1 font-mono text-[12px] font-bold hover:text-brand" onClick={() => salin(resiOf(r))} title="Salin resi"><Copy className="h-3 w-3" />{resiOf(r)}</button> : <span className="text-[11px] text-ink-mute">belum ada</span>}</td>}
-                  {tampil('biaya') && <td className="whitespace-nowrap p-2 text-[12px]">{rupiah(r.biaya_aktual?.total || r.biaya?.total || 0)}<div className="text-[10px] text-ink-mute">{r.biaya_aktual?.total ? 'aktual' : r.biaya?.total ? 'estimasi' : ''}</div></td>}
-                  {tampil('cashback') && <td className="whitespace-nowrap p-2 text-[12px]">{r.biaya_aktual?.cashback ? rupiah(r.biaya_aktual.cashback) : r.biaya?.cashback_estimasi ? <span className="text-ink-mute">± {rupiah(r.biaya.cashback_estimasi)} (estimasi)</span> : '-'}</td>}
+                  {tampil('biaya') && <td className="whitespace-nowrap p-2 text-[12px]">{rupiahB(r.biaya_aktual?.total || r.biaya?.total || 0)}<div className="text-[10px] text-ink-mute">{r.biaya_aktual?.total ? 'aktual' : r.biaya?.total ? 'estimasi' : ''}</div></td>}
+                  {tampil('cashback') && <td className="whitespace-nowrap p-2 text-[12px]">{r.biaya_aktual?.cashback ? rupiahB(r.biaya_aktual.cashback) : r.biaya?.cashback_estimasi ? <span className="text-ink-mute">± {rupiahB(r.biaya.cashback_estimasi)} (estimasi)</span> : '-'}</td>}
                   {tampil('pic') && <td className="p-2 text-[12px]">{r.pic || r.dipesan_oleh || '-'}</td>}
                   <td className="p-2"><Button size="sm" variant="outline" onClick={() => setBuka(r.id)}>Detail</Button></td>
                 </tr>
               ))}
             </tbody>
           </table>
+        </div>
+        </>
+      )}
+      {pilih.size > 0 && (
+        <div className="fixed inset-x-3 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-30 flex items-center gap-2 rounded-2xl bg-[#141B34] p-2 pl-4 text-white shadow-xl md:hidden" data-bar-pilih>
+          <span className="mr-auto text-[13px] font-semibold">{pilih.size} dipilih</span>
+          <button type="button" className="min-h-11 rounded-xl px-3 text-[13px] font-semibold text-white/80" onClick={() => setPilih(new Set())}>Batal</button>
+          <button type="button" className="inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-white px-3 text-[13px] font-bold text-[#141B34]" onClick={() => setCetak(kirim.filter((r) => pilih.has(r.id)))}><Printer className="h-4 w-4" />Cetak label</button>
         </div>
       )}
       {totalHal > 1 && (
@@ -184,6 +213,9 @@ export const TEMPLAT_PESAN = {
   terkirim: (r) => `Halo ${r.penerima?.nama || 'Bapak/Ibu'}, menurut data kurir dokumen Anda (resi ${resiOf(r) || '-'}) sudah diterima. Mohon dicek kembali, terima kasih.`,
 }
 
+/** Nominal biaya pengiriman mengikuti akses field `pengiriman.biaya` (Role & Hak Akses). */
+const rpBiaya = (user) => { const t = aksesField(user, 'pengiriman.biaya'); return (n) => (t === 'sembunyi' ? '—' : t === 'samar' ? 'Rp •••' : rupiah(n)) }
+
 export function DetailKirim({ id, onClose }) {
   const { user, data, notify, save, ask } = useApp()
   const r = (data.kirim || []).find((x) => x.id === id)
@@ -191,6 +223,7 @@ export function DetailKirim({ id, onClose }) {
   const kendala = (data.kirim_kendala || []).filter((k) => k.kirim_id === id)
   const [sibuk, setSibuk] = useState('')
   const [cetak, setCetak] = useState(null)
+  const rupiahB = rpBiaya(user)
   const [batal, setBatal] = useState(null)
   const [pesan, setPesan] = useState('resi')
   const [kdl, setKdl] = useState(null)
@@ -231,6 +264,7 @@ export function DetailKirim({ id, onClose }) {
   return (
     <Sheet open onClose={onClose} side wide title={r.kode || r.everpro?.client_order_no || 'Pengiriman'} subtitle={<span className="inline-flex flex-wrap items-center gap-2"><BadgeTahap tahap={r.tahap} /><BadgeSumber sumber={r.sumber_status || r.sumber} waktu={r.diperbarui_at} /></span>}>
       <div className="space-y-4 text-sm" data-detail-kirim>
+        {r.tahap === 'belum_bayar' && <div className="flex flex-wrap items-center gap-2 rounded-lg bg-rose-50 px-3 py-2 text-[12px] text-rose-800 ring-1 ring-rose-200"><span className="mr-auto">Order <b>{r.everpro?.client_order_no}</b> sudah masuk Everpro tapi <b>belum dibayar</b> — kurir belum dipanggil. Bayar di dashboard Everpro; resi diambil otomatis setelahnya.</span><a href={EVERPRO_DASHBOARD} target="_blank" rel="noopener noreferrer" className="inline-flex h-8 items-center gap-1 rounded-lg bg-rose-600 px-2.5 font-semibold text-white"><ExternalLink className="h-3.5 w-3.5" />Bayar di Everpro</a></div>}
         {r.everpro?.menunggu_cocok && <p className="rounded-lg bg-amber-50 px-3 py-2 text-[12px] text-amber-800 ring-1 ring-amber-200">Order sudah diterima Everpro, nomor order & resi sedang menyusul. Tekan <b>Lacak / perbarui</b> beberapa saat lagi.</p>}
         <div className="flex flex-wrap gap-1.5">
           {r.tahap === 'draft' || r.tahap === 'siap' || r.tahap === 'gagal_order' ? ops && <Button size="sm" onClick={() => { onClose(); go(`pengiriman/buat/${r.id}`) }}>Lanjutkan draft</Button> : null}
@@ -240,7 +274,7 @@ export function DetailKirim({ id, onClose }) {
           {resiOf(r) && ops && <Button size="sm" variant="outline" onClick={() => setCetak([r])} data-aksi="cetak-label-satu"><Printer className="h-4 w-4" />Cetak label</Button>}
           {ops && <Button size="sm" variant="outline" onClick={duplikat}><Files className="h-4 w-4" />Duplikasi jadi draft</Button>}
           {ops && <Button size="sm" variant="outline" onClick={() => setKdl({ kirim_id: r.id, cabang: r.cabang, jenis: 'kendala', status: 'terbuka', judul: '', pic: user.name, catatan: '' })}><AlertTriangle className="h-4 w-4" />Catat kendala</Button>}
-          {bisaBatal && bolehPenting(user) && isEverpro(r) && <Button size="sm" variant="outline" onClick={() => setBatal('')}><Ban className="h-4 w-4" />Ajukan pembatalan</Button>}
+          {bisaBatal && bolehIzin(user, 'pengiriman.daftar.batal') && isEverpro(r) && <Button size="sm" variant="outline" onClick={() => setBatal('')}><Ban className="h-4 w-4" />Ajukan pembatalan</Button>}
           {isEverpro(r) && <a href={EVERPRO_DASHBOARD} target="_blank" rel="noopener noreferrer" className="inline-flex h-9 items-center gap-1 rounded-lg px-2 text-[13px] font-semibold text-ink-soft ring-1 ring-slate-200 hover:ring-brand"><ExternalLink className="h-4 w-4" />Buka Everpro</a>}
           {r.project_id && <Button size="sm" variant="ghost" onClick={() => { onClose(); go(`projects/${r.project_id}`) }}><ArrowUpRight className="h-4 w-4" />Project {r.invoice_no}</Button>}
         </div>
@@ -262,10 +296,10 @@ export function DetailKirim({ id, onClose }) {
           {r.kurir?.kurir && <p className="mb-1 flex items-center gap-2 text-[13px] font-semibold"><LogoKurir nama={r.kurir.kurir} logo={r.kurir.logo} ukuran={32} />{r.kurir.kurir} {r.kurir.layanan}{r.kurir.jenis ? <span className="font-normal text-ink-mute">· {r.kurir.jenis === 'DROP' ? 'drop-off' : 'pickup'}</span> : null}</p>}
           <p className="text-[12px]">{r.paket?.isi || '-'} · {r.paket?.jumlah || 1} koli · {r.paket?.berat_gram || '-'} g{r.paket?.p ? ` · ${r.paket.p}×${r.paket.l}×${r.paket.t} cm` : ''}{r.paket?.nilai ? ` · nilai ${rupiah(r.paket.nilai)}` : ''}{r.paket?.asuransi ? ' · asuransi' : ''}{r.paket?.cod ? ` · COD ${rupiah(r.paket.cod_nilai)}` : ''}</p>
           <table className="mt-2 w-full text-[12px]"><tbody>
-            {[['Ongkir', r.biaya?.ongkir, r.biaya_aktual?.ongkir], ['Asuransi', r.biaya?.asuransi, r.biaya_aktual?.asuransi], ['Biaya tambahan', r.biaya?.biaya_tambahan, null], ['Diskon', null, r.biaya_aktual?.diskon], ['Biaya COD', null, r.biaya_aktual?.biaya_cod], ['Total dibayar', r.biaya?.total, r.biaya_aktual?.total]].map(([k, a, b]) => (a || b) ? <tr key={k}><td className="py-0.5 text-ink-soft">{k}</td><td className="text-right">{a != null ? rupiah(a) : '-'}</td><td className="text-right font-semibold">{b != null ? rupiah(b) : '-'}</td></tr> : null)}
+            {[['Ongkir', r.biaya?.ongkir, r.biaya_aktual?.ongkir], ['Asuransi', r.biaya?.asuransi, r.biaya_aktual?.asuransi], ['Biaya tambahan', r.biaya?.biaya_tambahan, null], ['Diskon', null, r.biaya_aktual?.diskon], ['Biaya COD', null, r.biaya_aktual?.biaya_cod], ['Total dibayar', r.biaya?.total, r.biaya_aktual?.total]].map(([k, a, b]) => (a || b) ? <tr key={k}><td className="py-0.5 text-ink-soft">{k}</td><td className="text-right">{a != null ? rupiahB(a) : '-'}</td><td className="text-right font-semibold">{b != null ? rupiahB(b) : '-'}</td></tr> : null)}
             <tr><td /><td className="text-right text-[10px] text-ink-mute">saat dipesan{r.biaya?.tarif_at ? ` (${fmtWaktu(r.biaya.tarif_at, zona)})` : ''}</td><td className="text-right text-[10px] text-ink-mute">aktual Everpro</td></tr>
           </tbody></table>
-          <p className="mt-1 text-[11px] text-ink-mute">Cashback dicatat terpisah (tidak mengurangi biaya): estimasi {rupiah(r.biaya?.cashback_estimasi || 0)}{r.biaya_aktual?.cashback ? ` · tercatat Everpro ${rupiah(r.biaya_aktual.cashback)}` : ''}.</p>
+          <p className="mt-1 text-[11px] text-ink-mute">Cashback dicatat terpisah (tidak mengurangi biaya): estimasi {rupiahB(r.biaya?.cashback_estimasi || 0)}{r.biaya_aktual?.cashback ? ` · tercatat Everpro ${rupiahB(r.biaya_aktual.cashback)}` : ''}.</p>
         </Kotak>
 
         <div>

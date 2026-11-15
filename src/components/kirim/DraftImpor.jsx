@@ -7,7 +7,7 @@ import { useApp } from '../../lib/store.jsx'
 import { Button, Select, Empty, Tabs, cx } from '../ui.jsx'
 import { go } from '../../lib/router.js'
 import { BRANCHES } from '../../config/access.js'
-import { normalHp, kodeposOk, nomorKode, bolehOps, bolehPenting, fmtWaktu, resiOf } from '../../lib/kirim.js'
+import { normalHp, kodeposOk, nomorKode, bolehOps, bolehPenting, bolehIzin, fmtWaktu, resiOf } from '../../lib/kirim.js'
 import { useKirim, Kotak, Catatan, BadgeTahap } from './bersama.jsx'
 import { bacaFile, tebakPeta, angka, unduhCsv } from './impor.js'
 
@@ -42,7 +42,7 @@ export default function DraftImpor() {
   const draft = kirim.filter((r) => ['draft', 'siap', 'gagal_order'].includes(r.tahap)).sort((a, b) => String(b.updated_at || b.created_at).localeCompare(String(a.updated_at || a.created_at)))
   return (
     <div className="space-y-3" data-draft-impor>
-      <Tabs value={tab} onChange={setTab} tabs={[{ value: 'draft', label: 'Draft', count: draft.length }, bolehPenting(user) && { value: 'impor_draft', label: 'Impor jadi draft' }, bolehPenting(user) && { value: 'historis', label: 'Impor data historis' }].filter(Boolean)} />
+      <Tabs value={tab} onChange={setTab} tabs={[{ value: 'draft', label: 'Draft', count: draft.length }, bolehIzin(user, 'pengiriman.draft.impor') && { value: 'impor_draft', label: 'Impor jadi draft' }, bolehIzin(user, 'pengiriman.draft.impor') && { value: 'historis', label: 'Impor data historis' }].filter(Boolean)} />
       {tab === 'draft' && (!draft.length ? <Empty icon={FileText} title="Tidak ada draft" text="Draft muncul saat Anda menyimpan pengiriman yang belum dipesan." /> : (
         <ul className="space-y-2">
           {draft.map((r) => (
@@ -54,8 +54,8 @@ export default function DraftImpor() {
           ))}
         </ul>
       ))}
-      {tab === 'impor_draft' && bolehPenting(user) && <Impor mode="draft" bidang={BIDANG_DRAFT} />}
-      {tab === 'historis' && bolehPenting(user) && <Impor mode="historis" bidang={BIDANG_HISTORIS} />}
+      {tab === 'impor_draft' && bolehIzin(user, 'pengiriman.draft.impor') && <Impor mode="draft" bidang={BIDANG_DRAFT} />}
+      {tab === 'historis' && bolehIzin(user, 'pengiriman.draft.impor') && <Impor mode="historis" bidang={BIDANG_HISTORIS} />}
     </div>
   )
 }
@@ -95,7 +95,7 @@ function Impor({ mode, bidang }) {
     return { i, v, salah, dobel }
   }), [file, peta, mode]) // eslint-disable-line react-hooks/exhaustive-deps
   const valid = baris.filter((b) => !b.salah.length && !b.dobel)
-  if (!bolehPenting(user)) return <Empty icon={Upload} title="Khusus Superadmin, Direktur & Admin Pusat" />
+  if (!bolehIzin(user, 'pengiriman.draft.impor')) return <Empty icon={Upload} title="Tidak ada akses impor" />
 
   const jalankan = async (hanyaGagal) => {
     const target = baris.filter((b) => pilih.has(b.i) && (!hanyaGagal || hasil[b.i]?.gagal))

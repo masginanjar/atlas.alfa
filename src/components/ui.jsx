@@ -81,7 +81,7 @@ export function SectionCard({ tone = 'sky', icon: Icon, title, aside, children, 
     </section>
   )
 }
-const inputCls = 'w-full rounded-xl border-0 bg-white px-3 py-2 text-sm text-ink ring-1 ring-[#D9DBE7] placeholder:text-[#8A8FA8] transition hover:ring-[#B9BDD0] focus:outline-none focus:ring-2 focus:ring-[#4169E1] disabled:cursor-not-allowed disabled:bg-[#F3F4F9] disabled:text-ink-mute aria-[invalid=true]:ring-2 aria-[invalid=true]:ring-rose-500'
+const inputCls = 'w-full max-md:min-h-11 rounded-xl border-0 bg-white px-3 py-2 text-sm text-ink ring-1 ring-[#D9DBE7] placeholder:text-[#8A8FA8] transition hover:ring-[#B9BDD0] focus:outline-none focus:ring-2 focus:ring-[#4169E1] disabled:cursor-not-allowed disabled:bg-[#F3F4F9] disabled:text-ink-mute aria-[invalid=true]:ring-2 aria-[invalid=true]:ring-rose-500'
 export const Input = (p) => <input {...p} className={cx(inputCls, p.className)} />
 export const Textarea = (p) => <textarea rows={3} {...p} className={cx(inputCls, p.className)} />
 export const Select = ({ children, ...p }) => <select {...p} className={cx(inputCls, 'pr-8', p.className)}>{children}</select>
@@ -112,15 +112,15 @@ export function Sheet({ open, onClose, title, subtitle, children, footer, wide, 
       <div onClick={(e) => e.stopPropagation()} role="dialog" aria-modal={side ? undefined : 'true'} aria-label={title}
         className={cx('pointer-events-auto flex w-full flex-col bg-white shadow-2xl',
           side ? cx('h-full max-w-full', fromLeft ? 'animate-[atlas-slide-in-left_.18s_ease-out]' : 'animate-[atlas-slide-in_.18s_ease-out]', wide || xwide ? 'sm:max-w-[min(780px,94vw)]' : 'sm:max-w-[min(560px,92vw)]')
-            : cx('max-h-[94vh] rounded-t-3xl sm:rounded-3xl', xwide ? 'sm:max-w-4xl' : wide ? 'sm:max-w-2xl' : 'sm:max-w-md'))}>
+            : cx('max-h-[94dvh] rounded-t-3xl sm:rounded-3xl', xwide ? 'sm:max-w-4xl' : wide ? 'sm:max-w-2xl' : 'sm:max-w-md'))}>
         <div className="flex items-start justify-between gap-2 border-b border-slate-100 px-5 py-3.5">
           <div className="min-w-0">
             <h3 className="truncate text-[15px] font-bold text-ink">{title}</h3>
             {subtitle && <p className="truncate text-xs text-ink-mute">{subtitle}</p>}
           </div>
-          <button onClick={onClose} className="shrink-0 rounded-lg p-1.5 text-ink-mute hover:bg-slate-100" aria-label="Tutup"><X className="h-5 w-5" /></button>
+          <button onClick={onClose} className="shrink-0 rounded-lg p-1.5 text-ink-mute hover:bg-slate-100 max-md:-m-1 max-md:p-2.5" aria-label="Tutup"><X className="h-5 w-5" /></button>
         </div>
-        <div className={cx('flex-1 overflow-y-auto', tinted ? 'bg-slate-50 px-4 py-6 sm:px-6' : 'px-5 py-4')}>{children}</div>
+        <div className={cx('flex-1 overflow-y-auto', tinted ? 'bg-slate-50 px-4 py-6 sm:px-6' : 'px-5 py-4', !footer && !side && 'max-md:pb-[max(1rem,env(safe-area-inset-bottom))]')}>{children}</div>
         {footer && <div className="flex gap-2 border-t border-slate-100 px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">{footer}</div>}
       </div>
     </div>,

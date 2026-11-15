@@ -1,6 +1,7 @@
 import { Fragment, useMemo, useState } from 'react'
 import { InvoiceNo } from '../components/badges.jsx'
 import { Lock, Languages, Store, Stamp, UserCog, Calculator, ChevronDown, ChevronUp, MonitorCheck, AlertTriangle } from 'lucide-react'
+import { boleh as bolehIzin } from '../lib/izin.js'
 import { useApp } from '../lib/store.jsx'
 import { PilihPeriode } from '../components/ToolbarRingkas.jsx'
 import { tasksOf, summarize, dayKey } from '../lib/performance.js'
@@ -164,6 +165,31 @@ const PERIODE_MONITORING = (today) => {
 
 import { MonitorNgaji } from '../components/Ngaji.jsx'
 
+/** Laporan masalah yang dikirim staf (menu profil → Laporkan masalah). */
+function LaporanStaf() {
+  const { user, data, save, notify } = useApp()
+  if (!bolehIzin(user, 'laporan-staf.lihat')) return null
+  const rows = [...(data.app_laporan || [])].sort((a, b) => String(b.waktu || b.created_at).localeCompare(String(a.waktu || a.created_at)))
+  const baru = rows.filter((r) => r.status !== 'selesai').length
+  return (
+    <section className="rounded-2xl bg-white p-4 ring-1 ring-[#E7E8F0] dark:bg-white/5" data-laporan-staf>
+      <p className="font-bold">Laporan masalah dari staf <span className="text-[12px] font-semibold text-ink-mute">· {baru} belum selesai · {rows.length} total</span></p>
+      {!rows.length ? <p className="mt-1 text-[13px] text-ink-mute">Belum ada laporan.</p> : (
+        <ul className="mt-2 space-y-2">{rows.slice(0, 50).map((r) => (
+          <li key={r.id} className="rounded-xl bg-slate-50 p-3 text-[12px] dark:bg-white/5">
+            <p className="flex flex-wrap gap-x-2"><b>{r.nama}</b><span className="text-ink-mute">{r.role} · {r.cabang || '—'} · {new Date(r.waktu || r.created_at).toLocaleString('id-ID')}</span><span className="font-mono text-ink-mute">{r.halaman}</span><span className={r.status === 'selesai' ? 'text-emerald-700' : 'font-semibold text-rose-700'}>{r.status === 'selesai' ? 'selesai' : 'baru'}</span></p>
+            <p className="mt-1 whitespace-pre-line text-[13px]">{r.apa}</p>
+            {r.langkah && <p className="mt-1 whitespace-pre-line text-ink-soft">Langkah: {r.langkah}</p>}
+            {(r.error_terakhir || []).length > 0 && <details className="mt-1"><summary className="cursor-pointer text-ink-mute">{r.error_terakhir.length} error terakhir di perangkat</summary><ul className="mt-1 list-disc pl-4">{r.error_terakhir.map((e, i) => <li key={i}>{e.at?.slice(0, 16)} · {e.kelas} · {e.pesan}</li>)}</ul></details>}
+            <p className="mt-1 text-[11px] text-ink-mute">{r.perangkat} · versi {r.versi}{r.online === false ? ' · offline' : ''}</p>
+            {r.status !== 'selesai' && bolehIzin(user, 'laporan-staf.status') && <button type="button" className="mt-1 min-h-9 rounded-lg px-2 text-[12px] font-semibold text-brand ring-1 ring-brand/30" onClick={async () => { await save('app_laporan', { id: r.id, status: 'selesai', selesai_at: new Date().toISOString(), selesai_oleh: user.name }); notify('Ditandai selesai') }}>Tandai selesai</button>}
+          </li>
+        ))}</ul>
+      )}
+    </section>
+  )
+}
+
 export default function Monitoring() {
   const { user, data } = useApp()
   const [now] = useState(() => new Date())
@@ -216,6 +242,7 @@ export default function Monitoring() {
   const tr = usersOf('penerjemah'); const ap = usersOf('staf_apostille'); const spv = usersOf('supervisor'); const acc = usersOf('akunting')
   return (
     <div className="space-y-4">
+      <LaporanStaf />
       <div>
         <h1 className="text-[17px] font-extrabold leading-tight tracking-tight flex items-center gap-2">Monitoring</h1>
         <p className="text-[13px] text-ink-mute">Daftar tugas & pekerjaan tiap orang. Klik baris untuk melihat rincian tugasnya. Hanya terlihat oleh Superadmin.</p>

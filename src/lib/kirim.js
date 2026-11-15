@@ -1,3 +1,4 @@
+import { boleh } from './izin.js'
 // ============================================================
 //  MODUL PENGIRIMAN — aturan bersama (status, peran, rumus perhatian).
 //  Status layanan terjemahan ≠ status pengiriman: yang di sini HANYA status kiriman.
@@ -9,6 +10,7 @@ export const TAHAP = {
   draft: ['Draft', 'draft', 'bg-slate-100 text-slate-700 ring-slate-200'],
   siap: ['Draft siap dipesan', 'draft', 'bg-slate-100 text-slate-700 ring-slate-200'],
   diproses: ['Permintaan diproses', 'berlangsung', 'bg-amber-50 text-amber-800 ring-amber-200'],
+  belum_bayar: ['Belum dibayar di Everpro', 'berlangsung', 'bg-rose-50 text-rose-700 ring-rose-200'],
   gagal_order: ['Gagal dibuat', 'draft', 'bg-rose-50 text-rose-700 ring-rose-200'],
   dibuat: ['Order dibuat · menunggu resi', 'berlangsung', 'bg-amber-50 text-amber-800 ring-amber-200'],
   gagal_resi: ['Gagal terbit resi', 'berlangsung', 'bg-rose-50 text-rose-700 ring-rose-200'],
@@ -35,6 +37,7 @@ export const kelasTahap = (t) => TAHAP[t]?.[2] ?? 'bg-slate-100 text-slate-700 r
 export const KARTU = [
   { key: 'total', label: 'Total pengiriman', tahap: null },
   { key: 'draft', label: 'Draft', tahap: ['draft', 'siap', 'gagal_order'] },
+  { key: 'belum_bayar', label: 'Belum dibayar', tahap: ['belum_bayar'] },
   { key: 'menunggu', label: 'Menunggu dijemput', tahap: ['diproses', 'dibuat', 'menunggu_jemput'] },
   { key: 'gagal_pickup', label: 'Gagal pickup', tahap: ['gagal_pickup'] },
   { key: 'dikirim', label: 'Sedang dikirim', tahap: ['dikirim'] },
@@ -66,10 +69,12 @@ export const PERAN_ADMIN = ['superadmin', 'direktur', 'admin_pusat']
 export const PERAN_OPS = ['superadmin', 'direktur', 'admin_pusat', 'supervisor', 'cs', 'helper', 'staf_apostille']
 /** Fitur penting (saldo, top-up, laporan, pengaturan, tarik/impor data, pembatalan): hanya 3 peran ini. */
 export const PERAN_KEU = ['superadmin', 'direktur', 'admin_pusat']
-export const bolehOps = (u) => PERAN_OPS.includes(u?.role)
-export const bolehKeu = (u) => PERAN_KEU.includes(u?.role)
-export const bolehAturKirim = (u) => PERAN_ADMIN.includes(u?.role)
-export const bolehPenting = (u) => PERAN_ADMIN.includes(u?.role)
+// Hak akses Pengiriman → katalog izin (Pengaturan → Role & Hak Akses). Nama lama dipertahankan untuk kompatibilitas.
+export const bolehOps = (u) => boleh(u, 'pengiriman.buat.tambah')
+export const bolehKeu = (u) => boleh(u, 'pengiriman.saldo.lihat')
+export const bolehAturKirim = (u) => boleh(u, 'pengiriman.pengaturan.atur')
+export const bolehPenting = (u) => boleh(u, 'pengiriman.pengaturan.atur')
+export { boleh as bolehIzin }
 
 /** Zona waktu cabang (jadwal pickup mengikuti cabang pengirim). */
 export const ZONA = { Bali: 'Asia/Makassar', Makassar: 'Asia/Makassar' }
@@ -99,7 +104,7 @@ export const kodeposOk = (s) => /^\d{5}$/.test(String(s || '').trim())
 export const AMBANG_BAWAAN = { pickup_jam: 24, basi_1: 4, basi_2: 7, basi_3: 10, lewat_estimasi: 0, target_hari: 3 }
 
 const hariSejak = (iso, now) => (iso ? (now - new Date(iso).getTime()) / 864e5 : null)
-const AKTIF = ['diproses', 'dibuat', 'menunggu_jemput', 'gagal_pickup', 'dikirim', 'gagal_kirim', 'kendala', 'retur_proses', 'perlu_dicek', 'force_majeure', 'gagal_resi']
+const AKTIF = ['belum_bayar', 'diproses', 'dibuat', 'menunggu_jemput', 'gagal_pickup', 'dikirim', 'gagal_kirim', 'kendala', 'retur_proses', 'perlu_dicek', 'force_majeure', 'gagal_resi']
 
 /**
  * Daftar "Perlu Perhatian". Dasar perhitungan (ditampilkan ke pengguna):
@@ -110,7 +115,7 @@ const AKTIF = ['diproses', 'dibuat', 'menunggu_jemput', 'gagal_pickup', 'dikirim
  */
 export function perluPerhatian(rows, kendala = [], mutasi = [], ambang = AMBANG_BAWAAN, now = Date.now()) {
   const a = { ...AMBANG_BAWAAN, ...(ambang || {}) }
-  const out = { pickup_telat: [], lewat_estimasi: [], lewat_target: [], basi_1: [], basi_2: [], basi_3: [], gagal_kirim: [], retur: [], klaim: [], selisih: [], cashback: [] }
+  const out = { belum_bayar: [], pickup_telat: [], lewat_estimasi: [], lewat_target: [], basi_1: [], basi_2: [], basi_3: [], gagal_kirim: [], retur: [], klaim: [], selisih: [], cashback: [] }
   for (const r of rows) {
     const t = r.tahap
     if (!AKTIF.includes(t)) continue
@@ -122,6 +127,7 @@ export function perluPerhatian(rows, kendala = [], mutasi = [], ambang = AMBANG_
     const terakhir = r.diperbarui_at || r.updated_at || mulai
     const h = hariSejak(terakhir, now)
     if (h != null) { if (h >= a.basi_3) out.basi_3.push(r); else if (h >= a.basi_2) out.basi_2.push(r); else if (h >= a.basi_1) out.basi_1.push(r) }
+    if (t === 'belum_bayar') out.belum_bayar.push(r)
     if (t === 'gagal_kirim') out.gagal_kirim.push(r)
     if (t === 'retur_proses') out.retur.push(r)
     const est = Number(r.biaya?.total || 0), akt = Number(r.biaya_aktual?.total || 0)
@@ -133,6 +139,7 @@ export function perluPerhatian(rows, kendala = [], mutasi = [], ambang = AMBANG_
   return out
 }
 export const PERHATIAN_LABEL = {
+  belum_bayar: ['Belum dibayar di Everpro', () => 'Order sudah masuk Everpro tapi belum dibayar — kurir belum dipanggil. Tekan Bayar di dashboard Everpro.'],
   pickup_telat: ['Pickup terlambat', (a) => `Jadwal jemput sudah lewat lebih dari ${a.pickup_jam} jam dan status masih menunggu.`],
   lewat_estimasi: ['Melewati estimasi kurir', () => 'Sejak dipesan sudah lebih lama dari estimasi maksimum dari kurir (data Everpro saat cek ongkir).'],
   lewat_target: ['Melewati target internal', (a) => `Target operasional kita ${a.target_hari} hari sejak dipesan (bukan janji kurir).`],

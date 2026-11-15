@@ -70,7 +70,8 @@ export default function Login() {
   const groups = useMemo(() => {
     const term = q.trim().toLowerCase()
     const match = (u) => !term || u.name.toLowerCase().includes(term) || (ROLES[u.role]?.label || '').toLowerCase().includes(term) || (u.branch || '').toLowerCase().includes(term)
-    return Object.keys(ROLES).map((r) => [r, demoUsers.filter((u) => u.role === r && match(u))]).filter(([, list]) => list.length)
+    const lain = [...new Set(demoUsers.map((u) => u.role).filter((r) => r && !ROLES[r]))] // role buatan sendiri (Role & Hak Akses)
+    return [...Object.keys(ROLES), ...lain].map((r) => [r, demoUsers.filter((u) => u.role === r && match(u))]).filter(([, list]) => list.length)
   }, [demoUsers, q])
 
   const judul = view === 'daftar' ? 'Buat kata sandi' : view === 'lupa' ? 'Lupa kata sandi' : view === 'sandi-baru' ? 'Kata sandi baru' : tema.judul
@@ -110,7 +111,7 @@ export default function Login() {
                     {groups.length === 0 && <p className="py-8 text-center text-xs text-ink-mute">Tidak ada akun yang cocok.</p>}
                     {groups.map(([r, list]) => (
                       <div key={r}>
-                        <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-ink-mute">{ROLES[r].label}</p>
+                        <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-ink-mute">{ROLES[r]?.label || r}</p>
                         <div className="grid gap-1.5">
                           {list.map((u) => (
                             <button key={u.id} onClick={() => submit(null, u.email)} disabled={busy}

@@ -8,6 +8,8 @@ import { MODE, storageError, db } from './lib/db.js'
 import { AlertTriangle, Calculator } from 'lucide-react'
 import { BRANCHES, ROLES, can, branchesOf, isMultiBranch, roleLabel, rolesOf, isFreelance, placeOf } from './config/access.js'
 import { go } from './lib/router.js'
+import { boleh, menuTampil, halamanBoleh } from './lib/izin.js'
+import { RUTE_FITUR } from './config/izin.js'
 import { Toast, Sheet, Button, Popover, cx } from './components/ui.jsx'
 import Login from './pages/Login.jsx'
 import { simpanCache, DEFAULT_LOGIN } from './config/loginTheme.js'
@@ -56,6 +58,7 @@ import HeaderUser from './components/HeaderUser.jsx'
 import { PanelProvider } from './components/WorkspacePanel.jsx'
 import SessionGuard from './components/SessionGuard.jsx'
 import ChatDock from './components/ChatDock.jsx'
+import LaporMasalah from './components/LaporMasalah.jsx'
 import { CHAT_ENABLED } from './lib/flags.js'
 
 import JamZona from './components/JamZona.jsx'
@@ -155,7 +158,10 @@ const MENU = [
 ]
 
 /** Boleh tampil untuk pengguna ini? Hak akses persis seperti sebelumnya. */
-const bolehItem = (user, n) => (n.segera || menuBoleh(user, n.key)) && (!n.show || n.show(user))
+const fiturMenu = (n) => RUTE_FITUR[n.sub ? `${n.key}/${n.sub}` : n.key]
+/** Tampil bila: saklar Rilis Fitur/pelaksana mengizinkan (menuBoleh) DAN katalog izin: menu ditampilkan + boleh membuka halaman.
+ *  Item yang belum terdaftar di katalog memakai aturan lama (`show`). */
+const bolehItem = (user, n) => (n.segera || menuBoleh(user, n.key)) && (fiturMenu(n) ? menuTampil(user, fiturMenu(n)) && boleh(user, `${fiturMenu(n)}.lihat`) : (!n.show || n.show(user)))
 /** Submenu yang terlihat; induk tanpa submenu terlihat ikut disembunyikan. */
 const anakTerlihat = (user, n) => (n.children || []).filter((c) => bolehItem(user, c))
 /** Menu yang benar-benar tampil, induk beserta submenunya. */
@@ -191,8 +197,14 @@ export default function App() {
 
   // Halaman yang tidak boleh dibuka peran ini dialihkan ke Dashboard,
   // supaya alamat langsung (#/keuangan dsb.) juga tertutup.
-  const awal = menuBoleh(user, 'dashboard') ? 'dashboard' : 'projects' // halaman utama ikut saklar Rilis Fitur
-  const page = menuBoleh(user, rawPage) && (!['status-server', 'rilis-fitur'].includes(rawPage) || canMonitor(user)) ? rawPage : awal
+  // halaman utama ikut saklar Rilis Fitur + katalog izin (role tanpa Dashboard → halaman pertama yang diizinkan)
+  const awal = ['dashboard', 'projects', ...navItems(user).map((n) => n.key), 'settings'].find((k) => menuBoleh(user, k) && halamanBoleh(user, k)) || 'settings'
+  const page0 = menuBoleh(user, rawPage) && (!['status-server', 'rilis-fitur'].includes(rawPage) || canMonitor(user)) ? rawPage : awal
+  // Katalog izin: alamat langsung (#/halaman) ke halaman tanpa izin → pesan jelas, tanpa membocorkan data
+  const tolak0 = page0 === rawPage && !halamanBoleh(user, page0, page0 === 'pengiriman' || page0 === 'keuangan' ? param : undefined)
+  const keAwal = tolak0 && !param && ['beranda', 'dashboard', 'projects', ''].includes(rawPage || '') // halaman pembuka bawaan → alihkan diam-diam
+  const page = keAwal ? awal : page0
+  const ditolak = tolak0 && !keAwal
   // Halaman Project & Faktur punya pencarian + filter cabang sendiri → alat header disembunyikan agar tidak dobel (Ctrl K tetap jalan)
   const alatSendiri = ['projects', 'faktur', 'apostille'].includes(page) && !param
   // Ganti peran / persona (jabatan tersembunyi). Di PC tampil di bar atas, di HP di baris kedua.
@@ -218,7 +230,8 @@ export default function App() {
     if (!param2) return undefined
     try { const v = sessionStorage.getItem(`atlas-preset:${param2}`); return v ? JSON.parse(v) : undefined } catch { return undefined }
   })()
-  const view = page === 'projects' && param === 'new'
+  const view = ditolak ? <AksesDitolak />
+    : page === 'projects' && param === 'new'
     ? <ProjectForm page key={param2 || 'kosong'} preset={presetBaru} onClose={() => go(param2 ? 'faktur' : 'projects')} />
     : page === 'projects' && param ? <ProjectDetail id={param} focusSub={param2} />
     : page === 'projects' ? <Projects />
@@ -338,6 +351,7 @@ export default function App() {
 
       {/* Chat menempel di bawah — tidak muncul di halaman Pesan Masuk (sudah ada di sana) */}
       {CHAT_ENABLED && <ChatDock hidden={page === 'pesan'} />}
+      <LaporMasalah />
       <NotifToast />
 
       {/* Tab bawah HP: Dasbor · Project · Buat · Pengingat · Menu */}
@@ -369,18 +383,59 @@ export default function App() {
 }
 
 /** Pintasan halaman di kumpulan ikon kanan atas: Project & Pengajuan (setelah ikon cari). */
+/** Halaman yang tidak diizinkan: pesan jelas, tanpa menampilkan data apa pun. */
+function AksesDitolak() {
+  return (
+    <div className="mx-auto mt-10 max-w-md rounded-2xl bg-white p-6 text-center ring-1 ring-slate-200 dark:bg-white/5" role="alert" data-akses-ditolak>
+      <p className="text-[17px] font-bold">Tidak ada akses</p>
+      <p className="mt-1 text-sm text-ink-soft">Role Anda belum diberi izin membuka halaman ini. Hubungi Super Admin bila Anda memerlukannya.</p>
+      <a href="#/dashboard" className="mt-4 inline-flex min-h-11 items-center rounded-xl bg-[#141B34] px-4 text-sm font-semibold text-white">Ke Dashboard</a>
+    </div>
+  )
+}
+
 function PintasAtas({ page, param, user }) {
+  const [buka, setBuka] = useState(false)
+  useEffect(() => { setBuka(false) }, [page, param])
   const item = [
-    ...(['superadmin', 'direktur', 'admin_pusat', 'supervisor', 'cs', 'helper', 'staf_apostille'].includes(user?.role) ? [{ href: '#/pengiriman/ongkir', label: 'Cek Ongkir', icon: Calculator, aktif: page === 'pengiriman' && param === 'ongkir' }] : []),
-    { href: '#/projects', label: 'Project', icon: FolderKanban, aktif: page === 'projects' },
-    { href: '#/pengajuan', label: 'Pengajuan', icon: Wallet, aktif: page === 'pengajuan' },
-  ]
-  return item.map(({ href, label, icon: Ikon, aktif }) => (
-    <a key={href} href={href} aria-label={label} title={label} aria-current={aktif ? 'page' : undefined} data-pintas={label}
-      className={IKON_ATAS + (aktif ? ' bg-[#E9EBF3] text-[#141B34] dark:bg-white/10 dark:text-white' : '')}>
-      <Ikon className="h-[17px] w-[17px]" aria-hidden="true" />
-    </a>
-  ))
+    { href: '#/pengiriman/ongkir', label: 'Cek Ongkir', icon: Calculator, aktif: page === 'pengiriman' && param === 'ongkir', izin: 'pengiriman.ongkir' },
+    { href: '#/projects', label: 'Project', icon: FolderKanban, aktif: page === 'projects', hp: false, izin: 'project' },
+    { href: '#/pengajuan', label: 'Pengajuan', icon: Wallet, aktif: page === 'pengajuan', izin: 'pengajuan' },
+  ].filter((x) => boleh(user, `${x.izin}.lihat`)) // katalog izin (Pengaturan → Role & Hak Akses)
+  const hp = item.filter((x) => x.hp !== false)
+  return (
+    <>
+      {/* desktop/tablet: ikon langsung (tidak berubah) */}
+      {item.map(({ href, label, icon: Ikon, aktif }) => (
+        <a key={href} href={href} aria-label={label} title={label} aria-current={aktif ? 'page' : undefined} data-pintas={label}
+          className={IKON_ATAS + ' max-md:hidden' + (aktif ? ' bg-[#E9EBF3] text-[#141B34] dark:bg-white/10 dark:text-white' : '')}>
+          <Ikon className="h-[17px] w-[17px]" aria-hidden="true" />
+        </a>
+      ))}
+      {/* HP: satu tombol "Pintasan" (Project sudah ada di navigasi bawah) → lembar bawah berlabel, dekat jempol */}
+      {hp.length > 0 && <button type="button" onClick={() => setBuka(true)} aria-label="Pintasan" title="Pintasan" aria-expanded={buka} data-pintas-hp
+        className={IKON_ATAS + ' md:hidden' + (hp.some((x) => x.aktif) ? ' bg-[#E9EBF3] text-[#141B34] dark:bg-white/10 dark:text-white' : '')}>
+        <LayoutGrid className="h-[17px] w-[17px]" aria-hidden="true" />
+      </button>}
+      {buka && (
+        <div className="fixed inset-0 z-[95] md:hidden" role="dialog" aria-modal="true" aria-label="Pintasan">
+          <button type="button" aria-label="Tutup" className="absolute inset-0 bg-black/30" onClick={() => setBuka(false)} />
+          <div className="absolute inset-x-0 bottom-0 rounded-t-2xl bg-white px-4 pb-[max(16px,env(safe-area-inset-bottom))] pt-2 shadow-2xl dark:bg-[#141a2e]">
+            <div className="mx-auto mb-2 h-1 w-10 rounded-full bg-slate-300" aria-hidden="true" />
+            <p className="px-1 pb-1 text-[13px] font-bold text-ink-mute">Pintasan</p>
+            <div className="grid gap-1">
+              {hp.map(({ href, label, icon: Ikon, aktif }) => (
+                <a key={href} href={href} onClick={() => setBuka(false)} aria-current={aktif ? 'page' : undefined}
+                  className={cx('flex min-h-12 items-center gap-3 rounded-xl px-3 text-[15px] font-semibold', aktif ? 'bg-[#E9EBF3] text-[#141B34]' : 'text-[#141B34] active:bg-slate-100 dark:text-white')}>
+                  <Ikon className="h-5 w-5" aria-hidden="true" />{label}
+                </a>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  )
 }
 
 /** Tombol tambah di header — satu-satunya pintu membuat project/catatan/to-do/pengingat/pengajuan (K7). */

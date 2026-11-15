@@ -6,6 +6,7 @@ import { useApp } from '../../lib/store.jsx'
 import { Button, Sheet, cx } from '../ui.jsx'
 import { resiOf, isEverpro } from '../../lib/kirim.js'
 import { bukaLabelKirim } from '../../lib/kirimApi.js'
+import { aksesField } from '../../lib/izin.js'
 import { UKURAN_LABEL, OPSI_LABEL, bacaOpsiLabel, simpanOpsiLabel, cetakLabelAtlas, svgBarcode } from '../../lib/labelCetak.js'
 
 function Pratinjau({ r, o }) {
@@ -34,7 +35,9 @@ function Pratinjau({ r, o }) {
 /** rows: daftar pengiriman yang akan dicetak. */
 export default function CetakLabel({ rows, onClose }) {
   const { user, save, notify } = useApp()
-  const [o, setO] = useState(bacaOpsiLabel)
+  const [o0, setO] = useState(bacaOpsiLabel)
+  const bolehOngkir = ['lihat', 'edit'].includes(aksesField(user, 'pengiriman.biaya')) // field sensitif: ikut Role & Hak Akses
+  const o = bolehOngkir ? o0 : { ...o0, ongkir: false }
   const [sibuk, setSibuk] = useState(false)
   const ubah = (p) => setO((x) => { const n = { ...x, ...p }; simpanOpsiLabel(n); return n })
   const siap = useMemo(() => rows.filter((r) => resiOf(r)), [rows])
@@ -54,7 +57,7 @@ export default function CetakLabel({ rows, onClose }) {
         <div className="space-y-4">
           <div>
             <p className="mb-2 font-bold">Pengaturan</p>
-            {OPSI_LABEL.map(([k, l]) => (
+            {OPSI_LABEL.filter(([k]) => k !== 'ongkir' || bolehOngkir).map(([k, l]) => (
               <label key={k} className="flex items-center gap-2 py-1"><input type="checkbox" className="h-4 w-4 accent-[#3E8E9E]" checked={!!o[k]} onChange={(e) => ubah({ [k]: e.target.checked })} />{l}</label>
             ))}
           </div>
@@ -82,7 +85,7 @@ export default function CetakLabel({ rows, onClose }) {
           <p className="mt-2 text-[12px] text-ink-mute">Pengaturan tersimpan di perangkat ini. Saat dialog print muncul: pilih printer, ukuran kertas sama dengan pilihan di atas, skala <b>100%</b>, margin <b>None</b>.</p>
         </div>
       </div>
-      <div className="mt-5 flex flex-wrap items-center justify-end gap-2 border-t border-slate-200 pt-3">
+      <div className="mt-5 flex flex-wrap items-center justify-end gap-2 border-t border-slate-200 pt-3 max-md:sticky max-md:-bottom-[max(1rem,env(safe-area-inset-bottom))] max-md:-mx-5 max-md:bg-white max-md:px-5 max-md:pb-[max(1rem,env(safe-area-inset-bottom))] max-md:[&>*]:min-h-11 max-md:[&>*]:flex-1">
         {adaEverpro && <Button variant="outline" loading={sibuk} onClick={async () => { setSibuk(true); await bukaLabelKirim(siap.filter((r) => isEverpro(r) && r.everpro?.awb).map((r) => r.id), notify); setSibuk(false) }}><FileDown className="h-4 w-4" />Label resmi Everpro (PDF)</Button>}
         <Button onClick={cetak} disabled={!siap.length} data-aksi="cetak-label"><Printer className="h-4 w-4" />Cetak {siap.length > 1 ? `${siap.length} label` : 'label'}</Button>
       </div>

@@ -10,6 +10,7 @@ import { broadcastSignOut, markActivity, setIdleReason, simpanTujuan, ambilTujua
 import { CHAT_ENABLED } from './flags.js'
 import { DONE, stagesOf, flowOf, isBilled, regComplete, stageLabel } from '../config/workflows.js'
 import { docListOf } from '../config/workflows.js'
+import { setKonfigIzin } from './izin.js'
 import { barisRegistrasi, ambilNomor, kodeArah, jumlahDok, namaDefault } from './registrasi.js'
 import { cariStok, cariPeringatan, kunciPeringatan, teksPeringatan, sudahTercatat, arahLabel, canKelolaAffidavit, AMBANG_RENDAH } from './affidavit.js'
 
@@ -22,9 +23,13 @@ export const awalBulanLalu = () => {
   return `${new Date(d.getFullYear(), d.getMonth() - 1, 1).toLocaleDateString('sv-SE')}`
 }
 
+const DATA_KOSONG = () => ({ users: [], people: [], projects: [], petty_cash: [], couriers: [], notifications: [], requests: [], perf_daily: [], share_links: [], share_log: [], vendor_bills: [], fund_balances: [], app_settings: [], activity_log: [], pings: [], notes: [], todos: [], reminders: [], messages: [], affidavit_stok: [], affidavit_pakai: [], affidavit_kirim: [], jadwal: [], cuti: [], mitra: [], kapasitas: [], perusahaan_dok: [], akses_role: [], akses_pengecualian: [], akses_audit: [], app_laporan: [], kirim: [], kirim_alamat: [], kirim_templat: [], kirim_kendala: [], kirim_mutasi: [], kirim_event: [], data_pribadi: [], faq: [], daftar_harga: [] })
+
 export function AppProvider({ children }) {
   const [baseUser, setUser] = useState(null)
-  const [data, setData] = useState({ users: [], people: [], projects: [], petty_cash: [], couriers: [], notifications: [], requests: [], perf_daily: [], share_links: [], share_log: [], vendor_bills: [], fund_balances: [], app_settings: [], activity_log: [], pings: [], notes: [], todos: [], reminders: [], messages: [], affidavit_stok: [], affidavit_pakai: [], affidavit_kirim: [], jadwal: [], cuti: [], mitra: [], kapasitas: [], perusahaan_dok: [] })
+  const [data, setData] = useState(() => DATA_KOSONG())
+  // Konfigurasi Role & Hak Akses → mesin izin (berlaku langsung tanpa login ulang, ikut realtime)
+  useMemo(() => setKonfigIzin(data.akses_role || [], data.akses_pengecualian || []), [data.akses_role, data.akses_pengecualian])
   // double job: user bisa berganti peran aktif (mis. Proofreader ↔ Staf Otorisasi)
   const [activeRole, setActiveRoleState] = useState(() => { try { return sessionStorage.getItem('atlas-active-role') } catch { return null } })
   // Mode hantu: Superadmin melihat aplikasi persis sebagai pengguna lain, TANPA login
@@ -270,6 +275,8 @@ export function AppProvider({ children }) {
     try { sessionStorage.removeItem('atlas-hantu') } catch { /* abaikan */ }
     setHantuState('')
     await db.signOut(); broadcastSignOut(); setUser(null); setActiveRole('')
+    // Bersihkan data di memori supaya pengguna berikutnya di perangkat ini tidak melihat data akun sebelumnya
+    if (MODE === 'supabase') { setData(DATA_KOSONG()); versiSendiri.current.clear() }
   }, [baseUser?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ---------- helper tabel ----------
@@ -286,13 +293,27 @@ export function AppProvider({ children }) {
     } catch { /* abaikan */ }
   }
   const tolakHantu = () => { if (user?._hantu) throw new Error(`Mode hantu: hanya melihat sebagai ${user.name} — data tidak bisa diubah`) }
+  const VERSI_TABEL = ['projects', 'requests', 'kirim', 'vendor_bills']
+  const versiSendiri = useRef(new Map())
   const save = async (t, row) => {
     tolakHantu()
     const { id, ...rest } = row
     const prev = id ? data[t]?.find((x) => x.id === id) : null
+    // Kunci versi: data yang sering diedit bersamaan membawa updated_at yang dilihat pengguna.
+    // Server menolak bila sudah diubah orang lain (tidak menimpa diam-diam).
+    // Versi dasar = yang dilihat pemanggil (row.updated_at); bila versi terbaru di layar adalah hasil simpanan
+    // pengguna ini sendiri, pakai itu (supaya simpan berturut-turut tidak dianggap bentrok).
+    const kunciV = `${t}:${id}`
+    const versi = MODE === 'supabase' && id && VERSI_TABEL.includes(t)
+      ? (prev?.updated_at && versiSendiri.current.get(kunciV) === prev.updated_at ? prev.updated_at : (row.updated_at || prev?.updated_at))
+      : null
     let saved
-    try { saved = id ? await db.update(t, id, rest) : await db.insert(t, rest) }
-    catch (e) { catatMonitor({ jenis: 'error', sumber: 'simpan', tabel: t, op: id ? 'ubah' : 'tambah', kelas: jenisError(e), pesan: String(e?.message || e).slice(0, 200), by: user?.name, by_id: user?.id }); throw e }
+    try { saved = id ? await db.update(t, id, versi ? { ...rest, _versi: versi } : rest) : await db.insert(t, rest) }
+    catch (e) {
+      if (/DATA_BERUBAH/.test(String(e?.message || e))) { Promise.resolve().then(() => refreshTables([t])).catch(() => null); throw new Error('Data ini baru saja diubah orang lain. Tampilan sudah dimuat ulang — periksa lalu ulangi perubahan Anda.') }
+      catatMonitor({ jenis: 'error', sumber: 'simpan', tabel: t, op: id ? 'ubah' : 'tambah', kelas: jenisError(e), pesan: String(e?.message || e).slice(0, 200), by: user?.name, by_id: user?.id }); throw e
+    }
+    if (saved?.id && saved.updated_at) versiSendiri.current.set(`${t}:${saved.id}`, saved.updated_at)
     upsertLocal(t, saved); log(t, prev, saved, id ? 'update' : 'insert'); return saved
   }
   const remove = async (t, id) => {

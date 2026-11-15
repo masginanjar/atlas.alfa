@@ -70,7 +70,7 @@ Deno.serve(async (req: Request) => {
         baru.riwayat = [...(d.riwayat ?? []), { at: now, by: "ATLAS (Everpro)", aksi: `Status dari Everpro: ${LABEL[status] ?? status}` }].slice(-200);
         await db.from("kirim_event").insert({ doc: { kirim_id: k.id, cabang: d.cabang ?? "", waktu: now, status, keterangan: LABEL[status] ?? status, sumber: "Everpro (callback)", diterima_at: now, kunci: `${k.id}|cb|${status}|${resi ?? ""}` } }).then(() => null, () => null);
       } else if (resi && resi !== d.everpro?.awb) {
-        if (["dibuat", "diproses"].includes(String(d.tahap))) baru.tahap = "menunggu_jemput";
+        if (["dibuat", "diproses", "belum_bayar"].includes(String(d.tahap))) baru.tahap = "menunggu_jemput";
         baru.riwayat = [...(d.riwayat ?? []), { at: now, by: "ATLAS (Everpro)", aksi: `Resi terbit: ${resi}` }].slice(-200);
       } else if (!resi) { /* kabar sama → abaikan */ }
       await db.from("kirim").update({ doc: baru, updated_at: now }).eq("id", k.id);

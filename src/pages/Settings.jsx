@@ -5,10 +5,13 @@ import { PAYMENT_TERMS, termOf, SUMBER_DANA, sumberLabel } from '../config/workf
 import { useApp } from '../lib/store.jsx'
 import { SubTabs, SubTabBtn } from '../components/SubTab.jsx'
 import { db, MODE, storageUsage } from '../lib/db.js'
-import { BRANCHES, PERSON_TYPES, ROLES, can, scopeByBranch, branchesOf, branchLabel, roleLabel, APOSTILLE_FUND, pettyLabel, pettyAccountsOf, isFreelance } from '../config/access.js'
+import { BRANCHES, PERSON_TYPES, semuaRole, can, scopeByBranch, branchesOf, branchLabel, roleLabel, APOSTILLE_FUND, pettyLabel, pettyAccountsOf, isFreelance } from '../config/access.js'
 import { Button, Card, Empty, Field, Input, Pill, Select, Sheet, Tabs, Textarea, cx } from '../components/ui.jsx'
 import { UserRound, ShieldCheck, SlidersHorizontal } from 'lucide-react'
 import { go } from '../lib/router.js'
+import { boleh as bolehIzin } from '../lib/izin.js'
+import { lazy, Suspense } from 'react'
+const AksesRole = lazy(() => import('../components/akses/AksesRole.jsx'))
 import { readTheme, applyTheme, ACCENTS } from '../components/ThemePicker.jsx'
 import { soundEnabled, setSoundEnabled, chatSoundEnabled, setChatSoundEnabled, chatVolume, setChatVolume } from '../lib/sounds.js'
 import { jam, rupiah, tgl as tglShort } from '../lib/format.js'
@@ -45,6 +48,7 @@ export default function Settings() {
     { value: 'profil', label: 'Profil & kata sandi', grup: 'Saya' },
     can.manageUsers(user) && { value: 'users', label: 'Pengguna', grup: 'Perusahaan' },
     can.managePeople(user) && { value: 'people', label: 'Master data', grup: 'Perusahaan' },
+    bolehIzin(user, 'pengaturan.role.lihat') && { value: 'akses', label: 'Role & Hak Akses', grup: 'Perusahaan' },
     can.managePeople(user) && { value: 'kurir', label: 'Kurir', grup: 'Perusahaan' },
     ['superadmin', 'admin_pusat'].includes(user.role) && { value: 'file', label: 'File & portal', grup: 'Perusahaan' },
     can.manageUsers(user) && { value: 'integrasi', label: 'Integrasi', grup: 'Perusahaan' },
@@ -86,6 +90,7 @@ export default function Settings() {
       {tab === 'kurir' && <div className="space-y-4"><AlamatKirim /><Couriers /></div>}
       {tab === 'vendor' && <Pindah ke="#/vendor" judul="Data Vendor sekarang ada di Penjualan" teks="Daftar vendor, bahasa/layanan, termin, dan rekening dikelola di Penjualan → Vendor." tombol="Buka Penjualan → Vendor" />}
       {tab === 'users' && <Users />}
+      {tab === 'akses' && <Suspense fallback={null}><AksesRole /></Suspense>}
       {tab === 'file' && <><FileRules />{can.manageUsers(user) && <PortalSettings />}</>}
       {tab === 'integrasi' && <Integrations />}
       {tab === 'tampilan' && <LoginSettings />}
@@ -983,7 +988,7 @@ function Users() {
           <Field label="Nama" required><Input value={e.name} onChange={(x) => set({ ...e, name: x.target.value })} /></Field>
           <Field label="Email" required hint={MODE === 'supabase' ? 'Pengguna membuat kata sandinya sendiri lewat "Pertama kali? Buat kata sandi" di halaman masuk dengan email ini.' : MODE === 'live' ? 'Buat juga akun login dengan email yang sama di InsForge → Auth.' : undefined}><Input type="email" value={e.email} onChange={(x) => set({ ...e, email: x.target.value })} /></Field>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Role"><Select value={e.role} onChange={(x) => { const n = { ...e, role: x.target.value }; set(isFreelance(n) ? { ...n, branch: '', branches: [] } : { ...n, branch: n.branch || BRANCHES[0] }) }}>{Object.entries(ROLES).map(([k, r]) => <option key={k} value={k}>{r.label}</option>)}</Select></Field>
+            <Field label="Role"><Select value={e.role} onChange={(x) => { const n = { ...e, role: x.target.value }; set(isFreelance(n) ? { ...n, branch: '', branches: [] } : { ...n, branch: n.branch || BRANCHES[0] }) }}>{Object.entries(semuaRole()).map(([k, r]) => <option key={k} value={k}>{r.label}</option>)}</Select></Field>
             {isFreelance(e)
               ? <Field label="Cabang"><p className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-ink-soft ring-1 ring-slate-200">Freelance — tanpa cabang</p></Field>
               : <Field label="Cabang utama"><Select value={e.branch} onChange={(x) => set({ ...e, branch: x.target.value })}>{BRANCHES.map((b) => <option key={b}>{b}</option>)}</Select></Field>}

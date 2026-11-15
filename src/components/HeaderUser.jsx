@@ -1,7 +1,8 @@
 import PindahBooks from './PindahBooks.jsx'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { UserRound, MessageSquareDot, BellOff, SlidersHorizontal, Palette, HelpCircle, LogOut, Check, ChevronRight, Sun, Moon, Sparkles, MonitorSmartphone } from 'lucide-react'
+import { UserRound, MessageSquareDot, BellOff, SlidersHorizontal, Palette, HelpCircle, LogOut, Check, ChevronRight, Sun, Moon, Sparkles, MonitorSmartphone, LifeBuoy } from 'lucide-react'
+import { bukaLapor } from './LaporMasalah.jsx'
 import { useApp } from '../lib/store.jsx'
 import { roleLabel, placeOf, isMultiBranch, branchesOf, isFreelance } from '../config/access.js'
 import { statusOf, STATUS } from '../lib/presence.js'
@@ -113,6 +114,7 @@ export default function HeaderUser({ atas, rel, lebar } = {}) {
               <Item icon={SlidersHorizontal} href="#/settings">Preferences</Item>
               <Item icon={Palette} onClick={() => setSub('theme')} right={<ChevronRight className="h-3.5 w-3.5 text-ink-mute" />}>Themes</Item>
               <Item icon={HelpCircle} href="#/settings">Help</Item>
+              <Item icon={LifeBuoy} onClick={() => { setOpen(false); bukaLapor() }}>Laporkan masalah</Item>
               <Item icon={Sparkles} onClick={() => { setOpen(false); bukaYangBaru() }}>Yang baru di ATLAS</Item>
               {!sudahTerpasang() && <Item icon={MonitorSmartphone} onClick={() => { setOpen(false); pasangAplikasi() }}>Pasang aplikasi</Item>}
               <div className="my-1 border-t border-slate-100" />

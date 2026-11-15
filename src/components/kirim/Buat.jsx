@@ -226,7 +226,7 @@ export default function Buat({ id }) {
         return
       }
       if (!x.ok) return notify(x.alasan || 'Pengiriman gagal dibuat. Draft tetap tersimpan.', 'err')
-      notify(x.sudah_ada ? 'Order sudah ada di Everpro — tidak dipesan ulang' : x.menunggu ? 'Order diterima Everpro — nomor order & resi menyusul. Tekan "Lacak / perbarui" beberapa saat lagi.' : x.everpro?.awb ? `Order dibuat · resi ${x.everpro.awb}` : 'Order dibuat · resi menyusul')
+      notify(x.tahap === 'belum_bayar' ? `Order ${x.everpro?.client_order_no || ''} masuk Everpro tapi BELUM DIBAYAR. Klik "Bayar di Everpro" — setelah dibayar, ATLAS mengambil resinya otomatis.` : x.sudah_ada ? 'Order sudah ada di Everpro — tidak dipesan ulang' : x.menunggu ? 'Order diterima Everpro — nomor order & resi menyusul. Tekan "Lacak / perbarui" beberapa saat lagi.' : x.everpro?.awb ? `Order dibuat · resi ${x.everpro.awb}` : 'Order dibuat · resi menyusul')
       go('pengiriman/daftar')
     } finally { kirimRef.current = false; setSibuk('') }
   }
@@ -239,7 +239,7 @@ export default function Buat({ id }) {
       </div>
       {k.tahap === 'gagal_order' && <p className="rounded-xl bg-rose-50 p-2 text-[12px] text-rose-800 ring-1 ring-rose-200">Percobaan sebelumnya gagal: {k.galat || 'tanpa keterangan'}. Saat dicoba lagi, ATLAS mengecek dulu ke Everpro agar tidak dobel.</p>}
       <ol className="flex flex-wrap gap-1.5 text-[12px]" aria-label="Tahapan">
-        {LANGKAH.map((l, i) => <li key={l}><button type="button" onClick={() => i < langkah && setLangkah(i)} className={cx('rounded-full px-3 py-1 font-semibold ring-1', i === langkah ? 'bg-[#141B34] text-white ring-[#141B34]' : i < langkah ? 'bg-emerald-50 text-emerald-800 ring-emerald-200' : 'bg-white text-ink-mute ring-slate-200')} aria-current={i === langkah ? 'step' : undefined}>{i + 1}. {l}{i < langkah ? ' ✓' : ''}</button></li>)}
+        {LANGKAH.map((l, i) => <li key={l}><button type="button" onClick={() => i < langkah && setLangkah(i)} className={cx('rounded-full px-3 py-1 font-semibold ring-1 max-md:min-h-11', i === langkah ? 'bg-[#141B34] text-white ring-[#141B34]' : i < langkah ? 'bg-emerald-50 text-emerald-800 ring-emerald-200' : 'bg-white text-ink-mute ring-slate-200')} aria-current={i === langkah ? 'step' : undefined}>{i + 1}. {l}{i < langkah ? ' ✓' : ''}</button></li>)}
       </ol>
 
       {langkah === 0 && (

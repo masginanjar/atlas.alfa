@@ -10,7 +10,7 @@
     "preview": "vite preview",
     "build:demo": "VITE_MASK_PII=1 vite build --mode single --outDir dist-demo",
     "build:demo:public": "VITE_MASK_PII=1 vite build --mode single --outDir dist-demo && node scripts/escape-fffd.mjs dist-demo/index.html",
-    "build:live": "ATLAS_LIVE=1 VITE_MASK_PII=1 vite build",
+    "build:live": "node scripts/cek-katalog-izin.mjs && ATLAS_LIVE=1 VITE_MASK_PII=1 vite build",
     "sync:portal": "sh sync-portal-fn.sh"
   },
   "dependencies": {

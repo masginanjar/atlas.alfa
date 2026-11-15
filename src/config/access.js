@@ -47,7 +47,12 @@ export const ROLES = {
 }
 /** Role pelaksana yang login & punya To-Do List sendiri. */
 /** Label role; otorisator dibedakan Master / Staf Otorisasi. */
-export const roleLabel = (u, role = u?.role) => (role === 'otorisator' ? (u?.otorisator_level === 'master' ? 'Master Otorisasi' : 'Staf Otorisasi') : ROLES[role]?.label ?? role)
+/** Role buatan sendiri (Pengaturan → Role & Hak Akses) — diisi mesin izin. */
+export const ROLE_TAMBAHAN = {}
+export function setRoleTambahan(list = []) { for (const k of Object.keys(ROLE_TAMBAHAN)) delete ROLE_TAMBAHAN[k]; for (const r of list) if (!ROLES[r.kode]) ROLE_TAMBAHAN[r.kode] = { label: r.nama || r.kode, aktif: r.aktif !== false } }
+/** Semua role yang bisa ditetapkan ke pengguna (bawaan + buatan sendiri yang aktif). */
+export const semuaRole = () => ({ ...ROLES, ...Object.fromEntries(Object.entries(ROLE_TAMBAHAN).filter(([, r]) => r.aktif)) })
+export const roleLabel = (u, role = u?.role) => (role === 'otorisator' ? (u?.otorisator_level === 'master' ? 'Master Otorisasi' : 'Staf Otorisasi') : ROLES[role]?.label ?? ROLE_TAMBAHAN[role]?.label ?? role)
 /** Semua role yang dimiliki user (double job: role utama + extra_roles). */
 export const rolesOf = (u) => [...new Set([u?.base_role || u?.role, ...(u?.extra_roles || [])].filter(Boolean))]
 export const WORKER_ROLES = ['penerjemah', 'proofreader', 'otorisator', 'staf_apostille']
@@ -108,7 +113,8 @@ export const invoiceCode = (no) => (/^\s*INV-(\d{3})/i.exec(String(no || '')) ||
  */
 export const invoiceLabel = (no) => String(no ?? '').replace(/^\s*INV-/i, '')
 
-export const can = {
+/** Aturan LAMA (sebelum Role & Hak Akses) — dipakai katalog izin untuk mengisi role bawaan. Jangan dipakai langsung di UI. */
+export const canAsal = {
   seeAllBranches: (u) => ['superadmin', 'admin_pusat', 'supervisor', 'direktur', 'akunting'].includes(u?.role),
   seeProofreaderIdentity,
   openSettings: (u) => ['superadmin', 'admin_pusat', 'supervisor'].includes(u?.role),
@@ -128,6 +134,27 @@ export const can = {
   topUpPettyCash: (u) => ['superadmin', 'direktur', 'akunting', 'cs', 'admin_pusat', 'supervisor'].includes(u?.role),
   deleteProject: (u) => u?.role === 'superadmin',
   processStage: (u, stage, sub, project) => canProcess(u, stage, sub, project),
+}
+
+/** Mesin izin dipasang dari lib/izin.js (tanpa impor melingkar). Sebelum terpasang → aturan lama. */
+let IZIN = null
+export const pasangIzin = (x) => { IZIN = x }
+const lewat = (kode, asal) => (u) => (IZIN ? IZIN.boleh(u, kode) : asal(u))
+const field = (id, tingkat, asal) => (u) => (IZIN ? tingkat.includes(IZIN.aksesField(u, id)) : asal(u))
+/** Hak akses yang dipakai UI — mengikuti Pengaturan → Role & Hak Akses (katalog config/izin.js). */
+export const can = {
+  ...canAsal,
+  editProject: lewat('project.ubah', canAsal.editProject),
+  deleteProject: lewat('project.hapus', canAsal.deleteProject),
+  manageUsers: lewat('pengaturan.pengguna.ubah', canAsal.manageUsers),
+  managePeople: lewat('pengaturan.master.ubah', canAsal.managePeople),
+  manageVendors: lewat('vendor.ubah', canAsal.manageVendors),
+  approveVendor: lewat('tagihan.setujui', canAsal.approveVendor),
+  topUpPettyCash: lewat('petty.tambah', canAsal.topUpPettyCash),
+  seeBiaya: field('project.biaya', ['lihat', 'edit'], canAsal.seeBiaya),
+  editBiaya: field('project.biaya', ['edit'], canAsal.editBiaya),
+  seeFunding: field('keuangan.sumber_dana', ['lihat', 'edit'], canAsal.seeFunding),
+  seeCustomerDetail: field('project.kontak_pelanggan', ['samar', 'lihat', 'edit'], canAsal.seeCustomerDetail),
 }
 
 const OVERRIDE = ['superadmin', 'admin_pusat', 'supervisor']
