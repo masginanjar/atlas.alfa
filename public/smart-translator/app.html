@@ -59,6 +59,15 @@ select.inp{border-radius:12px}
 .srcbox{flex:1 1 320px;min-width:0;position:sticky;top:12px;overflow:hidden}
 .srcview{background:#EEF0F6;padding:12px;max-height:70vh;overflow:auto}
 .srcinner{position:relative;width:100%}
+.ung{display:flex;flex-direction:column;gap:14px;max-width:1180px;margin:0 auto;width:100%}
+.ungbox{padding:12px;display:flex;flex-direction:column;gap:10px}
+.dropx{flex-direction:row!important;align-items:center;justify-content:flex-start;gap:14px;padding:14px 16px!important;text-align:left;flex-wrap:wrap}
+.dropx .dropic{display:grid;place-items:center;width:44px;height:44px;border-radius:12px;background:#EEF1FA;color:#2B3A5C;flex:none}
+.dropx .droptx{display:flex;flex-direction:column;gap:2px;flex:1 1 220px;min-width:0}.dropx .droptx b{font-size:15px}.dropx .droptx .small{font-size:13px}
+.ungbox.besar .dropx{flex-direction:column!important;align-items:center;justify-content:center;text-align:center;padding:44px 16px!important;gap:12px}.ungbox.besar .dropx .droptx{flex:none;align-items:center}.ungbox.besar .dropx .droptx b{font-size:18px}.ungbox.besar .dropx .dropic{width:60px;height:60px;border-radius:16px}
+.unginfo{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;padding:0 4px}.unginfo .jn{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:13px}.unginfo .cth{margin-left:auto;display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px}
+.lkb{font:inherit;font-size:13px;font-weight:600;color:#2F4BC6;background:none;border:0;padding:6px 2px;min-height:32px;cursor:pointer;text-decoration:underline}
+@media (max-width:700px){.unginfo .cth{margin-left:0}.lkb{min-height:44px}.dropx .btn{flex:1 1 100%}.unghead .btn{flex:1 1 auto}}
 .dvwrap{position:relative;flex:1;min-height:0;display:flex;flex-direction:column}.zoombar{position:absolute;right:10px;bottom:10px;z-index:3;display:flex;gap:2px;padding:3px;border-radius:9px;background:rgba(255,255,255,.94);box-shadow:0 1px 6px rgba(20,27,52,.22)}.zoombar .mb{min-width:28px;font-size:14px}.zoombar #zoomlbl{min-width:48px;font-size:12px}.docview.geser{cursor:grab}.docview.menggeser{cursor:grabbing;user-select:none}.docview.pilih.geser{cursor:crosshair}
 .srcinner canvas{display:block;width:100%;height:auto;border-radius:8px}
 .hl{position:absolute;border:2px solid #D9534A;background:rgba(217,83,74,.14);border-radius:4px;pointer-events:none;display:none}
@@ -755,7 +764,7 @@ function viewUnggah(){
     ${di>0?`<button type="button" class="btn sm" data-act="gabung" data-d="${di}">Gabung ke Dokumen ${di}</button>`:''}${d.pages.length>1?`<button type="button" class="btn sm" data-act="pisah" data-d="${di}">Pisahkan halaman</button>`:''}
     <button type="button" class="ib" data-act="hapusdok" data-d="${di}" aria-label="Hapus Dokumen ${di+1}" title="Hapus dokumen">${ic(I.trash)}</button></div>
     ${d.pernah?`<div class="row" data-pernah role="status" style="gap:8px;background:#FFF7DB;border-radius:12px;padding:10px 12px;margin-bottom:10px"><span class="grow" style="min-width:200px;font-size:14px"><b>Berkas ini pernah diproses</b> — v${d.pernah[0].versi} · ${esc(d.pernah[0].status||'')} · ${new Date(d.pernah[0].updated_at).toLocaleString('id-ID',{dateStyle:'medium',timeStyle:'short'})}${d.pernah[0].user_nama?' · '+esc(d.pernah[0].user_nama):''}. Belum dibaca ulang, belum ada biaya AI.</span><button type="button" class="btn dark sm" data-act="pernahlanjut" data-d="${di}">Lanjutkan hasil terakhir</button><button type="button" class="btn sm" data-act="pernahbaru" data-d="${di}">Baca baru (versi ${Math.max(...d.pernah.map(x=>x.versi||1))+1})</button><button type="button" class="btn sm" data-act="pernahriwayat" data-d="${di}">Lihat riwayat</button></div>`:''}
-    ${d.jenis&&!d.jenis.siap&&d.pages.some(p=>p.status==='ok')?`<div class="col" style="gap:8px;background:#FFF6DE;border-radius:12px;padding:12px 14px;margin-bottom:10px"><span style="font-size:14px;line-height:1.45;color:#6B4600">${d.jenis.nama==='Tidak dikenali'?'Jenis dokumen <b>belum dikenali</b>.':'Terdeteksi <b>'+esc(d.jenis.nama)+'</b>.'} Template otomatis saat ini baru untuk KTP — teks hasil baca tetap bisa dipakai untuk menerjemahkan manual.</span><div class="row"><button type="button" class="btn sm" data-act="salinteks" data-d="${di}">Salin teks</button><button type="button" class="btn sm" data-act="unduhteks" data-d="${di}">Unduh teks (.txt)</button></div></div>`:''}
+    ${d.jenis&&!d.jenis.siap&&d.pages.some(p=>p.status==='ok')?`<div class="col" style="gap:8px;background:#FFF6DE;border-radius:12px;padding:12px 14px;margin-bottom:10px"><span style="font-size:14px;line-height:1.45;color:#6B4600">${d.jenis.nama==='Tidak dikenali'?'Jenis dokumen <b>belum dikenali</b>.':'Terdeteksi <b>'+esc(d.jenis.nama)+'</b>.'} Template otomatis saat ini untuk KTP, Kartu Keluarga, dan Akta Kelahiran — teks hasil baca tetap bisa dipakai untuk menerjemahkan manual.</span><div class="row"><button type="button" class="btn sm" data-act="salinteks" data-d="${di}">Salin teks</button><button type="button" class="btn sm" data-act="unduhteks" data-d="${di}">Unduh teks (.txt)</button></div></div>`:''}
     ${d.pages.map((p,pi)=>`<div class="pg"><img class="thumb" alt="" src="${thumbURL(p)}"><div class="col grow" style="flex:1 1 180px;gap:6px"><div class="row"><b style="font-weight:600;overflow-wrap:anywhere">Hal. ${pi+1} · ${esc(p.name)}</b>${pageStatus(p)}</div>
       ${p.status==='baca'?`<div class="bar" role="progressbar" aria-label="Progres baca" aria-valuemin="0" aria-valuemax="100"><div id="bar${p.id}" style="width:${p.progress}%"></div></div>`:''}
       ${p.engineNote?`<span class="small" style="color:#8A5A00">${esc(p.engineNote)}</span>`:''}${p.status==='ok'&&catatanKualitas(p).length?`<span class="small" style="color:#8A5A00">${catatanKualitas(p).length} catatan kualitas gambar — lihat di langkah Periksa</span>`:''}
@@ -767,18 +776,20 @@ function viewUnggah(){
       <button type="button" class="ib" data-act="hapushal" data-d="${di}" data-p="${pi}" aria-label="Hapus halaman" title="Hapus halaman">${ic(I.trash)}</button></div></div>`).join('')}
   </section>`).join('');
   const np=S.docs.reduce((a,d)=>a+d.pages.length,0);
-  return steps()+`<div class="split">
-   <div class="col" style="flex:1 1 340px;min-width:0;gap:14px">
-    <section class="card pad col" aria-label="Jenis dokumen"><h2>Jenis dokumen</h2><div class="row">${jenis}</div>
-      <label class="field">Arah bahasa<select class="inp"><option>Indonesia → Inggris</option></select></label></section>
-    <section class="card pad col" aria-label="Unggah"><h2>Unggah</h2>
-      <div class="drop" id="drop"><span style="color:var(--mute)">${ic(I.up,28,1.7)}</span><b style="font-size:15px">Tarik file ke sini</b><span class="small" style="font-size:13px">JPG, PNG, atau PDF banyak halaman</span><button type="button" class="btn dark" data-act="pilih">Pilih file</button></div>
-      <button type="button" class="btn" data-act="contoh">Coba dengan KTP contoh (data buatan)</button><button type="button" class="btn" data-act="contohlain" data-t="akta">Contoh Akta Kelahiran</button><button type="button" class="btn" data-act="contohlain" data-t="kk">Contoh Kartu Keluarga</button></section>
-   </div>
-   <div class="col" style="flex:2 1 480px;min-width:0;gap:14px">
-    ${S.docs.length?`<div class="row"><h2 class="grow" style="flex:1 1 160px">${S.docs.length} dokumen · ${np} halaman</h2><button type="button" class="btn blue" data-act="bacasemua">${ic(I.redo,15)}Baca ulang semua</button></div>${docs}<div class="row" style="justify-content:flex-end"><button type="button" class="btn dark" data-act="step" data-s="2" ${S.docs.some(d=>d.fields)?'':'disabled'}>Lanjut periksa</button></div>`
-     :`<section class="card pad" style="text-align:center;color:var(--mute);padding:48px 16px">Belum ada file</section>`}
-   </div></div>`;
+  // Tata letak satu kolom: UNGGAH paling atas (langsung terlihat), keterangan jenis satu baris, lalu daftar dokumen selebar halaman.
+  const ada=S.docs.length>0,siap=S.docs.some(d=>d.fields);
+  const lanjut=`<button type="button" class="btn dark" data-act="step" data-s="2" ${siap?'':'disabled'}>Lanjut periksa →</button>`;
+  return steps()+`<div class="ung">
+   <section class="card ungbox ${ada?'':'besar'}" aria-label="Unggah dokumen">
+    <div class="drop dropx" id="drop"><span class="dropic" aria-hidden="true">${ic(I.up,ada?22:30,1.8)}</span>
+      <span class="droptx"><b>${ada?'Tambah file':'Tarik file ke sini'}</b><span class="small">JPG, PNG, atau PDF banyak halaman · jenis dokumen dikenali otomatis</span></span>
+      <button type="button" class="btn dark" data-act="pilih">Pilih file</button></div>
+    <div class="unginfo"><span class="jn"><b>Bisa diproses:</b> ${chip('KTP','biru')}${chip('Kartu Keluarga','biru')}${chip('Akta Kelahiran','biru')}${chip('Indonesia → Inggris','ok')}</span>
+      <span class="small">Menyusul: Akta Perkawinan, Paspor, Ijazah, Transkrip Nilai${[...terdeteksi].some(x=>!['KTP','Kartu Keluarga','Akta Kelahiran'].includes(x)&&x!=='Tidak dikenali')?' — ada berkas berjenis ini; teksnya tetap bisa disalin':''}</span>
+      <span class="cth small">Coba contoh (data buatan): <button type="button" class="lkb" data-act="contoh">KTP</button><button type="button" class="lkb" data-act="contohlain" data-t="akta">Akta Kelahiran</button><button type="button" class="lkb" data-act="contohlain" data-t="kk">Kartu Keluarga</button></span></div>
+   </section>
+   ${ada?`<div class="row unghead"><h2 class="grow" style="flex:1 1 160px">${S.docs.length} dokumen · ${np} halaman</h2><button type="button" class="btn blue" data-act="bacasemua">${ic(I.redo,15)}Baca ulang semua</button>${lanjut}</div>${docs}${np>3?`<div class="row" style="justify-content:flex-end">${lanjut}</div>`:''}`:''}
+  </div>`;
 }
 function docTabs(){return `<div role="group" aria-label="Pilih dokumen" class="row" style="padding:3px;border-radius:12px;background:#E9EBF3;gap:2px">${S.docs.map((d,i)=>`<button type="button" data-act="cur" data-d="${i}" aria-pressed="${i===S.cur}" style="min-height:44px;padding:0 14px;border:0;border-radius:10px;background:${i===S.cur?'var(--ink)':'transparent'};color:${i===S.cur?'#fff':'var(--mute)'};font-size:13px;font-weight:600">Dokumen ${i+1}</button>`).join('')}</div>`}
 function stCell(f){const s=statusOf(f);return s.t==='ok'?`<span class="okmark" aria-label="${s.x||'Beres'}" title="${s.x||'Beres'}">${ic(I.check,18,2.4)}</span>`:chip({salah:'Tidak valid',kosong:'Kosong',cek:'Periksa',manual:'Terjemahan',na:'Tidak tercantum'}[s.t]||s.t,s.t==='na'?'kosong':s.t)}
