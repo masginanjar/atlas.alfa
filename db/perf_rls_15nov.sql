@@ -1,0 +1,6 @@
+-- 15 Nov 2026: percepatan RLS (hasil uji 40 pengguna). Hasil akses identik, CS ~2,9 dtk -> ~6 ms per query kirim.
+-- 1) app_cabang_izin(kode): daftar cabang yang boleh, dihitung SEKALI per query (dibungkus (select ...)) bukan per baris.
+--    Policy kirim/kirim_event/kirim_kendala/kirim_alamat: app_lingkup(k, cabang) -> (select app_cabang_izin(k)) && array['*', cabang]
+-- 2) private.app_org_ids(): app_branches() dibungkus (select ...)::text[]
+-- 3) sync_log.sl_select & activity_log.act_select: fungsi dibungkus (select ...)
+-- Rollback: kembalikan policy ke app_lingkup(...) seperti di db/akses_tahap2.sql.
