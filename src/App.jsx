@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
-import { Home, LayoutDashboard, FolderKanban, Settings as Cog, LogOut, Loader2, History, MonitorCheck, Wallet, Stamp, ReceiptText, StickyNote, AlarmClock, CalendarDays, Plus, Users, LayoutGrid, HardDrive, Tags, MessageCircle, BookOpen, FileStack, CalendarRange, Store, Handshake, Minimize2, Maximize2, Building2, Server, Rocket, Hash, ClipboardList, Truck, UserCheck } from 'lucide-react'
+import { Home, LayoutDashboard, FolderKanban, Settings as Cog, LogOut, Loader2, History, MonitorCheck, Wallet, Stamp, ReceiptText, StickyNote, AlarmClock, CalendarDays, Plus, Users, LayoutGrid, HardDrive, Tags, MessageCircle, BookOpen, FileStack, CalendarRange, Store, Handshake, Minimize2, Maximize2, Building2, Server, Rocket, Hash, ClipboardList, Truck, UserCheck, Languages } from 'lucide-react'
 import PindahBooks from './components/PindahBooks.jsx'
 import SidebarMenu from './components/SidebarMenu.jsx'
 import PanelDummy from './components/PanelDummy.jsx'
@@ -26,6 +26,7 @@ const Portal = lazy(() => import('./pages/Portal.jsx'))
 const PortalCek = lazy(() => import('./pages/PortalCek.jsx'))
 const Activity = lazy(() => import('./pages/Activity.jsx'))
 const Kehadiran = lazy(() => import('./pages/Kehadiran.jsx'))
+const SmartTranslator = lazy(() => import('./pages/SmartTranslator.jsx'))
 const Monitoring = lazy(() => import('./pages/Monitoring.jsx'))
 const Keuangan = lazy(() => import('./pages/Keuangan.jsx'))
 const Invoices = lazy(() => import('./pages/Invoices.jsx'))
@@ -116,6 +117,7 @@ const MENU = [
     { key: 'register', label: 'Nomor Register', icon: Hash, show: canSeeRegister },
     { key: 'otorisasi', label: 'Laporan Otorisasi', icon: ClipboardList, show: canSeeLaporanOto },
     { key: 'dokumen', label: 'Dokumen', icon: HardDrive },
+    { key: 'smart-translator', label: 'Smart Translator', icon: Languages },
     { key: 'affidavit', label: 'Affidavit', icon: FileStack, show: canSeeAffidavit },
   ] },
   { id: 'keuangan', label: 'Keuangan', icon: Wallet, children: [
@@ -241,6 +243,7 @@ export default function App() {
     : page === 'beranda' && canSeeBeranda(user) ? <Beranda />
     : page === 'settings' ? <Settings />
     : page === 'kehadiran' ? <Kehadiran />
+    : page === 'smart-translator' ? <SmartTranslator />
     : page === 'aktivitas' ? <Activity />
     : page === 'monitoring' ? <Monitoring />
     : page === 'keuangan' ? <Keuangan tab={param} />
