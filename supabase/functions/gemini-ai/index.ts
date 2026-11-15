@@ -58,7 +58,7 @@ const KK_ANGGOTA: [string, string][] = [
   ["nama", "Nama Lengkap"], ["nik", "NIK"], ["jk", "Jenis Kelamin"], ["tempat_lahir", "Tempat Lahir"], ["tgl_lahir", "Tanggal Lahir DD-MM-YYYY"], ["agama", "Agama"], ["pendidikan", "Pendidikan"], ["kerja", "Jenis Pekerjaan"], ["gol", "Golongan Darah"],
   ["status", "Status Perkawinan"], ["tgl_kawin", "Tanggal Perkawinan"], ["hub", "Status Hubungan Dalam Keluarga"], ["wn", "Kewarganegaraan"], ["paspor", "No. Paspor"], ["kitap", "No. KITAP"], ["ayah", "Nama Ayah"], ["ibu", "Nama Ibu"],
 ];
-const TUGAS: Record<string, { prompt: string; skema: unknown; maksKeluar: number }> = {
+const TUGAS: Record<string, { prompt: string; skema: unknown; maksKeluar: number; batasMs?: number }> = {
   ktp: {
     prompt: "Gambar ini seharusnya KTP Indonesia (boleh miring, terputar, atau buram). Salin isi tiap kolom PERSIS seperti tercetak, huruf demi huruf, tanpa memperbaiki ejaan, tanpa melengkapi, tanpa menebak. " +
       "Kolom yang tidak terlihat, terpotong, atau tidak bisa dibaca dengan yakin: isi string kosong dan masukkan nama kolomnya ke daftar \"ragu\". Kolom yang terbaca tetapi ada huruf/angka yang meragukan: tetap salin apa adanya dan masukkan juga ke \"ragu\". " +
@@ -96,6 +96,21 @@ const TUGAS: Record<string, { prompt: string; skema: unknown; maksKeluar: number
       ragu: { type: "ARRAY", items: { type: "STRING" } } }, required: ["jenis", "nama", "orientasi", "baris", "ragu"] },
     maksKeluar: 7000,
   },
+  transkrip: {
+    prompt: "Gambar ini seharusnya transkrip nilai akademik / daftar nilai Indonesia (perguruan tinggi atau sekolah). Salin SEMUA teks PERSIS seperti tercetak (tanpa memperbaiki ejaan, tanpa melengkapi, tanpa menebak) dan beri terjemahan bahasa Inggris yang setia dan formal. Bila dwibahasa, salin hanya teks bahasa Indonesia. " +
+      "atas = baris teks di atas tabel nilai (kop, judul, identitas), urut dari atas. kolom = judul kolom tabel nilai dari kiri ke kanan (satu set saja). " +
+      "baris = SEMUA baris tabel nilai, urut; bila tabel dicetak dua lajur berdampingan, gabungkan menjadi satu daftar (lajur kiri dulu, lalu lajur kanan). sel = isi tiap sel persis seperti tercetak, sejumlah kolom; en = sel yang sama tetapi nama mata kuliah / mata pelajaran diterjemahkan ke bahasa Inggris, sedangkan nomor, kode, SKS, angka, dan huruf nilai disalin apa adanya. Baris subjudul di dalam tabel (mis. SEMESTER I) ditulis sebagai baris dengan SATU sel. " +
+      "bawah = baris teks di bawah tabel (jumlah SKS, IPK, predikat, judul skripsi, tempat dan tanggal, blok tanda tangan), urut dari atas; jenis ttd untuk baris di blok tanda tangan (jabatan, tanda tangan, nama, NIP) dengan kolom = nomor blok dari kiri (1, 2, atau 3), selain itu jenis isi dan kolom 0. " +
+      "Nama orang, nomor, NIM, NIP, dan gelar di belakang nama tidak diterjemahkan; NIP ditulis REG. NO. diikuti angkanya. Elemen bukan teks ditulis sebagai baris: (Logo), (Photograph), (Signature and stamp), (QR Code). " +
+      "nama = nama pemilik transkrip. orientasi = MENDATAR atau TEGAK. ragu = yang tidak terbaca dengan yakin, ditulis a<nomor> untuk baris atas, t<nomor> untuk baris tabel, b<nomor> untuk baris bawah (nomor mulai 1). \"jenis\": tulis TRANSKRIP NILAI bila ini transkrip/daftar nilai, selain itu nama jenis dokumennya.",
+    skema: { type: "OBJECT", properties: { jenis: S("TRANSKRIP NILAI atau jenis dokumen lain"), nama: S("Nama pemilik transkrip"), orientasi: S("MENDATAR atau TEGAK"),
+      atas: { type: "ARRAY", items: { type: "OBJECT", properties: { teks: S("teks baris"), en: S("terjemahan Inggris"), jenis: S("judul | isi") }, required: ["teks", "en", "jenis"] } },
+      kolom: { type: "ARRAY", items: { type: "OBJECT", properties: { teks: S("judul kolom"), en: S("terjemahan Inggris") }, required: ["teks", "en"] } },
+      baris: { type: "ARRAY", items: { type: "OBJECT", properties: { sel: { type: "ARRAY", items: { type: "STRING" } }, en: { type: "ARRAY", items: { type: "STRING" } } }, required: ["sel", "en"] } },
+      bawah: { type: "ARRAY", items: { type: "OBJECT", properties: { teks: S("teks baris"), en: S("terjemahan Inggris"), jenis: S("isi | ttd"), kolom: S("0, 1, 2, atau 3") }, required: ["teks", "en", "jenis", "kolom"] } },
+      ragu: { type: "ARRAY", items: { type: "STRING" } } }, required: ["jenis", "nama", "orientasi", "atas", "kolom", "baris", "bawah", "ragu"] },
+    maksKeluar: 16000, batasMs: 100000,
+  },
   bukti: {
     prompt: "Gambar ini tangkapan layar daftar transaksi transfer dari internet banking (tabel dengan baris judul kolom). Untuk SETIAP baris transaksi, dari atas ke bawah, salin isi selnya PERSIS seperti tertulis (tanpa mengubah angka, tanpa menebak). Baris judul kolom tidak dihitung. " +
       "jumlah = nominal transfer persis seperti tertulis; dari = rekening sumber (nomor dan nama); ke = rekening tujuan (nomor dan nama); status = status transaksi; tgl = tanggal transfer; berita = berita/keterangan; ref = nomor referensi. Sel yang tidak ada atau tidak terbaca: string kosong.",
@@ -114,8 +129,8 @@ async function panggilGemini(kunci: string, model: string, tugas: string, b64: s
   let terakhir = "";
   for (let i = 0; i < 2; i++) {
     let r: Response;
-    try { r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, { method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": kunci }, body, signal: AbortSignal.timeout(40000) }); }
-    catch (_) { terakhir = "Gemini tidak menjawab dalam 40 detik (jaringan/antrean)"; await new Promise((s) => setTimeout(s, 700)); continue; }
+    try { r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, { method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": kunci }, body, signal: AbortSignal.timeout(T.batasMs ?? 40000) }); }
+    catch (_) { terakhir = `Gemini tidak menjawab dalam ${Math.round((T.batasMs ?? 40000) / 1000)} detik (jaringan/antrean)`; if (T.batasMs) break; await new Promise((s) => setTimeout(s, 700)); continue; }
     // deno-lint-ignore no-explicit-any
     const j: any = await r.json().catch(() => ({}));
     const u = j?.usageMetadata ?? {};
@@ -236,7 +251,7 @@ Deno.serve(async (req: Request) => {
     if (!m) return json({ ok: false, alasan: "gambar harus JPG/PNG/WebP" }, 400);
     if (m[2].length * 0.75 > MAKS_BYTE) return json({ ok: false, alasan: "gambar terlalu besar (maks 8 MB)" }, 400);
     // Smart Translator: jenis dokumen boleh dipilih pemanggil (akta kelahiran / kartu keluarga / ijazah); selain itu tugas bawaan fitur.
-    const tugasJalan = fitur === "penerjemah" && ["akta", "kk", "ijazah"].includes(String(b.tugas ?? "")) ? String(b.tugas) : F.tugas;
+    const tugasJalan = fitur === "penerjemah" && ["akta", "kk", "ijazah", "transkrip"].includes(String(b.tugas ?? "")) ? String(b.tugas) : F.tugas;
     return json(await satu(fitur, model, tugasJalan, m[2], m[1]));
   }
 
@@ -263,7 +278,7 @@ Deno.serve(async (req: Request) => {
     }
     const model = String(b.model ?? ""); if (!/^gemini-[\w.\-]+$/.test(model)) return json({ ok: false, alasan: "model tidak dikenal" }, 400);
     let url = "";
-    if (["ktp", "akta", "kk", "ijazah"].includes(tugas) && /^[a-z0-9_\-]+\.jpg$/i.test(String(b.berkas ?? ""))) url = "https://raw.githubusercontent.com/masginanjar/atlas.alfa/uji-ocr/uji/ocr/img/" + b.berkas;
+    if (["ktp", "akta", "kk", "ijazah", "transkrip"].includes(tugas) && /^[a-z0-9_\-]+\.jpg$/i.test(String(b.berkas ?? ""))) url = "https://raw.githubusercontent.com/masginanjar/atlas.alfa/uji-ocr/uji/ocr/img/" + b.berkas;
     else if (tugas === "bukti") url = "https://raw.githubusercontent.com/masginanjar/atlas.alfa/main/public/contoh/contoh-klikbca-transfer.png";
     else return json({ ok: false, alasan: "tugas uji tidak dikenal" }, 400);
     const ib = await fetch(url); if (!ib.ok) return json({ ok: false, alasan: "data uji tidak ditemukan" }, 404);
