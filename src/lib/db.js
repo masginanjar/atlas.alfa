@@ -24,7 +24,7 @@ const URL_ = import.meta.env.VITE_INSFORGE_URL
 // 'supabase' (live, Supabase) · 'live' (InsForge, lama) · 'demo' (localStorage)
 export const MODE = SUPABASE_READY ? 'supabase' : URL_ ? 'live' : 'demo'
 export const IS_LIVE = MODE !== 'demo'
-const ALL_TABLES = ['users', 'people', 'projects', 'petty_cash', 'couriers', 'notifications', 'requests', 'perf_daily', 'share_links', 'share_log', 'vendor_bills', 'fund_balances', 'app_settings', 'activity_log', 'pings', 'notes', 'todos', 'reminders', 'messages', 'daftar_harga', 'faq', 'affidavit_stok', 'affidavit_pakai', 'affidavit_kirim', 'jadwal', 'cuti', 'mitra', 'kapasitas', 'perusahaan_dok', 'data_pribadi', 'kirim', 'kirim_alamat', 'kirim_templat', 'kirim_kendala', 'kirim_mutasi', 'kirim_event', 'akses_role', 'akses_pengecualian', 'akses_audit', 'app_laporan', 'kehadiran']
+const ALL_TABLES = ['users', 'people', 'projects', 'petty_cash', 'couriers', 'notifications', 'requests', 'perf_daily', 'share_links', 'share_log', 'vendor_bills', 'fund_balances', 'app_settings', 'activity_log', 'pings', 'notes', 'todos', 'reminders', 'messages', 'daftar_harga', 'faq', 'affidavit_stok', 'affidavit_pakai', 'affidavit_kirim', 'jadwal', 'cuti', 'mitra', 'kapasitas', 'perusahaan_dok', 'data_pribadi', 'kirim', 'kirim_alamat', 'kirim_templat', 'kirim_kendala', 'kirim_mutasi', 'kirim_event', 'akses_role', 'akses_pengecualian', 'akses_audit', 'app_laporan', 'kehadiran', 'surat_kuasa', 'surat_kuasa_penerima']
 // Chat dimatikan → `messages` tidak ikut dilanggan realtime maupun disegarkan.
 export const TABLES = CHAT_ENABLED ? ALL_TABLES : ALL_TABLES.filter((t) => t !== 'messages')
 
@@ -37,6 +37,7 @@ import { fotoTim } from './avatarTim.js'
 import { isiJadwalDemo } from './jadwalDemo.js'
 import { isFreelance } from '../config/access.js'
 import { isiKirimDemo } from './kirimDemo.js'
+import { SK_PENERIMA_DEMO } from './skPenerimaDemo.js'
 const KEY = 'atlas-alfa-v24' // naikkan versi bila struktur data demo berubah
 let mem = null
 function load() {
@@ -248,6 +249,13 @@ function migrate(m) {
     }
     m.jadwal = out
     m.cuti ||= []
+    changed = true
+  }
+  // Penerima kuasa bawaan (Surat Kuasa) — HANYA mode demo; di live dari database.
+  if (!m.sk_penerima_demo_v1 && SK_PENERIMA_DEMO.length) {
+    const kini = new Date().toISOString()
+    m.surat_kuasa_penerima = [...SK_PENERIMA_DEMO.map((r) => ({ ...r, created_at: kini, updated_at: kini })), ...(m.surat_kuasa_penerima || []).filter((r) => !SK_PENERIMA_DEMO.some((x) => x.id === r.id))]
+    m.sk_penerima_demo_v1 = true
     changed = true
   }
   // Contoh riwayat kehadiran (login harian) 20 hari terakhir — HANYA mode demo, untuk memperlihatkan rekap.

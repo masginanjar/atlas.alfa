@@ -1,0 +1,3 @@
+-- Diterapkan ke Supabase 15 Nov 2026 (migrasi "surat_kuasa" & "vision_uji_hasil").
+-- surat_kuasa (RLS: izin surat-kuasa.* + lingkup cabang), surat_kuasa_penerima (baca: surat-kuasa.lihat; kelola: surat-kuasa.atur),
+-- trigger updated_at, app_patch mengenal dua tabel itu. vision_uji_hasil: hasil uji OCR sintetis (tertutup untuk klien).

@@ -14,6 +14,7 @@ export default defineConfig(({ mode }) => ({
   resolve: { alias: [
     { find: '@legacy-payload', replacement: fileURLToPath(new URL(legacyPayload, import.meta.url)) },
     // Build live (ATLAS_LIVE=1 → GitHub Pages, repo publik): data faktur Zoho Nov (nama pelanggan asli) diganti modul kosong.
+    ...(process.env.ATLAS_LIVE === '1' ? [{ find: /^\.\/skPenerimaDemo\.js$/, replacement: fileURLToPath(new URL('./src/lib/skPenerimaDemo.stub.js', import.meta.url)) }] : []),
     ...(process.env.ATLAS_LIVE === '1' ? [{ find: /^\.\/demoZohoNov\.js$/, replacement: fileURLToPath(new URL('./src/lib/demoZohoNov.stub.js', import.meta.url)) }] : []),
   ] },
   build: {

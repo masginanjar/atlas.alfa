@@ -317,9 +317,9 @@ function WorkSheetBerkas({ project, sub, t, onClose }) {
                   {berkas.length > 1 && <input type="checkbox" className="h-4 w-4 shrink-0 rounded border-slate-300 text-brand focus:ring-brand" checked={pilih.has(i)} onChange={() => togglePilih(i)} aria-label={`Pilih ${f.name}`} data-aksi="pilih-dokumen" />}
                   <FileText className={cx('h-4 w-4 shrink-0', f._sumber ? 'text-brand' : 'text-ink-mute')} />
                   <span className="min-w-0 flex-1 basis-24"><span className="block truncate text-sm font-semibold text-ink">{f.name}</span><span className="text-[11px] text-ink-mute">{f._label}</span></span>
-                  {pakaiST && bisaST(f) && <Button size="sm" variant="outline" onClick={() => setSt(f)} aria-label={`Buka ${f.name} di Smart Translator`} title="Baca otomatis & buat draf terjemahan" className="!h-9 !px-2.5 !text-brand !ring-brand/40" data-aksi="smart-translator"><Languages className="h-4 w-4" /><span className="hidden sm:inline">Smart Translator</span></Button>}
-                  <Button size="sm" variant="outline" onClick={() => setPreview(f)} aria-label={`Baca ${f.name}`} className="!h-9 !px-2.5"><Eye className="h-4 w-4" /><span className="hidden sm:inline">Baca</span></Button>
-                  <Button size="sm" variant="outline" loading={dl === i} onClick={() => download(f, i)} aria-label={`Unduh ${f.name}`} className="!h-9 !px-2.5"><Download className="h-4 w-4" /><span className="hidden sm:inline">Unduh</span></Button>
+                  {pakaiST && bisaST(f) && <Button size="sm" variant="outline" onClick={() => setSt(f)} aria-label={`Buka ${f.name} di Smart Translator`} title="Smart Translator — baca otomatis & buat draf terjemahan" className="!h-9 !w-9 !px-0 !text-brand !ring-brand/40 max-md:!h-11 max-md:!w-11" data-aksi="smart-translator"><Languages className="h-4 w-4" /></Button>}
+                  <Button size="sm" variant="outline" onClick={() => setPreview(f)} aria-label={`Baca ${f.name}`} title="Baca" className="!h-9 !w-9 !px-0 max-md:!h-11 max-md:!w-11"><Eye className="h-4 w-4" /></Button>
+                  <Button size="sm" variant="outline" loading={dl === i} onClick={() => download(f, i)} aria-label={`Unduh ${f.name}`} title="Unduh" className="!h-9 !w-9 !px-0 max-md:!h-11 max-md:!w-11"><Download className="h-4 w-4" /></Button>
                 </li>
               ))}
             </ul>

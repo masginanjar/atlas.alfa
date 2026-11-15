@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { subTerlihat } from '../lib/dokumenAL.js'
-import { Share2, ArrowLeft, Pencil, Trash2, Upload, FileText, Download, Check, Lock, History, CalendarClock, Loader2, UserRound, Truck, Printer, Hand, Unlock, Eye, FolderOpen, FastForward, StickyNote } from 'lucide-react'
+import { Share2, ArrowLeft, Pencil, Trash2, Upload, FileText, Download, Check, Lock, History, CalendarClock, Loader2, UserRound, Truck, Printer, Hand, Unlock, Eye, FolderOpen, FastForward, StickyNote, FileSignature } from 'lucide-react'
 import { useApp } from '../lib/store.jsx'
+import { boleh } from '../lib/izin.js'
 import { go } from '../lib/router.js'
 import { drive } from '../lib/integrations.js'
 import { can, PERSON_TYPES, ROLES, scopeByBranch, activeClaim, placeOf, branchesOf, printBranchOf, displayNameFor, seeProofreaderIdentity, proofreaderTeamName, pickProofreader, invoiceLabel, coordinatorFor, foreignLang } from '../config/access.js'
@@ -96,7 +97,8 @@ export default function ProjectDetail({ id, embedded, focusSub }) {
 
   return (
     <div className="space-y-3">
-      {!embedded && <button onClick={() => go('projects')} className="inline-flex items-center gap-1 text-sm font-semibold text-ink-mute hover:text-ink"><ArrowLeft className="h-4 w-4" />Project</button>}
+      {!embedded && <div className="flex flex-wrap items-center justify-between gap-2"><button onClick={() => go('projects')} className="inline-flex items-center gap-1 text-sm font-semibold text-ink-mute hover:text-ink"><ArrowLeft className="h-4 w-4" />Project</button>
+        {boleh(user, 'surat-kuasa.tambah') && <button type="button" onClick={() => go(`surat-kuasa/new/${project.id}`)} className="inline-flex min-h-9 items-center gap-1.5 rounded-xl bg-white px-3 text-[13px] font-semibold ring-1 ring-slate-200 hover:text-brand max-md:min-h-11" data-aksi="buat-surat-kuasa"><FileSignature className="h-4 w-4" />Buat Surat Kuasa</button>}</div>}
 
       {/* ===== Kepala project — melekat di atas saat digulir (K11) ===== */}
       <Card className={cx('p-3 sm:p-4', !embedded && 'md:sticky md:top-[calc(var(--appbar)+8px)] md:z-20 md:shadow-md')} data-kepala-project>

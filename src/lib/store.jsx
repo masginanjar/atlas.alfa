@@ -23,7 +23,7 @@ export const awalBulanLalu = () => {
   return `${new Date(d.getFullYear(), d.getMonth() - 1, 1).toLocaleDateString('sv-SE')}`
 }
 
-const DATA_KOSONG = () => ({ users: [], people: [], projects: [], petty_cash: [], couriers: [], notifications: [], requests: [], perf_daily: [], share_links: [], share_log: [], vendor_bills: [], fund_balances: [], app_settings: [], activity_log: [], pings: [], notes: [], todos: [], reminders: [], messages: [], affidavit_stok: [], affidavit_pakai: [], affidavit_kirim: [], jadwal: [], cuti: [], mitra: [], kapasitas: [], perusahaan_dok: [], akses_role: [], akses_pengecualian: [], akses_audit: [], app_laporan: [], kehadiran: [], kirim: [], kirim_alamat: [], kirim_templat: [], kirim_kendala: [], kirim_mutasi: [], kirim_event: [], data_pribadi: [], faq: [], daftar_harga: [] })
+const DATA_KOSONG = () => ({ users: [], people: [], projects: [], petty_cash: [], couriers: [], notifications: [], requests: [], perf_daily: [], share_links: [], share_log: [], vendor_bills: [], fund_balances: [], app_settings: [], activity_log: [], pings: [], notes: [], todos: [], reminders: [], messages: [], affidavit_stok: [], affidavit_pakai: [], affidavit_kirim: [], jadwal: [], cuti: [], mitra: [], kapasitas: [], perusahaan_dok: [], akses_role: [], akses_pengecualian: [], akses_audit: [], app_laporan: [], kehadiran: [], surat_kuasa: [], surat_kuasa_penerima: [], kirim: [], kirim_alamat: [], kirim_templat: [], kirim_kendala: [], kirim_mutasi: [], kirim_event: [], data_pribadi: [], faq: [], daftar_harga: [] })
 
 export function AppProvider({ children }) {
   const [baseUser, setUser] = useState(null)

@@ -95,8 +95,6 @@ export const MODUL = [
     f('penugasan', 'Penugasan', ['menu', 'lihat', 'tugaskan'], { semua: dari(canSeePenugasan) }),
     f('register', 'Nomor Register', ['menu', 'lihat', 'tambah', 'ubah', 'ekspor'], { semua: dari(canSeeRegister) }),
     f('otorisasi', 'Laporan Otorisasi', ['menu', 'lihat', 'laporan', 'ekspor'], { semua: dari(canSeeLaporanOto) }),
-    // 15 Nov 2026: Smart Translator (OCR + terjemahan otomatis dokumen). Fitur baru → bawaan hanya Superadmin.
-    f('smart-translator', 'Smart Translator', ['menu', 'lihat']),
     f('dokumen', 'Dokumen', ['menu', 'lihat', 'lampiran_lihat', 'lampiran_kelola'], { semua: plus(SEMUA, 'dokumen') }),
     // 15 Nov 2026: dokumen Apostille & Legalisasi punya folder sendiri per project. Pelaksana (penerjemah,
     // proofreader, otorisator) tidak perlu tahu — aturan lama: semua role lain boleh.
@@ -106,6 +104,11 @@ export const MODUL = [
     { id: 'project.biaya', label: 'Biaya / fee vendor & penerjemah (harga modal)', asal: { lihat: dari(can.seeBiaya), edit: dari(can.editBiaya) } },
     { id: 'project.kontak_pelanggan', label: 'Kontak & alamat pelanggan', asal: { lihat: dari(can.seeCustomerDetail) } },
     { id: 'project.nominal', label: 'Nominal transaksi / harga jual', asal: { lihat: KANTOR } },
+  ] },
+  // 15 Nov 2026: menu Alat. Fitur baru → bawaan hanya Superadmin (default deny); role lain diberi lewat Role & Hak Akses.
+  { id: 'alat', label: 'Alat', fitur: [
+    f('smart-translator', 'Smart Translator', ['menu', 'lihat']),
+    f('surat-kuasa', 'Surat Kuasa', ['menu', 'lihat', 'tambah', 'ubah', 'hapus', 'cetak', 'atur']),
   ] },
   { id: 'keuangan', label: 'Keuangan', fitur: [
     f('keuangan', 'Ringkasan Keuangan', ['menu', 'lihat', 'laporan'], { menu: plus(SEMUA, 'keuangan'), lihat: plus(SEMUA, 'keuangan'), laporan: dari(canSeeKeuangan) }),
@@ -178,7 +181,7 @@ export const RUTE_FITUR = {
   beranda: 'beranda', dashboard: 'dashboard', faktur: 'faktur', pelanggan: 'pelanggan', mitra: 'mitra', 'daftar-harga': 'katalog',
   projects: 'project', penugasan: 'penugasan', register: 'register', otorisasi: 'otorisasi', dokumen: 'dokumen', affidavit: 'affidavit',
   keuangan: 'keuangan', vendor: 'vendor', agenda: 'agenda', jadwal: 'jadwal', notes: 'notes', perusahaan: 'perusahaan', faq: 'faq', settings: 'settings',
-  kehadiran: 'kehadiran', 'smart-translator': 'smart-translator', monitoring: 'monitoring', 'status-server': 'status-server', 'rilis-fitur': 'rilis-fitur', aktivitas: 'aktivitas',
+  kehadiran: 'kehadiran', 'smart-translator': 'smart-translator', 'surat-kuasa': 'surat-kuasa', monitoring: 'monitoring', 'status-server': 'status-server', 'rilis-fitur': 'rilis-fitur', aktivitas: 'aktivitas',
   'pengiriman': 'pengiriman.ringkasan', 'pengiriman/daftar': 'pengiriman.daftar', 'pengiriman/buat': 'pengiriman.buat', 'pengiriman/ongkir': 'pengiriman.ongkir',
   'pengiriman/draft': 'pengiriman.draft', 'pengiriman/alamat': 'pengiriman.alamat', 'pengiriman/label': 'pengiriman.label', 'pengiriman/kendala': 'pengiriman.kendala',
   'pengiriman/saldo': 'pengiriman.saldo', 'pengiriman/laporan': 'pengiriman.laporan', 'pengiriman/pengaturan': 'pengiriman.pengaturan',
