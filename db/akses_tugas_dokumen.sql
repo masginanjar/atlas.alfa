@@ -86,3 +86,8 @@ begin
 end $f$;
 revoke execute on function public.app_tolak_tugas(text, text, text) from public, anon;
 grant execute on function public.app_tolak_tugas(text, text, text) to authenticated;
+
+-- (5) 15 Nov 2026 (setelah live): berkas di folder cabang yang project-nya sudah tidak ada / bukan project
+--     (mis. struk pengiriman, pengajuan) → hanya cabangnya + yang melihat semua cabang; pelaksana tidak.
+--     Folder non-cabang (Pusat, Tagihan, dst.) tetap seperti aturan lama.
+--     Lihat definisi akhir policy files_proyek_jaga & fungsi app_cabang_dikenal di database.
