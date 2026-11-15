@@ -759,11 +759,11 @@ function WaIkon({ p }) {
 
 export const COLUMNS = [
   // Tata letak CANVAS ATLAS (12 Nov 2026): kartu per baris, maks 2 baris per sel (utama + pendukung).
-  { key: 'invoice', label: 'Invoice', w: 'minmax(152px,136fr)', cls: 'flex min-w-0 flex-col gap-[3px]',
+  { key: 'invoice', label: 'Invoice', w: 'minmax(178px,136fr)', cls: 'flex min-w-0 flex-col gap-[3px]',
     cell: (p) => <>
       <span className="flex min-w-0 max-w-full items-center gap-0.5 self-start">
         <span data-inv={dibuatBaru(p) ? 'baru' : 'lama'} title={invoiceLabel(p.invoice_no)}
-          className={cx('min-w-0 truncate rounded-md text-base font-bold leading-[26px] tabular-nums text-[#141B34]', dibuatBaru(p) && '-ml-1.5 bg-[#E2F5E8] px-1.5')}>{invoiceLabel(p.invoice_no)}</span>
+          className={cx('min-w-0 break-all rounded-md text-base font-bold leading-[26px] tabular-nums text-[#141B34]', dibuatBaru(p) && '-ml-1.5 bg-[#E2F5E8] px-1.5')}>{invoiceLabel(p.invoice_no)}</span>
         <SalinInvoice no={invoiceLabel(p.invoice_no)} />
       </span>
       <WaktuDibuat p={p} />
