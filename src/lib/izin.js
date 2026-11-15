@@ -33,7 +33,7 @@ export const roleDoc = (kode) => ROLE[kode] || null
 
 const cache = new Map()
 const sekarang = () => Date.now()
-const berlaku = (k) => !k.sampai || new Date(k.sampai).getTime() > sekarang()
+const berlaku = (k) => !k.dicabut && (!k.sampai || new Date(k.sampai).getTime() > sekarang())
 
 /** Konfigurasi role (tersimpan, atau aturan lama bila belum pernah diatur). */
 export function konfigRole(kode) {

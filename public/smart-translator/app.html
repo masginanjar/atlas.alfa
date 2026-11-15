@@ -337,7 +337,7 @@ const needsTr=key=>DEF[key].kind!=='tetap';
 const {lev,sim}=OCRCORE;
 const deteksiJenis=t=>OCRCORE.deteksiJenis(t);
 function teksDok(d){return d.pages.map(p=>p.text||'').join('\n\n').trim()}
-const AMBANG={vision:90,tesseract:75}; // skor terendah (huruf utk Vision, kata utk Tesseract) di bawah ini → perlu dicek
+const AMBANG={vision:90,tesseract:75,gemini:50}; // skor terendah (huruf utk Vision, kata utk Tesseract) di bawah ini → perlu dicek
 const mesinNama=m=>m==='gemini'?'AI Gemini':m==='vision'?'Google Vision':m==='tesseract'?'Tesseract':m==='pdf'?'Teks PDF':m==='manual'?'Ketik manual':'—';
 /* ---------- Keadaan aplikasi ---------- */
 const S={view:'proses',step:1,docs:[],cur:0,srcTab:'gambar',zoom:false,busy:false,customTpl:null,q:''};
@@ -369,7 +369,7 @@ function statusOf(f){
   if(!s)return{t:'kosong',x:f.labelAda?'Label terbaca, nilai belum terbaca':'Belum terdeteksi',block:d.req?1:0,ulang:1};
   const v=OCRCORE.validasi(f.key,s);if(!v.ok)return{t:'salah',x:'Tidak lolos validasi: '+v.alasan,block:1,ulang:1};
   if(f.beda&&!f.checked)return{t:'cek',x:'Hasil baca berbeda — pilih yang sesuai dokumen',block:1,tick:1};
-  if(!f.srcEdited&&!f.checked&&f.conf!=null&&f.mesin&&f.conf<(AMBANG[f.mesin]||80))return{t:'cek',x:'Skor OCR rendah — cocokkan dengan dokumen',block:1,tick:1,ulang:1};
+  if(!f.srcEdited&&!f.checked&&f.conf!=null&&f.mesin&&f.conf<(AMBANG[f.mesin]||80))return{t:'cek',x:f.mesin==='gemini'?'AI ragu pada kolom ini — cocokkan dengan dokumen':'Skor OCR rendah — cocokkan dengan dokumen',block:1,tick:1,ulang:1};
   if(f.review)return{t:'cek',x:'Sumber berubah — periksa terjemahan',block:1,tick:1};
   if(needsTr(f.key)&&!String(f.en||'').trim())return{t:'manual',x:'Terjemahkan manual (sumber tidak bermasalah)',block:1};
   return{t:'ok',x:f.checked?'Sudah diperiksa':f.srcEdited?'Dikoreksi pengguna':'',block:0};
@@ -429,7 +429,22 @@ async function visionPanggil(body){const s=sesiAtlas();if(!s)return null;const r
 /* ---------- Pembaca kedua: AI Gemini (model dipilih di ATLAS → Pengaturan → AI) ----------
    Hanya saat dibuka dari ATLAS (login). Hasil AI menjadi KANDIDAT: kolom kosong diisi, yang berbeda dari Vision ditandai
    untuk dipilih pengguna, koreksi pengguna tidak pernah ditimpa. Gagal/dimatikan → dicatat di halaman, tidak diam-diam. */
-const AI={label:'',info:''};
+const AI={label:'',info:'',utama:false}; // utama=true → dokumen dibaca AI saja (Google Vision tidak dipanggil). Diatur di ATLAS → Pengaturan → AI.
+const KTP_LABEL={provinsi:'PROVINSI',nik:'NIK',nama:'Nama',tempat_lahir:'Tempat/Tgl Lahir',jk:'Jenis Kelamin',gol:'Gol. Darah',alamat:'Alamat',rtrw:'RT/RW',kel:'Kel/Desa',kec:'Kecamatan',agama:'Agama',status:'Status Perkawinan',kerja:'Pekerjaan',wn:'Kewarganegaraan',berlaku:'Berlaku Hingga'};
+/** Baca satu halaman dengan AI saja. Berhasil → p.aiData (nilai per kolom, apa adanya). Gagal → {ok:false, alasan}. */
+async function aiHalaman(p){
+  const c=drawRot(p.src,p.rot,2000);const j=await aiPanggil({aksi:'jalan',fitur:'penerjemah',gambar:c.toDataURL('image/jpeg',0.9)});
+  if(!j||!j.ok)return{ok:false,mati:!!(j&&j.mati),alasan:(j&&j.alasan)||'AI tidak menjawab'};
+  const x=j.data||{};AI.label=j.modelLabel||'Gemini';
+  if(!/ktp/i.test(String(x.jenis||'')))return{ok:false,alasan:'AI menilai berkas ini bukan KTP ('+String(x.jenis||'tidak jelas').slice(0,40)+')'};
+  p.aiData=x;p.aiRagu=Array.isArray(x.ragu)?x.ragu:[];p.ocrCanvas=c;p.ocrW=c.width;p.ocrH=c.height;p.lines=[];p.miring=0;p.engine='gemini';p.kualitasTeks=[];
+  p.text=Object.keys(KTP_LABEL).map(k=>KTP_LABEL[k]+' : '+String(x[k]==null?'':x[k])).join('\n');
+  p.aiCatatan='Dibaca oleh AI '+AI.label+' saja (tanpa Google Vision). AI tidak memberi skor dan tidak menandai letak tulisan — cocokkan setiap kolom dengan gambar dokumen.';
+  renderVision();return{ok:true};
+}
+function petaAi(p){const nilai={},label={};const ragu=new Set(p.aiRagu||[]);
+  for(const df of FIELDS){const v=String(p.aiData[df.key]==null?'':p.aiData[df.key]).trim();if(!v)continue;label[df.key]=true;nilai[df.key]={v,raw:v,conf:ragu.has(df.key)?0:null,box:null,mesin:'gemini'}}
+  return{nilai,label}}
 async function aiPanggil(body){const s=sesiAtlas();if(!s)return null;try{const r=await fetch(s.url.replace('vision-ocr','gemini-ai'),{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+s.token},body:JSON.stringify(body)});return await r.json()}catch(e){return{ok:false,alasan:'Koneksi ke server AI gagal'}}}
 async function bacaAi(d,pg){
   if(!sesiAtlas()||pg.aiSudah)return;pg.aiSudah=true;
@@ -448,6 +463,7 @@ async function bacaAi(d,pg){
 function setKuota(k){if(k&&k.batas){VISION.kuota=k;renderVision()}}
 function visionChip(){return ''}
 function renderVision(){const el=document.getElementById('visionCard');if(!el)return;const k=VISION.kuota;
+  if(AI.utama){el.innerHTML=`<div class="vcard"><span class="dot" style="background:#2F4BC6"></span><div class="vb"><div class="vt"><b>Pembaca: AI Gemini</b><span>${esc(AI.label||'')}</span></div><small>Google Vision nonaktif · cadangan: Tesseract</small></div></div>`;return}
   if(!k){el.innerHTML=`<div class="vcard"><span class="dot" style="background:#9AA1B8"></span><div class="vb"><div class="vt"><b>Pembaca: Tesseract</b><span>di perangkat</span></div><small>${sesiAtlas()?'Menghubungkan Google Vision…':'Google Vision aktif saat dibuka dari ATLAS'}</small></div></div>`;return}
   const sisa=Math.max(0,k.batas-k.halaman),pct=Math.min(100,k.halaman/k.batas*100),hampir=k.halaman>=k.ingat,habis=sisa<=0,c=habis?'#C0392B':hampir?'#E0A800':'#1E9E5A';
   el.innerHTML=`<div class="vcard"><span class="dot" style="background:${c}"></span><div class="vb"><div class="vt"><b>${habis?'Kuota Vision habis — Tesseract':hampir?'Google Vision hampir habis':'Google Vision aktif'}</b><span>${k.halaman.toLocaleString('id-ID')} / ${k.batas.toLocaleString('id-ID')}</span></div><div class="track"><div style="width:${pct}%;background:${c}"></div></div><small>Gratis bulan ini · sisa ${sisa.toLocaleString('id-ID')} halaman${AI.label?' · + AI '+esc(AI.label):''}</small></div></div>`}
@@ -468,11 +484,20 @@ function teksPdfLayak(ls){const t=(ls||[]).join(' ');if(t.length<60||/\uFFFD/.te
 async function ocrPage(p){
   p.kualitas=kualitasAwal(p);p.engineNote='';p.kualitasTeks=[];
   if(p.pdfText&&teksPdfLayak(p.pdfText)){p.lines=p.pdfText.map(t=>({text:t,words:[],box:null,engine:'pdf'}));p.text=p.pdfText.join('\n');p.ocrW=0;p.engine='pdf';p.viaText=true;p.status='ok';return}
-  p.viaText=false;
+  p.viaText=false;p.aiData=null;p.aiCatatan='';
+  if(AI.siap)await AI.siap;
+  // Pembaca utama AI (keputusan pemilik 15 Nov 2026): Google Vision TIDAK dipanggil. AI gagal → Tesseract di perangkat, dengan catatan.
+  if(AI.utama&&sesiAtlas()){
+    const a=await aiHalaman(p);if(a.ok){p.status='ok';return}
+    if(!a.mati){p.engineNote='Pembaca AI tidak dipakai: '+a.alasan+' — halaman ini dibaca dengan Tesseract (cadangan, akurasi lebih rendah).';await tesseractHalaman(p);return}
+  }
   const {c,u}=gambarKirim(p);
   const j=await visionBaca(u);
   if(j.ok){const b=OCRCORE.barisDariKata(j.kata||[],'vision');p.ocrCanvas=c;p.ocrW=c.width;p.ocrH=c.height;p.lines=b.lines;p.miring=b.miring;p.text=j.teks||b.lines.map(l=>l.text).join('\n');p.engine='vision';p.kualitasTeks=OCRCORE.kualitasTeks(j.kata||[],c.width,c.height,b.miring);p.status='ok';return}
   p.engineNote=(j.alasan||'Google Vision gagal')+' — halaman ini dibaca dengan Tesseract (cadangan, akurasi lebih rendah).';
+  await tesseractHalaman(p);
+}
+async function tesseractHalaman(p){
   p.engine='tesseract';
   const tc=drawRot(p.src,p.rot,2600);p.ocrCanvas=tc;p.ocrW=tc.width;p.ocrH=tc.height;
   const w=await getWorker();curPage=p;
@@ -484,6 +509,7 @@ async function ocrPage(p){
 /** Baca ulang satu potongan (koordinat gambar OCR halaman). Kembalikan baris dalam koordinat halaman. */
 async function bacaPotongan(pg,box){
   if(!pg.ocrCanvas)return{ok:false,alasan:'Gambar halaman tidak tersedia — baca ulang halaman dulu'};
+  if(pg.engine==='gemini'||AI.utama)return{ok:false,alasan:'Baca ulang potongan memakai Google Vision, yang sedang dinonaktifkan. Koreksi langsung di kolomnya, atau baca ulang halaman.'};
   const [x0,y0,x1,y1]=box.map(Math.round),w=Math.max(8,x1-x0),h=Math.max(8,y1-y0),sk=Math.min(3,Math.max(1,160/h));
   const cv=document.createElement('canvas');cv.width=Math.round(w*sk);cv.height=Math.round(h*sk);const x=cv.getContext('2d');x.imageSmoothingQuality='high';x.drawImage(pg.ocrCanvas,x0,y0,w,h,0,0,cv.width,cv.height);
   const j=await visionBaca(cv.toDataURL('image/jpeg',0.95));
@@ -492,7 +518,7 @@ async function bacaPotongan(pg,box){
   return{ok:true,lines:OCRCORE.barisDariKata(kata,'vision').lines,teks:j.teks||''};
 }
 let queueRunning=false;
-function petaHalaman(x){if(!x.peta)x.peta=OCRCORE.petakanKTP(x.lines||[]);return x.peta}
+function petaHalaman(x){if(!x.peta)x.peta=x.aiData?petaAi(x):OCRCORE.petakanKTP(x.lines||[]);return x.peta}
 async function runQueue(){
   if(queueRunning)return;queueRunning=true;
   try{
@@ -500,8 +526,8 @@ async function runQueue(){
       let job=null;for(const d of S.docs){const p=d.pages.find(x=>x.status==='antre');if(p){job=[d,p];break}}
       if(!job)break;const [d,p]=job;p.status='baca';p.progress=0;p.err='';p.peta=null;render();
       try{await ocrPage(p);d.jenis=deteksiJenis(teksDok(d));if(TUGAS)keAtlas({type:'st-jenis',nama:d.jenis.nama});
-        const first=d.pages.find(x=>x.status==='ok'&&x.lines&&x.lines.length>3&&Object.keys(petaHalaman(x).nilai).length>=3);
-        if(first===p||(!d.fields&&first)){terapkanPeta(d,first);d.fieldPage=first.id;render();if(first.engine==='vision')await bacaUlangOtomatis(d,first);if(d.jenis&&d.jenis.nama==='KTP'&&!first.viaText)await bacaAi(d,first)}
+        const first=d.pages.find(x=>x.status==='ok'&&(x.aiData||(x.lines&&x.lines.length>3))&&Object.keys(petaHalaman(x).nilai).length>=3);
+        if(first===p||(!d.fields&&first)){terapkanPeta(d,first);d.fieldPage=first.id;render();if(first.engine==='vision')await bacaUlangOtomatis(d,first);if(d.jenis&&d.jenis.nama==='KTP'&&!first.viaText&&first.engine!=='gemini'&&!AI.utama)await bacaAi(d,first)}
         else if(!d.fields&&d.pages.every(x=>x.status==='ok'||x.status==='gagal')){d.fields=FIELDS.map(df=>fieldBaru(df,null,{},null))}
       }catch(e){curPage=null;p.status='gagal';p.err=(e&&e.message)||String(e)}
       render();
@@ -580,7 +606,7 @@ const LBL_ST={salah:'tidak lolos validasi',kosong:'kosong',cek:'perlu diperiksa'
 function countChips(d){const c={};for(const f of d.fields){const s=statusOf(f);if(s.t!=='ok')c[s.t]=(c[s.t]||0)+1}const r=Object.keys(LBL_ST).filter(k=>c[k]).map(k=>chip(c[k]+' '+LBL_ST[k],k==='na'?'kosong':k)).join('');return r||chip('Semua beres','ok')}
 function rowWarn(f){const s=statusOf(f);return s.block>0||s.t==='salah'||s.t==='cek'}
 function catatanKualitas(p){return[...((p.kualitas&&p.kualitas.catatan)||[]),...(p.kualitasTeks||[])]}
-const fmtSkor=f=>f.mesin==='pdf'?'Teks PDF':f.conf==null?mesinNama(f.mesin)+' · tanpa skor':`${mesinNama(f.mesin)} · skor ${f.mesin==='vision'?'huruf':'kata'} terendah ${Math.round(f.conf)}`;
+const fmtSkor=f=>f.mesin==='pdf'?'Teks PDF':f.mesin==='gemini'?(f.conf===0?'AI Gemini · AI ragu pada kolom ini':'AI Gemini · tanpa skor'):f.conf==null?mesinNama(f.mesin)+' · tanpa skor':`${mesinNama(f.mesin)} · skor ${f.mesin==='vision'?'huruf':'kata'} terendah ${Math.round(f.conf)}`;
 /** Baris info di bawah setiap kolom: asal, skor OCR, validasi, kandidat, pemeriksaan — dipisah, tidak digabung jadi satu angka. */
 function metaKolom(f){
   const s=statusOf(f),v=OCRCORE.validasi(f.key,f.src),bagian=[];
@@ -894,7 +920,7 @@ function contohKTP(){
 }
 render();
 if(TUGAS)keAtlas({type:'st-siap'});
-if(sesiAtlas())visionPanggil({aksi:'kuota'}).then(j=>{if(j&&j.ok&&j.aktif)setKuota(j)}).catch(()=>{});
+AI.siap=!sesiAtlas()?Promise.resolve():aiPanggil({aksi:'info'}).then(i=>{const ft=i&&i.ok&&i.aktif&&(i.fitur||(i.setelan&&i.setelan.fitur));const m=ft&&ft.penerjemah&&ft.penerjemah.model;if(m){AI.utama=true;AI.label=String(m).replace(/^gemini-/,'Gemini ').replace(/-preview$/,'').replace(/-/g,' ');renderVision()}else return visionPanggil({aksi:'kuota'}).then(j=>{if(j&&j.ok&&j.aktif)setKuota(j)})}).catch(()=>{});
 </script>
 <script src="ref.js"></script>
 </body>
