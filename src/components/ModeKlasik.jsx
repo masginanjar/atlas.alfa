@@ -27,7 +27,9 @@ import { kapasitasHarian } from './Kapasitas.jsx'
 import { createPortal } from 'react-dom'
 import { rupiah } from '../lib/format.js'
 import { copyText } from './CopyText.jsx'
-import { menuBoleh, canSeeApostille, canSeeRegister, canSeeLaporanOto } from '../config/menuAccess.js'
+import { menuBoleh, canSeeApostille, canSeeLaporanOto } from '../config/menuAccess.js'
+import { CentangOfficial } from './NoReg.jsx'
+import { boleh, menuTampil } from '../lib/izin.js'
 import { drive } from '../lib/integrations.js'
 import { scopeRequests, RequestForm } from './Requests.jsx'
 // Sama dengan aturan di Requests.jsx: pelaksana lepas tidak membuat pengajuan
@@ -508,7 +510,7 @@ function SelRegister({ x }) {
   const n = regSub(x)
   if (!n.length) return null
   if (!regTerbit(x)) return <span className="text-[11px] font-semibold text-amber-700" title={n.join(', ')}>⏳ menunggu terbit</span>
-  return <span className="inline-flex items-center"><span className="font-mono text-[12px] font-bold text-emerald-800">{n[0]}</span>{n.length > 1 && <InfoHover inline isi={<div className="space-y-0.5 font-mono text-xs">{n.map((v) => <p key={v}>{v}</p>)}</div>}><span className="ml-1 rounded bg-emerald-50 px-1 text-[10px] font-bold text-emerald-700">+{n.length - 1}</span></InfoHover>}<Salin teks={n.join('\n')} label="Nomor register" /></span>
+  return <span className="inline-flex items-center"><CentangOfficial teks={false} className="mr-1" /><span className="font-mono text-[12px] font-bold text-emerald-800">{n[0]}</span>{n.length > 1 && <InfoHover inline isi={<div className="space-y-0.5 font-mono text-xs">{n.map((v) => <p key={v}>{v}</p>)}</div>}><span className="ml-1 rounded bg-emerald-50 px-1 text-[10px] font-bold text-emerald-700">+{n.length - 1}</span></InfoHover>}<Salin teks={n.join('\n')} label="Nomor register" /></span>
 }
 const jenisLayanan = (x) => SUB_TYPES[x.type]?.label || x.type || ''
 /** Kolom yang tampil di tabel Project (ringkas); sisanya lewat ikon mata / tombol "Semua kolom". */
@@ -1491,7 +1493,7 @@ export function KlasikApp({ page, param, detail }) {
   const tabs = [
     ...TAB_PROYEK.filter((t) => menuBoleh(user, 'projects') && (!t.boleh || t.boleh(user, data, personaList))),
     ...(menuBoleh(user, 'keuangan') ? [{ key: 'keuangan', label: 'Keuangan', ikon: Wallet }] : []),
-    ...(canSeeRegister(user) && menuBoleh(user, 'register') ? [{ key: 'register', label: 'Register', ikon: Hash, judul: 'Nomor Register' }] : []),
+    ...(menuTampil(user, 'register') && boleh(user, 'register.lihat') && menuBoleh(user, 'register') ? [{ key: 'register', label: 'Register', ikon: Hash, judul: 'Nomor Register' }] : []),
     ...(canSeeLaporanOto(user) && menuBoleh(user, 'otorisasi') ? [{ key: 'otorisasi', label: 'Otorisasi', ikon: ClipboardList, judul: 'Laporan Otorisasi' }] : []),
   ]
   // Lingkaran merah di tab: jumlah yang perlu ditindaklanjuti

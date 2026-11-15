@@ -14,6 +14,7 @@ import BiayaPanel from '../components/BiayaPanel.jsx'
 import OtorisatorView from '../components/OtorisatorView.jsx'
 import WorkerView from '../components/WorkerView.jsx'
 import CopyText from '../components/CopyText.jsx'
+import NoReg, { CentangOfficial } from '../components/NoReg.jsx'
 import { printBlob } from '../lib/printing.js'
 import AffidavitCetak from '../components/AffidavitCetak.jsx'
 import { perluAffidavit } from '../lib/affidavit.js'
@@ -423,9 +424,9 @@ function SubMeta({ sub }) {
     <div className="mt-1">
       <p className="text-xs text-ink-mute"><span className="font-semibold text-ink-soft">{type.label}</span> · {info.join(' · ')}</p>
       {sub.type === 'terjemahan' && sub.docs?.length
-        ? <ol className="mt-1.5 list-decimal space-y-0.5 pl-4 text-xs text-ink-soft">{sub.docs.filter((d) => d.desc.trim()).map((d, i) => <li key={i}>{d.desc} <span className="text-ink-mute">· {d.pages} hlm</span>{d.kind === 'non_reguler' && <span className="ml-1 rounded bg-violet-50 px-1 text-[10px] font-semibold text-violet-700">Non Reguler</span>}<RegNo n={sub.data?.reg_numbers?.[i]} /></li>)}</ol>
-        : pts.length > 1 ? <ol className="mt-1.5 list-decimal space-y-0.5 pl-4 text-xs text-ink-soft">{pts.map((p, i) => <li key={i}>{p}<RegNo n={sub.data?.reg_numbers?.[i]} /></li>)}</ol>
-        : <RegNo n={sub.data?.reg_numbers?.[0]} block />}
+        ? <ol className="mt-1.5 list-decimal space-y-0.5 pl-4 text-xs text-ink-soft">{sub.docs.filter((d) => d.desc.trim()).map((d, i) => <li key={i}>{d.desc} <span className="text-ink-mute">· {d.pages} hlm</span>{d.kind === 'non_reguler' && <span className="ml-1 rounded bg-violet-50 px-1 text-[10px] font-semibold text-violet-700">Non Reguler</span>}{sub.data?.reg_numbers?.[i] && <CentangOfficial className="ml-1.5" />}<NoReg n={sub.data?.reg_numbers?.[i]} /></li>)}</ol>
+        : pts.length > 1 ? <ol className="mt-1.5 list-decimal space-y-0.5 pl-4 text-xs text-ink-soft">{pts.map((p, i) => <li key={i}>{p}{sub.data?.reg_numbers?.[i] && <CentangOfficial className="ml-1.5" />}<NoReg n={sub.data?.reg_numbers?.[i]} /></li>)}</ol>
+        : sub.data?.reg_numbers?.[0] ? <div className="mt-1.5 flex flex-wrap items-center gap-2"><NoReg n={sub.data.reg_numbers[0]} className="!mt-0" /><CentangOfficial /></div> : null}
       {sub.data?.dokumen_id && <p className="mt-1.5 flex items-center gap-1.5 text-xs text-ink-soft"><span className="font-semibold text-ink-mute">ID / dokumen pemohon:</span><FileChip file={sub.data.dokumen_id} /></p>}
     </div>
   )
@@ -920,11 +921,6 @@ function ProjectActivity({ project }) {
   )
 }
 
-/** Nomor registrasi dokumen (acuan penulisan pada hasil cetak). */
-function RegNo({ n, block }) {
-  if (!n) return null
-  return <span className={cx('rounded-md bg-amber-50 px-1.5 py-px font-mono text-[11px] font-bold text-amber-800 ring-1 ring-amber-200', block ? 'mt-1.5 inline-block' : 'ml-1.5')} title="Nomor registrasi">No. Reg {n}</span>
-}
 
 
 /**

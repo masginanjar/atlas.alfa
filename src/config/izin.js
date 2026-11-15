@@ -93,7 +93,9 @@ export const MODUL = [
         tambah: dari(can.editProject), ubah: dari(can.editProject), tugaskan: dari(can.editProject), lampiran_kelola: plus(SEMUA, 'projects'), ekspor: dari(can.editProject), cetak: dari(can.editProject), bagikan: dari(can.editProject), massal: dari(can.editProject),
         hapus: dari(can.deleteProject) }),
     f('penugasan', 'Penugasan', ['menu', 'lihat', 'tugaskan'], { semua: dari(canSeePenugasan) }),
-    f('register', 'Nomor Register', ['menu', 'lihat', 'tambah', 'ubah', 'ekspor'], { semua: dari(canSeeRegister) }),
+    // 15 Nov 2026: submenu Nomor Register disembunyikan dari role Otorisator (Staf Otorisasi cukup Project + Laporan Otorisasi).
+    // Hanya MENU-nya; hak data tetap (tahap Nomor Registrasi di alur kerja). Master Otorisasi diberi lewat pengecualian pengguna.
+    f('register', 'Nomor Register', ['menu', 'lihat', 'tambah', 'ubah', 'ekspor'], { menu: dari(canSeeRegister).filter((r) => r !== 'otorisator'), _lain: dari(canSeeRegister) }),
     f('otorisasi', 'Laporan Otorisasi', ['menu', 'lihat', 'laporan', 'ekspor'], { semua: dari(canSeeLaporanOto) }),
     f('dokumen', 'Dokumen', ['menu', 'lihat', 'lampiran_lihat', 'lampiran_kelola'], { semua: plus(SEMUA, 'dokumen') }),
     // 15 Nov 2026: dokumen Apostille & Legalisasi punya folder sendiri per project. Pelaksana (penerjemah,

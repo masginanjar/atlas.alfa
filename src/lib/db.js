@@ -87,6 +87,9 @@ function migrate(m) {
   // foto profil tim (hanya bila belum ada foto unggahan)
   for (const x of m.users || []) { const f = fotoTim(x.name); if (f && (!x.avatar || x.avatar_tim)) { if (x.avatar !== f) { x.avatar = f; x.avatar_tim = true; changed = true } } }
   set('u-ot-lukas', { otorisator_level: 'staf' })
+  // Master Otorisasi tetap melihat submenu Nomor Register (role Otorisator tidak lagi menampilkannya) — pengecualian pengguna.
+  m.akses_pengecualian = m.akses_pengecualian || []
+  if (u('u-ot-made') && !m.akses_pengecualian.some((k) => k.user_id === 'u-ot-made' && k.kode === 'register.menu')) { m.akses_pengecualian.push({ id: 'kc-reg-master', user_id: 'u-ot-made', kode: 'register.menu', nilai: 'izinkan', sampai: '', alasan: 'Master Otorisasi menginput nomor register', oleh: 'Sistem', at: new Date().toISOString() }); changed = true }
   set('u-pr-rina', { extra_roles: ['otorisator'], otorisator_level: 'staf' })
   if (!u('u-pr-ela')) { m.users.push({ id: 'u-pr-ela', name: 'Ela', email: 'ela@247.id', role: 'proofreader', branch: 'Bali', extra_roles: ['otorisator'], otorisator_level: 'staf', active: true, created_at: new Date().toISOString() }); changed = true }
   // arsip lama tanpa rincian dokumen → isi jenis Reguler / Non Reguler (data contoh)

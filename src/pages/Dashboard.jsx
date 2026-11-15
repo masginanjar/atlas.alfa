@@ -29,6 +29,7 @@ import { useEffect, useState } from 'react'
 import { coverHariIni, sapaan } from '../lib/cover.js'
 import { myReminders, nextAt } from './Reminders.jsx'
 import { StripTersemat } from '../components/Pengumuman.jsx'
+import BiayaAiKartu from '../components/BiayaAiKartu.jsx'
 import { KepalaDasbor, PingStrip, AngkaPeran, PetaKerja, AgendaHariIni } from '../components/DasborBaru.jsx'
 import WorkerBoard from '../components/WorkerActions.jsx'
 import { KapasitasSaya } from '../components/Kapasitas.jsx'
@@ -148,6 +149,7 @@ export default function Dashboard() {
           {pimpinan && <KapasitasPenerjemahKartu />}
           {pimpinan && <FollowUpPeran s={s} />}
           {exec && <RingkasanKeuangan s={s} />}
+          <BiayaAiKartu />
           <AgendaHariIni />
           {hasPersonalTasks(user) && user.role !== 'staf_apostille' && <PerformanceCard narrow />}
           {user.role === 'penerjemah' && <TranslatorStats narrow />}

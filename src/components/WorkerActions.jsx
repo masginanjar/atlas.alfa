@@ -11,6 +11,7 @@ import { useUploadNamer } from './UploadNamer.jsx'
 import { PriorityBadge } from './Priority.jsx'
 import { DEADLINE_H1_ROLES, InvoiceNo } from './badges.jsx'
 import CopyText from './CopyText.jsx'
+import NoReg, { CentangOfficial } from './NoReg.jsx'
 import { drive } from '../lib/integrations.js'
 import { StagePanel } from '../pages/ProjectDetail.jsx'
 import { saveBlob, dataUrlToBlob } from '../lib/download.js'
@@ -530,7 +531,7 @@ function TaskRow({ project, sub, alt }) {
               <tbody className="divide-y divide-slate-100">
                 {daftar.map((d, i) => (
                   <tr key={i}>
-                    <td className="px-3 py-1.5 font-semibold text-ink">{d.desc}{sub.data?.reg_numbers?.[i] && <span className="ml-1.5 font-mono text-[11px] text-amber-800">No. Reg {sub.data.reg_numbers[i]}</span>}</td>
+                    <td className="px-3 py-1.5 font-semibold text-ink">{d.desc}{sub.data?.reg_numbers?.[i] && <><CentangOfficial className="ml-1.5" /><NoReg n={sub.data.reg_numbers[i]} /></>}</td>
                     <td className="px-3 py-1.5 text-ink-mute">{d.kind === 'non_reguler' ? <span className="rounded bg-violet-50 px-1 font-semibold text-violet-700">Non Reguler</span> : 'Reguler'}</td>
                     <td className="px-3 py-1.5 text-center tabular-nums">{d.pages || 1}</td>
                   </tr>
