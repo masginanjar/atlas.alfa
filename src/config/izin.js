@@ -136,6 +136,8 @@ export const MODUL = [
   { id: 'kolaborasi', label: 'Kolaborasi', fitur: [
     f('agenda', 'Agenda', ['menu', 'lihat', 'tambah', 'ubah', 'hapus'], { semua: plus(SEMUA, 'agenda') }),
     f('jadwal', 'Jadwal Kerja', ['menu', 'lihat', 'tambah', 'ubah'], { semua: plus(SEMUA, 'jadwal') }),
+    // 15 Nov 2026: login harian = absen hadir. Rekap kehadiran untuk Superadmin & Direktur.
+    f('kehadiran', 'Rekap Kehadiran (login harian)', ['menu', 'lihat', 'ekspor'], { semua: ['superadmin', 'direktur'] }),
     f('notes', 'Catatan', ['menu', 'lihat', 'tambah', 'ubah', 'hapus', 'bagikan'], { semua: plus(SEMUA, 'notes') }),
   ] },
   { id: 'perusahaan', label: 'Perusahaan & Pengaturan', fitur: [
@@ -172,7 +174,7 @@ export const RUTE_FITUR = {
   beranda: 'beranda', dashboard: 'dashboard', faktur: 'faktur', pelanggan: 'pelanggan', mitra: 'mitra', 'daftar-harga': 'katalog',
   projects: 'project', penugasan: 'penugasan', register: 'register', otorisasi: 'otorisasi', dokumen: 'dokumen', affidavit: 'affidavit',
   keuangan: 'keuangan', vendor: 'vendor', agenda: 'agenda', jadwal: 'jadwal', notes: 'notes', perusahaan: 'perusahaan', faq: 'faq', settings: 'settings',
-  monitoring: 'monitoring', 'status-server': 'status-server', 'rilis-fitur': 'rilis-fitur', aktivitas: 'aktivitas',
+  kehadiran: 'kehadiran', monitoring: 'monitoring', 'status-server': 'status-server', 'rilis-fitur': 'rilis-fitur', aktivitas: 'aktivitas',
   'pengiriman': 'pengiriman.ringkasan', 'pengiriman/daftar': 'pengiriman.daftar', 'pengiriman/buat': 'pengiriman.buat', 'pengiriman/ongkir': 'pengiriman.ongkir',
   'pengiriman/draft': 'pengiriman.draft', 'pengiriman/alamat': 'pengiriman.alamat', 'pengiriman/label': 'pengiriman.label', 'pengiriman/kendala': 'pengiriman.kendala',
   'pengiriman/saldo': 'pengiriman.saldo', 'pengiriman/laporan': 'pengiriman.laporan', 'pengiriman/pengaturan': 'pengiriman.pengaturan',

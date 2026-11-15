@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Clock, LogOut } from 'lucide-react'
 import { useApp } from '../lib/store.jsx'
-import { IDLE_MS, WARN_MS, lastActivity, watchIdle } from '../lib/session.js'
+import { IDLE_MS, WARN_MS, lastActivity, watchIdle, masukHariIni } from '../lib/session.js'
 import { Button } from './ui.jsx'
 
 const mmss = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
@@ -24,6 +24,15 @@ export default function SessionGuard() {
       onSignOutElsewhere: () => signOut(),
     })
     return () => ctl.current?.stop()
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Login harian: begitu ganti hari (WITA), keluar dan wajib login lagi — login itu = absen hadir.
+  useEffect(() => {
+    const cek = () => { if (!masukHariIni()) signOut('harian') }
+    const t = setInterval(cek, 30000)
+    const vis = () => { if (document.visibilityState === 'visible') cek() }
+    document.addEventListener('visibilitychange', vis)
+    return () => { clearInterval(t); document.removeEventListener('visibilitychange', vis) }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // hitung mundur halus selama peringatan tampil

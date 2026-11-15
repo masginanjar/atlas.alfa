@@ -93,6 +93,8 @@ export const supabaseDb = {
   async cleanup() { return 0 },
   /** klaim otorisasi atomik di server */
   /** Penerjemah menolak tugas (dijalankan di server: setelah ditolak project tak lagi terlihat olehnya). */
+  /** Login harian = absen hadir (dicatat server, satu baris per orang per hari WITA). */
+  async absen(perangkat) { return unwrap(await sb().rpc('app_absen', { p_perangkat: perangkat || '' })) },
   async tolakTugas(projectId, subId, alasan) { return unwrap(await sb().rpc('app_tolak_tugas', { p_project: projectId, p_sub: subId, p_alasan: alasan })) },
   async claim(projectId, subId) { return unwrap(await sb().rpc('claim_sub', { p_project: projectId, p_sub: subId })) },
   /**

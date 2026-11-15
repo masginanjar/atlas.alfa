@@ -3,7 +3,7 @@ import { Search, Clock, ArrowRight, Eye, EyeOff, Mail, Lock, Loader2 } from 'luc
 import { useApp } from '../lib/store.jsx'
 import { db, MODE } from '../lib/db.js'
 import { ROLES, branchLabel, roleLabel } from '../config/access.js'
-import { takeIdleReason, IDLE_MS } from '../lib/session.js'
+import { takeIdleReason, IDLE_MS, takeHarianReason } from '../lib/session.js'
 import { cx } from '../components/ui.jsx'
 import LoginVisual from '../components/LoginVisual.jsx'
 import { bacaCache, pilihGambar, simpanCache, DEFAULT_LOGIN } from '../config/loginTheme.js'
@@ -24,6 +24,7 @@ export default function Login() {
   const [view, setView] = useState('masuk') // masuk | daftar | lupa | sandi-baru
   const [info, setInfo] = useState('')
   const [idleOut] = useState(() => takeIdleReason())
+  const [harianOut] = useState(() => takeHarianReason())
 
   // Tema dari Setting → Tampilan → Halaman Login (salinan terakhir yang tersimpan).
   const [tema, setTema] = useState(bacaCache)
@@ -95,6 +96,12 @@ export default function Login() {
                 <p role="status" className="mb-4 flex items-start gap-2 rounded-xl bg-amber-50 px-3 py-2.5 text-xs font-semibold text-amber-900 ring-1 ring-amber-200">
                   <Clock className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                   <span>Sesi berakhir — Anda keluar otomatis setelah {IDLE_MS / 3600000} jam tidak aktif. Silakan masuk kembali.</span>
+                </p>
+              )}
+              {harianOut && (
+                <p role="status" className="mb-4 flex items-start gap-2 rounded-xl bg-sky-50 px-3 py-2.5 text-xs font-semibold text-sky-900 ring-1 ring-sky-200">
+                  <Clock className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                  <span>Selamat datang di hari yang baru. Silakan masuk untuk absen hadir hari ini.</span>
                 </p>
               )}
               {info && <p role="status" className="mb-4 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800 ring-1 ring-emerald-200">{info}</p>}

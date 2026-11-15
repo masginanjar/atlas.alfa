@@ -83,3 +83,21 @@ export function watchIdle({ onWarn, onSafe, onExpire, onSignOutElsewhere }) {
     stop: () => { stopped = true; clearInterval(timer); window.removeEventListener('storage', onStorage); EVENTS.forEach((e) => window.removeEventListener(e, bump, { capture: true })) },
   }
 }
+
+// ============================================================
+//  LOGIN HARIAN = ABSEN HADIR
+//  Sesi hanya berlaku untuk hari (WITA) saat login. Ganti hari →
+//  keluar otomatis dan wajib login lagi; login itu tercatat sebagai
+//  kehadiran (tabel kehadiran, lewat app_absen di server).
+// ============================================================
+const K_HARI = 'atlas-masuk-hari'
+const K_HARIAN = 'atlas-keluar-harian'
+export const ZONA_ABSEN = 'Asia/Makassar'
+/** Tanggal hari ini (WITA) dalam format YYYY-MM-DD. */
+export const hariIniAbsen = (d = new Date()) => new Intl.DateTimeFormat('en-CA', { timeZone: ZONA_ABSEN }).format(d)
+/** Catat bahwa login terjadi hari ini. */
+export const tandaiMasukHari = () => write(K_HARI, hariIniAbsen())
+/** Benar bila login terakhir di perangkat ini terjadi hari ini. */
+export const masukHariIni = () => read(K_HARI) === hariIniAbsen()
+export const setHarianReason = () => write(K_HARIAN, String(now()))
+export const takeHarianReason = () => { const v = read(K_HARIAN); if (v) { try { localStorage.removeItem(K_HARIAN) } catch { /* abaikan */ } } return !!v }

@@ -6,7 +6,7 @@ import { branchesOf, APOSTILLE_FUND, ROLES, roleLabel, displayNameFor, WORKER_RO
 import { zoho } from './integrations.js'
 import { startHeartbeat, statusOf } from './presence.js'
 import { threadOf, myMessages, unreadByThread, pingQuota, openChatBus, PING_MAX_24H, PING_GAP_MS } from './chat.js'
-import { broadcastSignOut, markActivity, setIdleReason, simpanTujuan, ambilTujuan } from './session.js'
+import { broadcastSignOut, markActivity, setIdleReason, simpanTujuan, ambilTujuan, tandaiMasukHari, masukHariIni, setHarianReason, hariIniAbsen } from './session.js'
 import { CHAT_ENABLED } from './flags.js'
 import { DONE, stagesOf, flowOf, isBilled, regComplete, stageLabel } from '../config/workflows.js'
 import { docListOf } from '../config/workflows.js'
@@ -23,7 +23,7 @@ export const awalBulanLalu = () => {
   return `${new Date(d.getFullYear(), d.getMonth() - 1, 1).toLocaleDateString('sv-SE')}`
 }
 
-const DATA_KOSONG = () => ({ users: [], people: [], projects: [], petty_cash: [], couriers: [], notifications: [], requests: [], perf_daily: [], share_links: [], share_log: [], vendor_bills: [], fund_balances: [], app_settings: [], activity_log: [], pings: [], notes: [], todos: [], reminders: [], messages: [], affidavit_stok: [], affidavit_pakai: [], affidavit_kirim: [], jadwal: [], cuti: [], mitra: [], kapasitas: [], perusahaan_dok: [], akses_role: [], akses_pengecualian: [], akses_audit: [], app_laporan: [], kirim: [], kirim_alamat: [], kirim_templat: [], kirim_kendala: [], kirim_mutasi: [], kirim_event: [], data_pribadi: [], faq: [], daftar_harga: [] })
+const DATA_KOSONG = () => ({ users: [], people: [], projects: [], petty_cash: [], couriers: [], notifications: [], requests: [], perf_daily: [], share_links: [], share_log: [], vendor_bills: [], fund_balances: [], app_settings: [], activity_log: [], pings: [], notes: [], todos: [], reminders: [], messages: [], affidavit_stok: [], affidavit_pakai: [], affidavit_kirim: [], jadwal: [], cuti: [], mitra: [], kapasitas: [], perusahaan_dok: [], akses_role: [], akses_pengecualian: [], akses_audit: [], app_laporan: [], kehadiran: [], kirim: [], kirim_alamat: [], kirim_templat: [], kirim_kendala: [], kirim_mutasi: [], kirim_event: [], data_pribadi: [], faq: [], daftar_harga: [] })
 
 export function AppProvider({ children }) {
   const [baseUser, setUser] = useState(null)
@@ -141,6 +141,12 @@ export function AppProvider({ children }) {
 
   useEffect(() => {
     db.currentUser().then(async (u) => {
+      if (u && !masukHariIni()) {
+        // Login harian: sesi dari hari sebelumnya tidak berlaku → wajib login (= absen) lagi hari ini
+        setHarianReason(); simpanTujuan()
+        await db.signOut().catch(() => {}); broadcastSignOut()
+        return
+      }
       if (u) {
         // Samakan persona di server dengan sesi ini (tab baru / muat ulang)
         const ar = (() => { try { return sessionStorage.getItem('atlas-active-role') || '' } catch { return '' } })()
@@ -167,14 +173,30 @@ export function AppProvider({ children }) {
     setHantuState(t ? t.id : '')
     window.location.hash = t ? `/${['penerjemah', 'proofreader', 'otorisator'].includes(t.role) ? 'projects' : 'beranda'}` : '/settings/users'
   }
+  /** Login = absen hadir. Live: dicatat server (app_absen). Demo: dicatat di data lokal. Gagal mencatat tidak menghalangi masuk. */
+  const absenHariIni = async (u) => {
+    const perangkat = (() => { const ua = navigator.userAgent || ''; return /iphone|ipad/i.test(ua) ? 'iPhone/iPad' : /android/i.test(ua) ? 'Android' : /mac/i.test(ua) ? 'Mac' : /windows/i.test(ua) ? 'Windows' : 'Lainnya' })()
+    try {
+      let row
+      if (db.absen) row = await db.absen(perangkat)
+      else {
+        const tgl = hariIniAbsen(); const id = `${u.id}:${tgl}`; const kini = new Date().toISOString()
+        const ada = (await db.list('kehadiran').catch(() => [])).find((r) => r.id === id)
+        row = ada ? await db.update('kehadiran', id, { terakhir_at: kini, login_ke: (ada.login_ke || 1) + 1 })
+          : await db.insert('kehadiran', { id, user_id: u.id, name: u.name, role: u.role, branch: u.branch, tanggal: tgl, masuk_at: kini, terakhir_at: kini, login_ke: 1, perangkat })
+      }
+      if (row) setData((d) => ({ ...d, kehadiran: [row, ...(d.kehadiran || []).filter((r) => r.id !== row.id)] }))
+    } catch (e) { catatMonitor?.({ jenis: 'absen_gagal', pesan: String(e?.message || e).slice(0, 120) }) }
+  }
   const signIn = async (email, password) => {
     let u
     try { u = await db.signIn(email, password) }
     catch (e) { catatMonitor({ jenis: 'login_gagal', kelas: jenisError(e), akun: String(email || '').replace(/^(.).*(@.*)$/, '$1•••$2'), pesan: String(e?.message || e).slice(0, 120) }); throw e }
     markActivity() // hitung idle mulai dari sekarang — jangan langsung keluar karena aktivitas lama sebelum login
+    tandaiMasukHari(); absenHariIni(u)
     db.insert?.('activity_log', { table: 'auth', kind: 'login', action: 'Login berhasil', by: u.name, by_id: u.id, role: u.role })?.then?.((r) => r && setData((d) => ({ ...d, activity_log: [r, ...d.activity_log] })))?.catch?.(() => {})
     setActiveRole(u.role); setUser(u); arahkanSetelahMasuk(u); await refresh(); return u }
-  const signUp = async (email, password) => { const u = await db.signUp?.(email, password); if (u && !u.pending) { markActivity(); setActiveRole(u.role); setUser(u); arahkanSetelahMasuk(u); await refresh() } return u }
+  const signUp = async (email, password) => { const u = await db.signUp?.(email, password); if (u && !u.pending) { markActivity(); tandaiMasukHari(); absenHariIni(u); setActiveRole(u.role); setUser(u); arahkanSetelahMasuk(u); await refresh() } return u }
   // Realtime (Supabase): perubahan dari pengguna lain → muat ulang tabel terkait (digabung per 400 ms)
   const [liveStatus, setLiveStatus] = useState('') // '', 'SUBSCRIBED', 'CHANNEL_ERROR', 'TIMED_OUT', 'CLOSED', 'POLLING'
   useEffect(() => {
@@ -270,6 +292,7 @@ export function AppProvider({ children }) {
 
   const signOut = useCallback(async (reason) => {
     if (reason === 'idle') { setIdleReason(); simpanTujuan() }
+    if (reason === 'harian') { setHarianReason(); simpanTujuan() }
     try { if (baseUser) await db.update('users', baseUser.id, { online_until: null }) } catch { /* abaikan */ }
     if (db.personaSet) await db.personaSet(null).catch(() => {})
     try { sessionStorage.removeItem('atlas-hantu') } catch { /* abaikan */ }

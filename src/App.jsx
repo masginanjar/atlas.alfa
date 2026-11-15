@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
-import { Home, LayoutDashboard, FolderKanban, Settings as Cog, LogOut, Loader2, History, MonitorCheck, Wallet, Stamp, ReceiptText, StickyNote, AlarmClock, CalendarDays, Plus, Users, LayoutGrid, HardDrive, Tags, MessageCircle, BookOpen, FileStack, CalendarRange, Store, Handshake, Minimize2, Maximize2, Building2, Server, Rocket, Hash, ClipboardList, Truck } from 'lucide-react'
+import { Home, LayoutDashboard, FolderKanban, Settings as Cog, LogOut, Loader2, History, MonitorCheck, Wallet, Stamp, ReceiptText, StickyNote, AlarmClock, CalendarDays, Plus, Users, LayoutGrid, HardDrive, Tags, MessageCircle, BookOpen, FileStack, CalendarRange, Store, Handshake, Minimize2, Maximize2, Building2, Server, Rocket, Hash, ClipboardList, Truck, UserCheck } from 'lucide-react'
 import PindahBooks from './components/PindahBooks.jsx'
 import SidebarMenu from './components/SidebarMenu.jsx'
 import PanelDummy from './components/PanelDummy.jsx'
@@ -25,6 +25,7 @@ const Beranda = lazy(() => import('./pages/Beranda.jsx'))
 const Portal = lazy(() => import('./pages/Portal.jsx'))
 const PortalCek = lazy(() => import('./pages/PortalCek.jsx'))
 const Activity = lazy(() => import('./pages/Activity.jsx'))
+const Kehadiran = lazy(() => import('./pages/Kehadiran.jsx'))
 const Monitoring = lazy(() => import('./pages/Monitoring.jsx'))
 const Keuangan = lazy(() => import('./pages/Keuangan.jsx'))
 const Invoices = lazy(() => import('./pages/Invoices.jsx'))
@@ -144,6 +145,7 @@ const MENU = [
     ...(CHAT_ENABLED ? [{ key: 'pesan', label: 'Pesan Masuk', icon: MessageCircle, bar: true, badge: (u, d, bf, x) => x.chatTotals?.msg || 0 }] : []),
     { key: 'agenda', label: 'Agenda', icon: CalendarRange, bar: true },
     { key: 'jadwal', label: 'Jadwal Kerja', icon: CalendarRange },
+    { key: 'kehadiran', label: 'Kehadiran', icon: UserCheck },
     { key: 'notes', label: 'Catatan', icon: StickyNote },
   ] },
   { id: 'kantor', label: 'Kantor & Sistem', icon: Building2, children: [
@@ -238,6 +240,7 @@ export default function App() {
     : page === 'apostille' ? <Projects tabAwal="apostille" />
     : page === 'beranda' && canSeeBeranda(user) ? <Beranda />
     : page === 'settings' ? <Settings />
+    : page === 'kehadiran' ? <Kehadiran />
     : page === 'aktivitas' ? <Activity />
     : page === 'monitoring' ? <Monitoring />
     : page === 'keuangan' ? <Keuangan tab={param} />

@@ -24,7 +24,7 @@ const URL_ = import.meta.env.VITE_INSFORGE_URL
 // 'supabase' (live, Supabase) · 'live' (InsForge, lama) · 'demo' (localStorage)
 export const MODE = SUPABASE_READY ? 'supabase' : URL_ ? 'live' : 'demo'
 export const IS_LIVE = MODE !== 'demo'
-const ALL_TABLES = ['users', 'people', 'projects', 'petty_cash', 'couriers', 'notifications', 'requests', 'perf_daily', 'share_links', 'share_log', 'vendor_bills', 'fund_balances', 'app_settings', 'activity_log', 'pings', 'notes', 'todos', 'reminders', 'messages', 'daftar_harga', 'faq', 'affidavit_stok', 'affidavit_pakai', 'affidavit_kirim', 'jadwal', 'cuti', 'mitra', 'kapasitas', 'perusahaan_dok', 'data_pribadi', 'kirim', 'kirim_alamat', 'kirim_templat', 'kirim_kendala', 'kirim_mutasi', 'kirim_event', 'akses_role', 'akses_pengecualian', 'akses_audit', 'app_laporan']
+const ALL_TABLES = ['users', 'people', 'projects', 'petty_cash', 'couriers', 'notifications', 'requests', 'perf_daily', 'share_links', 'share_log', 'vendor_bills', 'fund_balances', 'app_settings', 'activity_log', 'pings', 'notes', 'todos', 'reminders', 'messages', 'daftar_harga', 'faq', 'affidavit_stok', 'affidavit_pakai', 'affidavit_kirim', 'jadwal', 'cuti', 'mitra', 'kapasitas', 'perusahaan_dok', 'data_pribadi', 'kirim', 'kirim_alamat', 'kirim_templat', 'kirim_kendala', 'kirim_mutasi', 'kirim_event', 'akses_role', 'akses_pengecualian', 'akses_audit', 'app_laporan', 'kehadiran']
 // Chat dimatikan → `messages` tidak ikut dilanggan realtime maupun disegarkan.
 export const TABLES = CHAT_ENABLED ? ALL_TABLES : ALL_TABLES.filter((t) => t !== 'messages')
 
@@ -248,6 +248,26 @@ function migrate(m) {
     }
     m.jadwal = out
     m.cuti ||= []
+    changed = true
+  }
+  // Contoh riwayat kehadiran (login harian) 20 hari terakhir — HANYA mode demo, untuk memperlihatkan rekap.
+  if (!m.kehadiran_demo_v1) {
+    const zona = (d) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Makassar' }).format(d)
+    const acak = (n) => { const x = Math.sin(n) * 10000; return x - Math.floor(x) }
+    const rows = []
+    const aktif = (m.users || []).filter((x) => x.active !== false && !x.persona)
+    for (let h = 20; h >= 1; h--) {
+      const tgl = zona(new Date(Date.now() - h * 864e5))
+      aktif.forEach((x, i) => {
+        const r = acak(h * 97 + i * 13)
+        if (r < 0.14) return // tidak login hari itu
+        const menitMasuk = 7 * 60 + 30 + Math.floor(acak(h * 31 + i) * 120) // 07.30–09.30 WITA
+        const masuk = new Date(`${tgl}T${String(Math.floor(menitMasuk / 60)).padStart(2, '0')}:${String(menitMasuk % 60).padStart(2, '0')}:00+08:00`).toISOString()
+        rows.push({ id: `${x.id}:${tgl}`, created_at: masuk, updated_at: masuk, user_id: x.id, name: x.name, role: x.role, branch: x.branch, tanggal: tgl, masuk_at: masuk, terakhir_at: masuk, login_ke: 1 + Math.floor(acak(i + h) * 3), perangkat: acak(i * 7) < 0.4 ? 'Android' : 'Windows' })
+      })
+    }
+    m.kehadiran = [...rows, ...(m.kehadiran || [])]
+    m.kehadiran_demo_v1 = true
     changed = true
   }
   return changed
