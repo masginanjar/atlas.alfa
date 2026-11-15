@@ -41,6 +41,22 @@ const KTP_KOLOM: [string, string][] = [
   ["rtrw", "RT/RW, mis. 003/007"], ["kel", "Kel/Desa"], ["kec", "Kecamatan"], ["agama", "Agama"], ["status", "Status perkawinan"], ["kerja", "Pekerjaan"],
   ["wn", "Kewarganegaraan"], ["berlaku", "Berlaku hingga"], ["kota_terbit", "Kota penerbitan (di atas tanggal, kanan bawah)"], ["tgl_terbit", "Tanggal penerbitan DD-MM-YYYY"],
 ];
+const AKTA_KOLOM: [string, string][] = [
+  ["nik", "NIK di pojok atas (bila ada)"], ["wn", "Baris kewarganegaraan di kepala, mis. WARGA NEGARA INDONESIA"], ["no", "Nomor akta kelahiran (setelah kata Nomor)"],
+  ["stbld", "Dasar hukum/Staatsblad setelah kata menurut stbld (bila ada)"], ["tempat_lahir", "Tempat lahir (setelah: bahwa di)"], ["tgl_lahir", "Tanggal dan bulan lahir seperti tertulis"], ["thn_lahir", "Tahun lahir seperti tertulis"],
+  ["nama", "Nama anak yang lahir"], ["anak_ke", "Urutan anak seperti tertulis, mis. SATU atau KESATU"], ["jk", "Jenis kelamin anak: LAKI-LAKI atau PEREMPUAN"], ["ayah", "Nama ayah (kosong bila hanya ibu)"], ["ibu", "Nama ibu"],
+  ["kota_terbit", "Tempat kutipan dikeluarkan, mis. KOTA DEPOK"], ["tgl_terbit", "Tanggal dan bulan kutipan dikeluarkan seperti tertulis"], ["thn_terbit", "Tahun kutipan dikeluarkan seperti tertulis"],
+  ["jabatan", "Jabatan penanda tangan seperti tercetak, mis. PEJABAT PENCATATAN SIPIL atau KEPALA DINAS KEPENDUDUKAN DAN PENCATATAN SIPIL KOTA ..."], ["pejabat", "Nama pejabat penanda tangan"], ["nip", "NIP pejabat (angka saja)"],
+  ["tte", "YA atau TIDAK"], ["catatan", "Isi catatan pinggir (bila ada), disalin apa adanya"],
+];
+const KK_KEPALA: [string, string][] = [
+  ["no_kk", "Nomor KK (16 angka di bawah judul)"], ["kepala", "Nama Kepala Keluarga"], ["alamat", "Alamat"], ["rtrw", "RT/RW"], ["kodepos", "Kode Pos"], ["kel", "Desa/Kelurahan"], ["kec", "Kecamatan"], ["kab", "Kabupaten/Kota seperti tercetak"], ["prov", "Provinsi"],
+  ["tgl_terbit", "Tanggal dikeluarkan DD-MM-YYYY"], ["jabatan", "Jabatan penanda tangan dinas, mis. KEPALA DINAS KEPENDUDUKAN DAN PENCATATAN SIPIL KOTA ..."], ["pejabat", "Nama pejabat penanda tangan"], ["nip", "NIP pejabat (angka saja)"], ["tte", "YA atau TIDAK"],
+];
+const KK_ANGGOTA: [string, string][] = [
+  ["nama", "Nama Lengkap"], ["nik", "NIK"], ["jk", "Jenis Kelamin"], ["tempat_lahir", "Tempat Lahir"], ["tgl_lahir", "Tanggal Lahir DD-MM-YYYY"], ["agama", "Agama"], ["pendidikan", "Pendidikan"], ["kerja", "Jenis Pekerjaan"], ["gol", "Golongan Darah"],
+  ["status", "Status Perkawinan"], ["tgl_kawin", "Tanggal Perkawinan"], ["hub", "Status Hubungan Dalam Keluarga"], ["wn", "Kewarganegaraan"], ["paspor", "No. Paspor"], ["kitap", "No. KITAP"], ["ayah", "Nama Ayah"], ["ibu", "Nama Ibu"],
+];
 const TUGAS: Record<string, { prompt: string; skema: unknown; maksKeluar: number }> = {
   ktp: {
     prompt: "Gambar ini seharusnya KTP Indonesia (boleh miring, terputar, atau buram). Salin isi tiap kolom PERSIS seperti tercetak, huruf demi huruf, tanpa memperbaiki ejaan, tanpa melengkapi, tanpa menebak. " +
@@ -48,6 +64,25 @@ const TUGAS: Record<string, { prompt: string; skema: unknown; maksKeluar: number
       "NIK: salin karakter yang terlihat saja; jangan menambah, membuang, atau mengganti karakter agar menjadi 16 angka. \"jenis\": tulis KTP bila ini KTP, selain itu nama jenis dokumennya.",
     skema: { type: "OBJECT", properties: { jenis: S("KTP atau jenis dokumen lain"), ...Object.fromEntries(KTP_KOLOM.map(([k, d]) => [k, S(d)])), ragu: { type: "ARRAY", items: { type: "STRING" } } }, required: ["jenis", "ragu", ...KTP_KOLOM.map(([k]) => k)] },
     maksKeluar: 1200,
+  },
+  akta: {
+    prompt: "Gambar ini seharusnya Kutipan Akta Kelahiran Indonesia (format lama berblangko atau format baru ber-QR; boleh miring atau buram). Salin isi tiap kolom PERSIS seperti tercetak/tertulis, huruf demi huruf, tanpa memperbaiki ejaan, tanpa menerjemahkan, tanpa melengkapi, tanpa menebak. Titik-titik pengisi blangko tidak disalin. " +
+      "Kolom yang tidak ada di dokumen: string kosong (bukan ragu). Kolom yang ada tetapi tidak terbaca dengan yakin: salin yang terlihat atau kosongkan, lalu masukkan nama kolomnya ke daftar \"ragu\". " +
+      "tgl_lahir dan tgl_terbit = hanya tanggal dan bulan seperti tertulis (mis. DUA PULUH FEBRUARI); thn_lahir dan thn_terbit = hanya tahun seperti tertulis (mis. DUA RIBU SEMBILAN BELAS). NIK dan nomor akta: salin karakter yang terlihat saja. " +
+      "tte = YA bila ada kode QR / keterangan ditandatangani secara elektronik, selain itu TIDAK. \"jenis\": tulis AKTA KELAHIRAN bila ini kutipan akta kelahiran, selain itu nama jenis dokumennya.",
+    skema: { type: "OBJECT", properties: { jenis: S("AKTA KELAHIRAN atau jenis dokumen lain"), ...Object.fromEntries(AKTA_KOLOM.map(([k, d]) => [k, S(d)])), ragu: { type: "ARRAY", items: { type: "STRING" } } }, required: ["jenis", "ragu", ...AKTA_KOLOM.map(([k]) => k)] },
+    maksKeluar: 1600,
+  },
+  kk: {
+    prompt: "Gambar ini seharusnya Kartu Keluarga (KK) Indonesia. Salin isi tiap kolom PERSIS seperti tercetak, huruf demi huruf, tanpa memperbaiki ejaan, tanpa menerjemahkan, tanpa melengkapi, tanpa menebak. " +
+      "\"anggota\" = SEMUA baris anggota keluarga, urut dari nomor 1; gabungkan tabel atas (nama s.d. golongan darah) dan tabel bawah (status perkawinan s.d. nama ibu) berdasarkan nomor urut baris. Sel yang tercetak tanda strip tulis -. " +
+      "Kolom yang tidak ada: string kosong. Yang tidak terbaca dengan yakin: salin yang terlihat atau kosongkan, lalu masukkan ke daftar \"ragu\" dengan bentuk nama kolom untuk bagian kepala (mis. no_kk) atau m<nomor urut>_<kolom> untuk anggota (mis. m2_nik). " +
+      "NIK dan nomor KK: salin karakter yang terlihat saja; jangan menambah, membuang, atau mengganti karakter. Tanggal ditulis seperti tercetak (DD-MM-YYYY). tte = YA bila ada kode QR / keterangan tanda tangan elektronik, selain itu TIDAK. " +
+      "\"jenis\": tulis KARTU KELUARGA bila ini KK, selain itu nama jenis dokumennya.",
+    skema: { type: "OBJECT", properties: { jenis: S("KARTU KELUARGA atau jenis dokumen lain"), ...Object.fromEntries(KK_KEPALA.map(([k, d]) => [k, S(d)])),
+      anggota: { type: "ARRAY", items: { type: "OBJECT", properties: Object.fromEntries(KK_ANGGOTA.map(([k, d]) => [k, S(d)])), required: KK_ANGGOTA.map(([k]) => k) } },
+      ragu: { type: "ARRAY", items: { type: "STRING" } } }, required: ["jenis", "ragu", "anggota", ...KK_KEPALA.map(([k]) => k)] },
+    maksKeluar: 9000,
   },
   bukti: {
     prompt: "Gambar ini tangkapan layar daftar transaksi transfer dari internet banking (tabel dengan baris judul kolom). Untuk SETIAP baris transaksi, dari atas ke bawah, salin isi selnya PERSIS seperti tertulis (tanpa mengubah angka, tanpa menebak). Baris judul kolom tidak dihitung. " +
@@ -188,7 +223,9 @@ Deno.serve(async (req: Request) => {
     const m = String(b.gambar ?? "").match(/^data:(image\/(?:jpeg|png|webp));base64,(.+)$/s);
     if (!m) return json({ ok: false, alasan: "gambar harus JPG/PNG/WebP" }, 400);
     if (m[2].length * 0.75 > MAKS_BYTE) return json({ ok: false, alasan: "gambar terlalu besar (maks 8 MB)" }, 400);
-    return json(await satu(fitur, model, F.tugas, m[2], m[1]));
+    // Smart Translator: jenis dokumen boleh dipilih pemanggil (akta kelahiran / kartu keluarga); selain itu tugas bawaan fitur.
+    const tugasJalan = fitur === "penerjemah" && ["akta", "kk"].includes(String(b.tugas ?? "")) ? String(b.tugas) : F.tugas;
+    return json(await satu(fitur, model, tugasJalan, m[2], m[1]));
   }
 
   if (aksi === "uji") {
@@ -214,7 +251,7 @@ Deno.serve(async (req: Request) => {
     }
     const model = String(b.model ?? ""); if (!/^gemini-[\w.\-]+$/.test(model)) return json({ ok: false, alasan: "model tidak dikenal" }, 400);
     let url = "";
-    if (tugas === "ktp" && /^[a-z0-9_\-]+\.jpg$/i.test(String(b.berkas ?? ""))) url = "https://raw.githubusercontent.com/masginanjar/atlas.alfa/uji-ocr/uji/ocr/img/" + b.berkas;
+    if (["ktp", "akta", "kk"].includes(tugas) && /^[a-z0-9_\-]+\.jpg$/i.test(String(b.berkas ?? ""))) url = "https://raw.githubusercontent.com/masginanjar/atlas.alfa/uji-ocr/uji/ocr/img/" + b.berkas;
     else if (tugas === "bukti") url = "https://raw.githubusercontent.com/masginanjar/atlas.alfa/main/public/contoh/contoh-klikbca-transfer.png";
     else return json({ ok: false, alasan: "tugas uji tidak dikenal" }, 400);
     const ib = await fetch(url); if (!ib.ok) return json({ ok: false, alasan: "data uji tidak ditemukan" }, 404);

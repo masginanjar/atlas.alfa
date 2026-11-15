@@ -357,7 +357,7 @@ function toast(t){const e=$('#toast');e.textContent=t;e.style.display='block';cl
 const store={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}}};
 
 /* ---------- Glosarium ---------- */
-const GROUPS={jk:'Jenis kelamin',agama:'Agama',status:'Status perkawinan',kerja:'Pekerjaan',wn:'Kewarganegaraan',berlaku:'Masa berlaku',provinsi:'Provinsi',arah:'Arah wilayah'};
+const GROUPS={jk:'Jenis kelamin',agama:'Agama',status:'Status perkawinan',kerja:'Pekerjaan',wn:'Kewarganegaraan',berlaku:'Masa berlaku',provinsi:'Provinsi',arah:'Arah wilayah',bulan:'Bulan',pendidikan:'Pendidikan',hubungan:'Hubungan keluarga',gol:'Golongan darah',jabatan:'Jabatan pejabat',jk_akta:'Jenis kelamin (akta)',wn_akta:'Kewarganegaraan (akta)'};
 const GLOS_DEFAULT=[
 ['jk','LAKI-LAKI','MALE'],['jk','PEREMPUAN','FEMALE'],
 ['agama','ISLAM','ISLAM'],['agama','KRISTEN','CHRISTIAN'],['agama','KATHOLIK','CATHOLIC'],['agama','KATOLIK','CATHOLIC'],['agama','HINDU','HINDU'],['agama','BUDHA','BUDDHA'],['agama','BUDDHA','BUDDHA'],['agama','KONGHUCU','CONFUCIAN'],
@@ -366,9 +366,19 @@ const GLOS_DEFAULT=[
 ['wn','WNI','INDONESIAN'],
 ['berlaku','SEUMUR HIDUP','LIFETIME'],
 ['arah','UTARA','NORTH'],['arah','SELATAN','SOUTH'],['arah','BARAT','WEST'],['arah','TIMUR','EAST'],['arah','PUSAT','CENTRAL'],['arah','TENGAH','CENTRAL'],
-['provinsi','DKI JAKARTA','SPECIAL CAPITAL REGION OF JAKARTA PROVINCE'],['provinsi','DAERAH KHUSUS IBUKOTA JAKARTA','SPECIAL CAPITAL REGION OF JAKARTA PROVINCE'],['provinsi','DAERAH ISTIMEWA YOGYAKARTA','SPECIAL REGION OF YOGYAKARTA PROVINCE'],['provinsi','BALI','BALI PROVINCE'],['provinsi','BANTEN','BANTEN PROVINCE'],['provinsi','JAWA BARAT','WEST JAVA PROVINCE'],['provinsi','JAWA TENGAH','CENTRAL JAVA PROVINCE'],['provinsi','JAWA TIMUR','EAST JAVA PROVINCE'],['provinsi','SUMATERA UTARA','NORTH SUMATERA PROVINCE'],['provinsi','SUMATERA BARAT','WEST SUMATERA PROVINCE'],['provinsi','SUMATERA SELATAN','SOUTH SUMATERA PROVINCE'],['provinsi','RIAU','RIAU PROVINCE'],['provinsi','KEPULAUAN RIAU','RIAU ISLANDS PROVINCE'],['provinsi','LAMPUNG','LAMPUNG PROVINCE'],['provinsi','BENGKULU','BENGKULU PROVINCE'],['provinsi','JAMBI','JAMBI PROVINCE'],['provinsi','ACEH','ACEH PROVINCE'],['provinsi','KALIMANTAN BARAT','WEST KALIMANTAN PROVINCE'],['provinsi','KALIMANTAN TIMUR','EAST KALIMANTAN PROVINCE'],['provinsi','KALIMANTAN SELATAN','SOUTH KALIMANTAN PROVINCE'],['provinsi','KALIMANTAN TENGAH','CENTRAL KALIMANTAN PROVINCE'],['provinsi','KALIMANTAN UTARA','NORTH KALIMANTAN PROVINCE'],['provinsi','SULAWESI SELATAN','SOUTH SULAWESI PROVINCE'],['provinsi','SULAWESI UTARA','NORTH SULAWESI PROVINCE'],['provinsi','SULAWESI TENGAH','CENTRAL SULAWESI PROVINCE'],['provinsi','SULAWESI TENGGARA','SOUTHEAST SULAWESI PROVINCE'],['provinsi','NUSA TENGGARA BARAT','WEST NUSA TENGGARA PROVINCE'],['provinsi','NUSA TENGGARA TIMUR','EAST NUSA TENGGARA PROVINCE'],['provinsi','MALUKU','MALUKU PROVINCE'],['provinsi','MALUKU UTARA','NORTH MALUKU PROVINCE'],['provinsi','PAPUA','PAPUA PROVINCE']
+['provinsi','DKI JAKARTA','SPECIAL CAPITAL REGION OF JAKARTA PROVINCE'],['provinsi','DAERAH KHUSUS IBUKOTA JAKARTA','SPECIAL CAPITAL REGION OF JAKARTA PROVINCE'],['provinsi','DAERAH ISTIMEWA YOGYAKARTA','SPECIAL REGION OF YOGYAKARTA PROVINCE'],['provinsi','BALI','BALI PROVINCE'],['provinsi','BANTEN','BANTEN PROVINCE'],['provinsi','JAWA BARAT','WEST JAVA PROVINCE'],['provinsi','JAWA TENGAH','CENTRAL JAVA PROVINCE'],['provinsi','JAWA TIMUR','EAST JAVA PROVINCE'],['provinsi','SUMATERA UTARA','NORTH SUMATERA PROVINCE'],['provinsi','SUMATERA BARAT','WEST SUMATERA PROVINCE'],['provinsi','SUMATERA SELATAN','SOUTH SUMATERA PROVINCE'],['provinsi','RIAU','RIAU PROVINCE'],['provinsi','KEPULAUAN RIAU','RIAU ISLANDS PROVINCE'],['provinsi','LAMPUNG','LAMPUNG PROVINCE'],['provinsi','BENGKULU','BENGKULU PROVINCE'],['provinsi','JAMBI','JAMBI PROVINCE'],['provinsi','ACEH','ACEH PROVINCE'],['provinsi','KALIMANTAN BARAT','WEST KALIMANTAN PROVINCE'],['provinsi','KALIMANTAN TIMUR','EAST KALIMANTAN PROVINCE'],['provinsi','KALIMANTAN SELATAN','SOUTH KALIMANTAN PROVINCE'],['provinsi','KALIMANTAN TENGAH','CENTRAL KALIMANTAN PROVINCE'],['provinsi','KALIMANTAN UTARA','NORTH KALIMANTAN PROVINCE'],['provinsi','SULAWESI SELATAN','SOUTH SULAWESI PROVINCE'],['provinsi','SULAWESI UTARA','NORTH SULAWESI PROVINCE'],['provinsi','SULAWESI TENGAH','CENTRAL SULAWESI PROVINCE'],['provinsi','SULAWESI TENGGARA','SOUTHEAST SULAWESI PROVINCE'],['provinsi','NUSA TENGGARA BARAT','WEST NUSA TENGGARA PROVINCE'],['provinsi','NUSA TENGGARA TIMUR','EAST NUSA TENGGARA PROVINCE'],['provinsi','MALUKU','MALUKU PROVINCE'],['provinsi','MALUKU UTARA','NORTH MALUKU PROVINCE'],['provinsi','PAPUA','PAPUA PROVINCE'],
+['jk_akta','LAKI-LAKI','SON'],['jk_akta','PEREMPUAN','DAUGHTER'],
+['wn_akta','WARGA NEGARA INDONESIA','INDONESIAN NATIONALITY'],['wn_akta','WNI','INDONESIAN NATIONALITY'],['wn_akta','WARGA NEGARA ASING','FOREIGN NATIONALITY'],
+['jabatan','PEJABAT PENCATATAN SIPIL','OFFICER OF CIVIL REGISTRATION OFFICE'],['jabatan','KEPALA DINAS KEPENDUDUKAN DAN PENCATATAN SIPIL','HEAD OF POPULATION AND CIVIL REGISTRY OFFICE'],['jabatan','KEPALA DINAS KEPENDUDUKAN DAN CATATAN SIPIL','HEAD OF POPULATION AND CIVIL REGISTRY OFFICE'],['jabatan','KEPALA KANTOR CATATAN SIPIL','HEAD OF CIVIL REGISTRY OFFICE'],
+['pendidikan','TIDAK/BELUM SEKOLAH','NOT YET IN SCHOOL'],['pendidikan','BELUM TAMAT SD/SEDERAJAT','UNGRADUATED ELEMENTARY SCHOOL/EQUAL'],['pendidikan','TAMAT SD/SEDERAJAT','GRADUATED ELEMENTARY SCHOOL/EQUAL'],['pendidikan','SLTP/SEDERAJAT','JUNIOR HIGH SCHOOL/EQUAL'],['pendidikan','SLTA/SEDERAJAT','SENIOR HIGH SCHOOL/EQUAL'],['pendidikan','DIPLOMA I/II','DIPLOMA I/II'],['pendidikan','AKADEMI/DIPLOMA III/S. MUDA','ACADEMY/DIPLOMA III/ASSOCIATE DEGREE'],['pendidikan','AKADEMI/DIPLOMA III/S.MUDA','ACADEMY/DIPLOMA III/ASSOCIATE DEGREE'],['pendidikan','DIPLOMA IV/STRATA I','DIPLOMA IV/BACHELOR DEGREE'],['pendidikan','STRATA II','MASTER DEGREE'],
+['hubungan','KEPALA KELUARGA','HEAD OF FAMILY'],['hubungan','ISTRI','WIFE'],['hubungan','SUAMI','HUSBAND'],['hubungan','FAMILI LAIN','OTHER FAMILY'],
+['status','KAWIN TERCATAT','RECORDED MARRIED'],['status','KAWIN BELUM TERCATAT','UNRECORDED MARRIED'],
+['gol','A','A'],['gol','B','B'],['gol','AB','AB'],['gol','O','O'],['gol','TIDAK TAHU','UNKNOWN'],
+['bulan','JANUARI','JANUARY'],['bulan','FEBRUARI','FEBRUARY'],['bulan','PEBRUARI','FEBRUARY'],['bulan','MARET','MARCH'],['bulan','APRIL','APRIL'],['bulan','MEI','MAY'],['bulan','JUNI','JUNE'],['bulan','JULI','JULY'],['bulan','AGUSTUS','AUGUST'],['bulan','SEPTEMBER','SEPTEMBER'],['bulan','OKTOBER','OCTOBER'],['bulan','NOVEMBER','NOVEMBER'],['bulan','NOPEMBER','NOVEMBER'],['bulan','DESEMBER','DECEMBER'],
 ].map(([g,src,en])=>({g,src,en}));
 let GLOS=store.get('st_glos_v1',null)||GLOS_DEFAULT.map(x=>({...x}));
+/* Glosarium tersimpan di perangkat: tambahkan entri bawaan baru (Akta/KK) sekali saja, tanpa menimpa isian pengguna. */
+if(store.get('st_glos_tambah',0)<2){let n=0;for(const x of GLOS_DEFAULT){if(!GLOS.some(y=>y.g===x.g&&String(y.src).toUpperCase()===x.src)){GLOS.push({...x});n++}}if(n)store.set('st_glos_v1',GLOS);store.set('st_glos_tambah',2)}
 const norm=s=>String(s||'').toUpperCase().replace(/\s+/g,' ').replace(/\s*\/\s*/g,'/').trim();
 const lookup=(g,src)=>{const n=norm(src);const e=GLOS.find(x=>x.g===g&&norm(x.src)===n);return e?e.en:''};
 
@@ -381,12 +391,85 @@ const FIELDS=[
 {key:'alamat',label:'Alamat',kind:'tetap',req:1},{key:'rtrw',label:'RT/RW',kind:'tetap'},{key:'kel',label:'Kel/Desa',kind:'tetap'},{key:'kec',label:'Kecamatan',kind:'tetap'},
 {key:'agama',label:'Agama',kind:'kamus',req:1},{key:'status',label:'Status perkawinan',kind:'kamus',req:1},{key:'kerja',label:'Pekerjaan',kind:'kamus',req:1},{key:'wn',label:'Kewarganegaraan',kind:'kamus',req:1},
 {key:'berlaku',label:'Berlaku hingga',kind:'berlaku',req:1},{key:'kota_terbit',label:'Kota terbit',kind:'kota'},{key:'tgl_terbit',label:'Tanggal terbit',kind:'tetap'}];
-const DEF=Object.fromEntries(FIELDS.map(f=>[f.key,f]));
+/* ---------- Jenis dokumen lain: Akta Kelahiran & Kartu Keluarga (dibaca oleh AI) ---------- */
+const TIPE={ktp:{nama:'KTP',versi:TPL_VERSION},akta:{nama:'Akta Kelahiran',versi:'AKTA-EN v1'},kk:{nama:'Kartu Keluarga',versi:'KK-EN v1'}};
+const tipeDariTeks=t=>{const s=String(t||'');return /KARTU\s*KELUARGA|FAMILY\s*CARD/i.test(s)?'kk':/AKT[AE]\s*KELAHIRAN|KUTIPAN\s*AKT[AE]|BIRTH\s*CERTIFICATE/i.test(s)?'akta':/\bKTP\b|KARTU\s*TANDA\s*PENDUDUK|IDENTITY\s*CARD/i.test(s)?'ktp':null};
+const FIELDS_AKTA=[
+{key:'a_nik',label:'NIK',kind:'tetap',val:'nik'},{key:'a_wn',label:'Kewarganegaraan (kepala)',kind:'kamus',g:'wn_akta',req:1},
+{key:'a_no',label:'Nomor akta',kind:'tetap',req:1},{key:'a_stbld',label:'Dasar hukum (Stbld.)',kind:'stbld'},
+{key:'a_tempat_lahir',label:'Tempat lahir',kind:'tetap',req:1},{key:'a_tgl_lahir',label:'Tanggal & bulan lahir',kind:'tglkata',req:1},{key:'a_thn_lahir',label:'Tahun lahir',kind:'thnkata',req:1},
+{key:'a_nama',label:'Nama anak',kind:'tetap',req:1,val:'nama'},{key:'a_anak_ke',label:'Anak ke',kind:'urut',req:1},{key:'a_jk',label:'Jenis kelamin',kind:'kamus',g:'jk_akta',req:1,val:'jk'},
+{key:'a_ayah',label:'Nama ayah',kind:'tetap'},{key:'a_ibu',label:'Nama ibu',kind:'tetap',req:1},
+{key:'a_kota_terbit',label:'Dikeluarkan di',kind:'kota',req:1},{key:'a_tgl_terbit',label:'Tanggal & bulan terbit',kind:'tglkata',req:1},{key:'a_thn_terbit',label:'Tahun terbit',kind:'thnkata',req:1},
+{key:'a_jabatan',label:'Jabatan penanda tangan',kind:'jabatan',req:1},{key:'a_pejabat',label:'Nama pejabat',kind:'tetap',req:1},{key:'a_nip',label:'NIP',kind:'tetap'},
+{key:'a_tte',label:'TTE / QR (YA/TIDAK)',kind:'tetap',val:'ya'},{key:'a_catatan',label:'Catatan pinggir',kind:'bebas'}];
+const KK_KEPALA=[
+{key:'k_no_kk',label:'No. KK',kind:'tetap',req:1,val:'nik'},{key:'k_kepala',label:'Kepala keluarga',kind:'tetap',req:1},{key:'k_alamat',label:'Alamat',kind:'tetap',req:1},
+{key:'k_rtrw',label:'RT/RW',kind:'tetap',val:'rtrw'},{key:'k_kodepos',label:'Kode pos',kind:'tetap'},{key:'k_kel',label:'Desa/Kelurahan',kind:'tetap'},{key:'k_kec',label:'Kecamatan',kind:'tetap'},
+{key:'k_kab',label:'Kabupaten/Kota',kind:'kota',req:1},{key:'k_prov',label:'Provinsi',kind:'prov',req:1}];
+const KK_EKOR=[{key:'k_tgl_terbit',label:'Dikeluarkan tanggal',kind:'tetap',req:1,val:'tgl'},{key:'k_jabatan',label:'Jabatan penanda tangan',kind:'jabatan',req:1},{key:'k_pejabat',label:'Nama pejabat',kind:'tetap',req:1},{key:'k_nip',label:'NIP',kind:'tetap'},{key:'k_tte',label:'TTE / QR (YA/TIDAK)',kind:'tetap',val:'ya'}];
+const KK_KOLOM=[['nama','Nama lengkap','tetap',1,'nama'],['nik','NIK','tetap',1,'nik'],['jk','Jenis kelamin','kamus',1,'jk','jk'],['tempat_lahir','Tempat lahir','tetap',1],['tgl_lahir','Tanggal lahir','tetap',1,'tgl'],['agama','Agama','kamus',1,'','agama'],['pendidikan','Pendidikan','kamus',1,'','pendidikan'],['kerja','Jenis pekerjaan','kamus',1,'','kerja'],['gol','Gol. darah','kamus',0,'','gol'],
+ ['status','Status perkawinan','kamus',1,'','status'],['tgl_kawin','Tgl perkawinan','tetap',0],['hub','Hubungan keluarga','hub',1],['wn','Kewarganegaraan','kamus',1,'wn','wn'],['paspor','No. paspor','tetap',0],['kitap','No. KITAP','tetap',0],['ayah','Nama ayah','tetap',1],['ibu','Nama ibu','tetap',1]];
+const KK_MAKS=12;
+const kkAnggota=n=>KK_KOLOM.map(([k,l,kind,req,val,g])=>({key:'m'+n+'_'+k,label:'#'+n+' '+l,kind,req:req||0,val:val||null,g:g||null,anggota:n,kol:k}));
+const DEF=Object.fromEntries([...FIELDS,...FIELDS_AKTA,...KK_KEPALA,...KK_EKOR,...Array.from({length:KK_MAKS},(_,i)=>kkAnggota(i+1)).flat()].map(f=>[f.key,f]));
+/** Daftar kolom untuk satu dokumen sesuai jenisnya. KK: jumlah anggota mengikuti hasil baca (minimal 1). */
+function defsDoc(tipe,nilai){
+  if(tipe==='akta')return FIELDS_AKTA;
+  if(tipe==='kk'){let n=1;for(const k of Object.keys(nilai||{})){const m=k.match(/^m(\d+)_/);if(m)n=Math.max(n,+m[1])}n=Math.min(n,KK_MAKS);return[...KK_KEPALA,...Array.from({length:n},(_,i)=>kkAnggota(i+1)).flat(),...KK_EKOR]}
+  return FIELDS;
+}
+const jumlahAnggota=d=>d.fields.reduce((a,f)=>Math.max(a,(DEF[f.key]&&DEF[f.key].anggota)||0),0);
+/** Validasi bentuk data (tidak pernah mengubah nilai). Kolom akta/KK memakai aturan kolom KTP yang sejenis. */
+const VAL_ALIAS={nik:'nik',nama:'nama',jk:'jk',rtrw:'rtrw',tgl:'tanggal_lahir',wn:'wn'};
+function validasi(key,v){const df=DEF[key];if(!df||FIELDS.includes(df))return OCRCORE.validasi(key,v);const s=String(v||'').trim();if(!s||s==='-')return{ok:true};
+  if(df.val==='ya')return /^(YA|TIDAK)$/i.test(s)?{ok:true}:{ok:false,alasan:'Isi YA atau TIDAK'};
+  if(df.val==='nik'){const r=OCRCORE.validasi('nik',s);return r.ok?{ok:true,catatan:'16 digit (bentuk sesuai; kebenaran tetap dicek di dokumen)'}:{ok:false,alasan:r.alasan.replace('NIK berbentuk','nomor ini berbentuk')}}
+  return df.val?OCRCORE.validasi(VAL_ALIAS[df.val],s):{ok:true}}
+/* Angka tertulis (Indonesia) → angka → kata Inggris. Dipakai tanggal/tahun akta yang ditulis dengan huruf. */
+const ANGKA_ID={NOL:0,SATU:1,DUA:2,TIGA:3,EMPAT:4,LIMA:5,ENAM:6,TUJUH:7,DELAPAN:8,SEMBILAN:9};
+function angkaDariKata(t){const s=norm(t).replace(/[.,]/g,' ').replace(/\s+/g,' ').trim();if(!s)return null;if(/^\d+$/.test(s))return +s;
+  let total=0,grp=0,u=null;
+  for(const w of s.split(' ')){
+    if(w in ANGKA_ID){if(u!=null)return null;u=ANGKA_ID[w]}
+    else if(w==='SEPULUH'){if(u!=null)return null;grp+=10}
+    else if(w==='SEBELAS'){if(u!=null)return null;grp+=11}
+    else if(w==='BELAS'){if(u==null)return null;grp+=10+u;u=null}
+    else if(w==='PULUH'){if(u==null)return null;grp+=u*10;u=null}
+    else if(w==='SERATUS'){if(u!=null)return null;grp+=100}
+    else if(w==='RATUS'){if(u==null)return null;grp+=u*100;u=null}
+    else if(w==='SERIBU'){if(u!=null||grp)return null;total+=1000}
+    else if(w==='RIBU'){if(u!=null){grp+=u;u=null}if(!grp)return null;total+=grp*1000;grp=0}
+    else return null}
+  if(u!=null)grp+=u;return total+grp}
+const EN1=['','ONE','TWO','THREE','FOUR','FIVE','SIX','SEVEN','EIGHT','NINE','TEN','ELEVEN','TWELVE','THIRTEEN','FOURTEEN','FIFTEEN','SIXTEEN','SEVENTEEN','EIGHTEEN','NINETEEN'];
+const EN10=['','','TWENTY','THIRTY','FORTY','FIFTY','SIXTY','SEVENTY','EIGHTY','NINETY'];
+function enAngka(n){if(n<20)return EN1[n]||'ZERO';if(n<100)return EN10[Math.floor(n/10)]+(n%10?'-'+EN1[n%10]:'');
+  if(n<1000)return EN1[Math.floor(n/100)]+' HUNDRED'+(n%100?' AND '+enAngka(n%100):'');
+  const r=n%1000;return enAngka(Math.floor(n/1000))+' THOUSAND'+(r?(r<100?' AND ':' ')+enAngka(r):'')}
+const EN_KE=['','FIRST','SECOND','THIRD','FOURTH','FIFTH','SIXTH','SEVENTH','EIGHTH','NINTH','TENTH','ELEVENTH','TWELFTH','THIRTEENTH','FOURTEENTH','FIFTEENTH','SIXTEENTH','SEVENTEENTH','EIGHTEENTH','NINETEENTH','TWENTIETH','TWENTY-FIRST','TWENTY-SECOND','TWENTY-THIRD','TWENTY-FOURTH','TWENTY-FIFTH','TWENTY-SIXTH','TWENTY-SEVENTH','TWENTY-EIGHTH','TWENTY-NINTH','THIRTIETH','THIRTY-FIRST'];
+function trLain(df,src){
+  const k=df.kind,s=norm(src);
+  if(k==='tglkata'){const m=s.match(/^(?:TANGGAL\s+)?(.+?)\s+([A-Z]+)$/);if(!m)return '';const n=angkaDariKata(m[1]),b=lookup('bulan',m[2]);return n&&n<=31&&b?'THE '+EN_KE[n]+' DAY OF '+b:''}
+  if(k==='thnkata'){const n=angkaDariKata(s.replace(/^TAHUN\s+/,''));return n&&n>=1800&&n<=2100?enAngka(n):''}
+  if(k==='urut'){const t=s.replace(/^KE[\s-]*/,'');const n=t==='PERTAMA'?1:angkaDariKata(t);return n&&n<=31?EN_KE[n]:''}
+  if(k==='stbld')return s.replace(/\bSTAATSBLAD\b|\bSTBLD?\.?|\bSTB\./g,'STATE GAZETTE').replace(/\bJO\.?(?=\s)/g,'IN CONJUNCTION WITH').replace(/\bTAHUN\b/g,'YEAR').replace(/\bNOMOR\b|\bNO\b\.?/g,'NO.').replace(/\bDAN\b/g,'AND').replace(/\s+/g,' ').trim();
+  if(k==='hub')return lookup('hubungan',s); // "ANAK" diisi SON/DAUGHTER dari jenis kelamin (silangDoc)
+  if(k==='jabatan'){const e=lookup('jabatan',s);if(e)return e;
+    const c=GLOS.filter(x=>x.g==='jabatan'&&s.startsWith(norm(x.src)+' ')).sort((a,b)=>b.src.length-a.src.length)[0];if(!c)return '';
+    const sisa=s.slice(norm(c.src).length).trim(),w=translate('kabkota',sisa)||(/^(PROVINSI)\s+/.test(sisa)?translate('provinsi',sisa):'');return w?c.en+' OF '+w:''}
+  return ''; // 'bebas' → diterjemahkan manual
+}
+/** Isian yang bergantung pada kolom lain: hubungan "ANAK" → SON / DAUGHTER menurut jenis kelamin anggota itu. Tidak menimpa terjemahan manual. */
+function silangDoc(d){const ubah=[];if(!d||!d.fields||d.tipe!=='kk')return ubah;
+  for(const f of d.fields){const df=DEF[f.key];if(!df||df.kol!=='hub'||f.enManual||norm(f.src)!=='ANAK')continue;
+    const jk=d.fields.find(x=>x.key==='m'+df.anggota+'_jk');const en=jk&&/^PEREMPUAN$/i.test(jk.src.trim())?'DAUGHTER':jk&&/^LAKI-LAKI$/i.test(jk.src.trim())?'SON':'';if(f.en!==en){f.en=en;ubah.push(f.key)}}
+  return ubah}
 function arah(name){const w=norm(name).split(' ');if(w.length>1){const d=lookup('arah',w[w.length-1]);if(d)return d+' '+w.slice(0,-1).join(' ')}return norm(name)}
 function translate(key,src){
-  const k=DEF[key].kind,s=norm(src);if(!s)return '';
+  const df=DEF[key],k=df.kind,s=norm(src);if(!s)return '';
   if(k==='tetap')return String(src).trim();
-  if(k==='kamus')return lookup(key,s);
+  if(k==='kamus')return df.g&&s==='-'?'-':lookup(df.g||key,s);
   if(k==='berlaku')return /^\d{2}-\d{2}-\d{4}$/.test(s)?s:lookup('berlaku',s);
   if(k==='prov')return lookup('provinsi',s.replace(/^PROVINSI\s+/,''));
   if(k==='kab'||k==='kota'){
@@ -395,7 +478,7 @@ function translate(key,src){
     const n=arah(m[2]);if(/JAKARTA/.test(n))return n;
     return n+(/^KAB/.test(m[1])?' REGENCY':' CITY');
   }
-  return '';
+  return trLain(df,src);
 }
 const needsTr=key=>DEF[key].kind!=='tetap';
 
@@ -408,7 +491,7 @@ const mesinNama=m=>m==='gemini'?'AI Gemini':m==='vision'?'Google Vision':m==='te
 /* ---------- Keadaan aplikasi ---------- */
 const S={view:'proses',step:1,docs:[],cur:0,srcTab:'gambar',zoom:false,busy:false,customTpl:null,q:''};
 let uid=0;
-const newDoc=()=>({id:++uid,pages:[],fields:null,tpl:'depan',confirmed:false,name:'',jobId:null,finalDone:false});
+const newDoc=()=>({id:++uid,pages:[],fields:null,tipe:null,tipePaksa:null,tpl:'depan',confirmed:false,name:'',jobId:null,finalDone:false});
 /* Model kolom: nilai mentah, kandidat, pilihan, koreksi pengguna, riwayat — terpisah. */
 function fieldBaru(df,o,label,pg){
   const c=o?{v:o.v,raw:o.raw,mesin:o.mesin,cara:'halaman',conf:o.conf,box:o.box,hal:pg&&pg.id,at:Date.now()}:null;
@@ -416,9 +499,10 @@ function fieldBaru(df,o,label,pg){
 }
 function terapkanPeta(doc,pg){
   const {nilai,label}=petaHalaman(pg);
-  if(!doc.fields){doc.fields=FIELDS.map(df=>fieldBaru(df,nilai[df.key],label,pg));return}
+  if(!doc.fields){doc.tipe=pg.tipe||doc.tipePaksa||'ktp';if(doc.tipe!=='ktp')doc.tpl=doc.tipe;doc.fields=defsDoc(doc.tipe,nilai).map(df=>fieldBaru(df,nilai[df.key],label,pg));silangDoc(doc);return}
   for(const f of doc.fields){const o=nilai[f.key];f.labelAda=f.labelAda||!!label[f.key];if(!o)continue;
     tambahKandidat(f,o,'baca ulang halaman',pg)}
+  silangDoc(doc);
 }
 /** Kandidat baru TIDAK menimpa koreksi pengguna; berbeda → ditandai; kosong → diisi (dengan riwayat). */
 function tambahKandidat(f,o,cara,pg){
@@ -433,7 +517,7 @@ function statusOf(f){
   const d=DEF[f.key],s=String(f.src||'').trim();
   if(f.absen)return{t:'na',x:f.absen==='tidak-berlaku'?'Tidak berlaku':'Tidak tercantum (dikonfirmasi pengguna)',block:0};
   if(!s)return{t:'kosong',x:f.labelAda?'Label terbaca, nilai belum terbaca':'Belum terdeteksi',block:d.req?1:0,ulang:1};
-  const v=OCRCORE.validasi(f.key,s);if(!v.ok)return{t:'salah',x:'Tidak lolos validasi: '+v.alasan,block:1,ulang:1};
+  const v=validasi(f.key,s);if(!v.ok)return{t:'salah',x:'Tidak lolos validasi: '+v.alasan,block:1,ulang:1};
   if(f.beda&&!f.checked)return{t:'cek',x:'Hasil baca berbeda — pilih yang sesuai dokumen',block:1,tick:1};
   if(!f.srcEdited&&!f.checked&&f.conf!=null&&f.mesin&&f.conf<(AMBANG[f.mesin]||80))return{t:'cek',x:f.mesin==='gemini'?'AI ragu pada kolom ini — cocokkan dengan dokumen':'Skor OCR rendah — cocokkan dengan dokumen',block:1,tick:1,ulang:1};
   if(f.review)return{t:'cek',x:'Sumber berubah — periksa terjemahan',block:1,tick:1};
@@ -498,18 +582,31 @@ async function visionPanggil(body){const s=sesiAtlas();if(!s)return null;const r
 const AI={label:'',info:'',utama:false}; // utama=true → dokumen dibaca AI saja (Google Vision tidak dipanggil). Diatur di ATLAS → Pengaturan → AI.
 const KTP_LABEL={provinsi:'PROVINSI',nik:'NIK',nama:'Nama',tempat_lahir:'Tempat/Tgl Lahir',jk:'Jenis Kelamin',gol:'Gol. Darah',alamat:'Alamat',rtrw:'RT/RW',kel:'Kel/Desa',kec:'Kecamatan',agama:'Agama',status:'Status Perkawinan',kerja:'Pekerjaan',wn:'Kewarganegaraan',berlaku:'Berlaku Hingga'};
 /** Baca satu halaman dengan AI saja. Berhasil → p.aiData (nilai per kolom, apa adanya). Gagal → {ok:false, alasan}. */
+/** Data contoh buatan (demo): diisi tanpa memanggil AI — ditandai jelas sebagai contoh. */
+const CONTOH_AI={};
 async function aiHalaman(p){
-  const c=drawRot(p.src,p.rot,2000);const j=await aiPanggil({aksi:'jalan',fitur:'penerjemah',gambar:c.toDataURL('image/jpeg',0.9)});
-  if(!j||!j.ok)return{ok:false,mati:!!(j&&j.mati),alasan:(j&&j.alasan)||'AI tidak menjawab'};
-  const x=j.data||{};AI.label=j.modelLabel||'Gemini';
-  if(!/ktp/i.test(String(x.jenis||'')))return{ok:false,alasan:'AI menilai berkas ini bukan KTP ('+String(x.jenis||'tidak jelas').slice(0,40)+')'};
-  p.aiData=x;p.aiRagu=Array.isArray(x.ragu)?x.ragu:[];p.ocrCanvas=c;p.ocrW=c.width;p.ocrH=c.height;p.lines=[];p.miring=0;p.engine='gemini';p.kualitasTeks=[];
-  p.text=Object.keys(KTP_LABEL).map(k=>KTP_LABEL[k]+' : '+String(x[k]==null?'':x[k])).join('\n');
+  const kirim=async(tugas,sisi)=>{const c=drawRot(p.src,p.rot,sisi);const j=await aiPanggil({aksi:'jalan',fitur:'penerjemah',...(tugas==='ktp'?{}:{tugas}),gambar:c.toDataURL('image/jpeg',0.9)});return{c,j}};
+  const gagal=j=>({ok:false,mati:!!(j&&j.mati),alasan:(j&&j.alasan)||'AI tidak menjawab'});
+  let tipe=p.tipePaksa||p.tipeHint||null,h=null;
+  if(!tipe||tipe==='ktp'){h=await kirim('ktp',2000);if(!h.j||!h.j.ok)return gagal(h.j);
+    const jn=String((h.j.data||{}).jenis||''),t=tipeDariTeks(jn);
+    if(tipe==='ktp'||t==='ktp')tipe='ktp';else if(t){tipe=t;h=null}else return{ok:false,alasan:'AI menilai berkas ini bukan KTP, Akta Kelahiran, atau Kartu Keluarga ('+(jn||'tidak jelas').slice(0,40)+')'}}
+  if(!h){h=await kirim(tipe,tipe==='kk'?2800:2200);if(!h.j||!h.j.ok)return gagal(h.j);
+    const jn=String((h.j.data||{}).jenis||'');if(tipeDariTeks(jn)!==tipe)return{ok:false,alasan:'AI menilai berkas ini bukan '+TIPE[tipe].nama+' ('+(jn||'tidak jelas').slice(0,40)+')'}}
+  const x=h.j.data||{},c=h.c;AI.label=h.j.modelLabel||'Gemini';
+  p.tipe=tipe;p.aiData=x;p.aiRagu=Array.isArray(x.ragu)?x.ragu:[];p.ocrCanvas=c;p.ocrW=c.width;p.ocrH=c.height;p.lines=[];p.miring=0;p.engine='gemini';p.kualitasTeks=[];p.peta=null;
+  p.text=teksAi(p);
   p.aiCatatan='Dibaca oleh AI '+AI.label+' saja (tanpa Google Vision). AI tidak memberi skor dan tidak menandai letak tulisan — cocokkan setiap kolom dengan gambar dokumen.';
   renderVision();return{ok:true};
 }
-function petaAi(p){const nilai={},label={};const ragu=new Set(p.aiRagu||[]);
-  for(const df of FIELDS){const v=String(p.aiData[df.key]==null?'':p.aiData[df.key]).trim();if(!v)continue;label[df.key]=true;nilai[df.key]={v,raw:v,conf:ragu.has(df.key)?0:null,box:null,mesin:'gemini'}}
+function teksAi(p){if((p.tipe||'ktp')==='ktp')return Object.keys(KTP_LABEL).map(k=>KTP_LABEL[k]+' : '+String(p.aiData[k]==null?'':p.aiData[k])).join('\n');
+  const n=petaAi(p).nilai;return TIPE[p.tipe].nama.toUpperCase()+'\n'+Object.keys(n).map(k=>DEF[k].label+' : '+n[k].v).join('\n')}
+function petaAi(p){const nilai={},label={};const x=p.aiData||{},t=p.tipe||'ktp',mesin=p.contoh?'manual':'gemini';const ragu=new Set((p.aiRagu||[]).map(r=>String(r).trim()));
+  const isi=(key,v,r)=>{v=String(v==null?'':v).trim();if(!v||!DEF[key])return;label[key]=true;nilai[key]={v,raw:v,conf:r?0:null,box:null,mesin}};
+  if(t==='ktp'){for(const df of FIELDS)isi(df.key,x[df.key],ragu.has(df.key))}
+  else if(t==='akta'){for(const df of FIELDS_AKTA){const k=df.key.slice(2);isi(df.key,x[k],ragu.has(k)||ragu.has(df.key))}}
+  else{for(const df of [...KK_KEPALA,...KK_EKOR]){const k=df.key.slice(2);isi(df.key,x[k],ragu.has(k)||ragu.has(df.key))}
+    (Array.isArray(x.anggota)?x.anggota:[]).filter(a=>a&&(String(a.nama||'').trim()||String(a.nik||'').trim())).slice(0,KK_MAKS).forEach((a,i)=>{for(const [k] of KK_KOLOM)isi('m'+(i+1)+'_'+k,a[k],ragu.has('m'+(i+1)+'_'+k))})}
   return{nilai,label}}
 async function aiPanggil(body){const s=sesiAtlas();if(!s)return null;try{const r=await fetch(s.url.replace('vision-ocr','gemini-ai'),{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+s.token},body:JSON.stringify(body)});return await r.json()}catch(e){return{ok:false,alasan:'Koneksi ke server AI gagal'}}}
 async function bacaAi(d,pg){
@@ -549,13 +646,19 @@ function kualitasAwal(p){try{const c=drawRot(p.src,p.rot,800);return OCRCORE.kua
 function teksPdfLayak(ls){const t=(ls||[]).join(' ');if(t.length<60||/\uFFFD/.test(t))return false;const a=(t.match(/[A-Za-z0-9]/g)||[]).length;return a/t.replace(/\s/g,'').length>0.6}
 async function ocrPage(p){
   p.kualitas=kualitasAwal(p);p.engineNote='';p.kualitasTeks=[];
-  if(p.pdfText&&teksPdfLayak(p.pdfText)){p.lines=p.pdfText.map(t=>({text:t,words:[],box:null,engine:'pdf'}));p.text=p.pdfText.join('\n');p.ocrW=0;p.engine='pdf';p.viaText=true;p.status='ok';return}
-  p.viaText=false;p.aiData=null;p.aiCatatan='';
+  p.tipe=null;p.contoh=false;
+  const cth=CONTOH_AI[p.name];
+  if(cth){p.viaText=false;p.tipe=cth.tipe;p.contoh=true;p.aiData=cth.data;p.aiRagu=[];const c=drawRot(p.src,p.rot,1600);p.ocrCanvas=c;p.ocrW=c.width;p.ocrH=c.height;p.lines=[];p.miring=0;p.engine='manual';p.peta=null;p.text=teksAi(p);p.aiCatatan='Data contoh buatan — diisi langsung, BUKAN hasil baca AI. Dokumen sungguhan dibaca AI di ATLAS live.';p.status='ok';return}
   if(AI.siap)await AI.siap;
+  // Akta Kelahiran / Kartu Keluarga hanya dipetakan oleh AI — termasuk PDF yang punya lapisan teks.
+  const pdfOk=p.pdfText&&teksPdfLayak(p.pdfText),tPdf=pdfOk?tipeDariTeks(p.pdfText.join('\n')):null,tMau=p.tipePaksa||tPdf,lain=tMau==='akta'||tMau==='kk',aiLain=lain&&AI.utama&&sesiAtlas();
+  p.tipeHint=p.tipePaksa?null:tPdf;
+  if(pdfOk&&!aiLain){p.lines=p.pdfText.map(t=>({text:t,words:[],box:null,engine:'pdf'}));p.text=p.pdfText.join('\n');p.ocrW=0;p.engine='pdf';p.viaText=true;p.status='ok';if(lain)p.engineNote=TIPE[tMau].nama+' hanya bisa diisi otomatis oleh pembaca AI (ATLAS live, AI aktif). Di sini kolomnya diisi manual.';return}
+  p.viaText=false;p.aiData=null;p.aiCatatan='';
   // Pembaca utama AI (keputusan pemilik 15 Nov 2026): Google Vision TIDAK dipanggil. AI gagal → Tesseract di perangkat, dengan catatan.
   if(AI.utama&&sesiAtlas()){
     const a=await aiHalaman(p);if(a.ok){p.status='ok';return}
-    if(!a.mati){p.engineNote='Pembaca AI tidak dipakai: '+a.alasan+' — halaman ini dibaca dengan Tesseract (cadangan, akurasi lebih rendah).';await tesseractHalaman(p);return}
+    if(!a.mati){p.engineNote='Pembaca AI tidak dipakai: '+a.alasan+' — halaman ini dibaca dengan Tesseract (cadangan, akurasi lebih rendah).'+(lain?' Kolom '+TIPE[tMau].nama+' tidak terisi otomatis tanpa AI.':'');await tesseractHalaman(p);return}
   }
   const {c,u}=gambarKirim(p);
   const j=await visionBaca(u);
@@ -584,17 +687,17 @@ async function bacaPotongan(pg,box){
   return{ok:true,lines:OCRCORE.barisDariKata(kata,'vision').lines,teks:j.teks||''};
 }
 let queueRunning=false;
-function petaHalaman(x){if(!x.peta)x.peta=x.aiData?petaAi(x):OCRCORE.petakanKTP(x.lines||[]);return x.peta}
+function petaHalaman(x){if(!x.peta){const t=x.tipePaksa||x.tipeHint||tipeDariTeks(x.text);x.peta=x.aiData?petaAi(x):(t==='akta'||t==='kk')?{nilai:{},label:{}}:OCRCORE.petakanKTP(x.lines||[])}return x.peta}
 async function runQueue(){
   if(queueRunning)return;queueRunning=true;
   try{
     for(;;){
       let job=null;for(const d of S.docs){const p=d.pages.find(x=>x.status==='antre');if(p){job=[d,p];break}}
       if(!job)break;const [d,p]=job;p.status='baca';p.progress=0;p.err='';p.peta=null;render();
-      try{await ocrPage(p);d.jenis=deteksiJenis(teksDok(d));if(TUGAS)keAtlas({type:'st-jenis',nama:d.jenis.nama});
+      try{p.tipePaksa=d.tipePaksa||null;await ocrPage(p);d.jenis=deteksiJenis(teksDok(d));{const tp=d.tipePaksa||(d.pages.find(x=>x.tipe)||{}).tipe||tipeDariTeks(teksDok(d));if(tp&&tp!=='ktp')d.jenis={nama:TIPE[tp].nama,siap:true,cocok:[]}}if(TUGAS)keAtlas({type:'st-jenis',nama:d.jenis.nama});
         const first=d.pages.find(x=>x.status==='ok'&&(x.aiData||(x.lines&&x.lines.length>3))&&Object.keys(petaHalaman(x).nilai).length>=3);
         if(first===p||(!d.fields&&first)){terapkanPeta(d,first);d.fieldPage=first.id;render();jadwalSimpan(1500);if(first.engine==='vision')await bacaUlangOtomatis(d,first);if(d.jenis&&d.jenis.nama==='KTP'&&!first.viaText&&first.engine!=='gemini'&&!AI.utama)await bacaAi(d,first)}
-        else if(!d.fields&&d.pages.every(x=>x.status==='ok'||x.status==='gagal')){d.fields=FIELDS.map(df=>fieldBaru(df,null,{},null))}
+        else if(!d.fields&&d.pages.every(x=>x.status==='ok'||x.status==='gagal')){const tt=d.tipePaksa||tipeDariTeks(teksDok(d))||'ktp';d.tipe=tt;if(tt!=='ktp')d.tpl=tt;d.fields=defsDoc(tt,{}).map(df=>fieldBaru(df,null,{},null))}
       }catch(e){curPage=null;p.status='gagal';p.err=(e&&e.message)||String(e)}
       render();
     }
@@ -637,7 +740,7 @@ const chip=(t,c)=>`<span class="chip c-${c}">${esc(t)}</span>`;
 function pageStatus(p){return p.status==='ok'?(p.viaText?chip('Teks PDF','ok'):(p.text.trim().length>20?chip(p.engine==='vision'?'Terbaca · Google Vision':p.engine==='tesseract'?'Terbaca · Tesseract':'Terbaca','ok'):chip('Tanpa teks','kosong'))):p.status==='baca'?`<span class="chip c-cek" id="pct${p.id}">Membaca ${p.progress}%</span>`:p.status==='gagal'?chip('Gagal dibaca','salah'):chip('Antre','kosong')}
 function thumbURL(p){if(!p.thumb||p.thumbRot!==p.rot){p.thumb=drawRot(p.src,p.rot,220).toDataURL('image/jpeg',.7);p.thumbRot=p.rot}return p.thumb}
 function viewUnggah(){
-  const terdeteksi=new Set(S.docs.map(d=>d.jenis&&d.jenis.nama).filter(Boolean));const jenis=[['KTP',1],['Kartu Keluarga',0],['Akta Kelahiran',0],['Akta Perkawinan',0],['Paspor',0],['Ijazah',0],['Transkrip Nilai',0]].map(([l,on])=>`<button type="button" class="btn" ${on?'aria-pressed="true" style="background:var(--ink);color:#fff;border-color:var(--ink)"':'disabled aria-pressed="false"'+(terdeteksi.has(l)?' style="opacity:1;border-color:#E0A800;color:#6B4600"':'')}>${l}${on?'':terdeteksi.has(l)?' · terdeteksi':' · menyusul'}</button>`).join('');
+  const terdeteksi=new Set(S.docs.map(d=>d.jenis&&d.jenis.nama).filter(Boolean));const jenis=[['KTP',1],['Kartu Keluarga',1],['Akta Kelahiran',1],['Akta Perkawinan',0],['Paspor',0],['Ijazah',0],['Transkrip Nilai',0]].map(([l,on])=>`<button type="button" class="btn" ${on?'aria-pressed="true" style="background:var(--ink);color:#fff;border-color:var(--ink)"':'disabled aria-pressed="false"'+(terdeteksi.has(l)?' style="opacity:1;border-color:#E0A800;color:#6B4600"':'')}>${l}${on?'':terdeteksi.has(l)?' · terdeteksi':' · menyusul'}</button>`).join('');
   const docs=S.docs.map((d,di)=>`<section class="card pad" aria-label="Dokumen ${di+1}">
     <div class="row" style="padding-bottom:10px"><b style="font-size:15px">Dokumen ${di+1}</b>${d.jenis?chip(d.jenis.nama,d.jenis.siap?'biru':'cek'):chip('Menganalisa jenis…','kosong')}<span class="small">${d.jenis&&d.jenis.cocok&&d.jenis.cocok.length?'terdeteksi dari isi: '+esc(d.jenis.cocok.slice(0,3).join(', '))+' · ':''}${d.pages.length} halaman</span><span class="grow"></span>
     ${di>0?`<button type="button" class="btn sm" data-act="gabung" data-d="${di}">Gabung ke Dokumen ${di}</button>`:''}${d.pages.length>1?`<button type="button" class="btn sm" data-act="pisah" data-d="${di}">Pisahkan halaman</button>`:''}
@@ -660,7 +763,7 @@ function viewUnggah(){
       <label class="field">Arah bahasa<select class="inp"><option>Indonesia → Inggris</option></select></label></section>
     <section class="card pad col" aria-label="Unggah"><h2>Unggah</h2>
       <div class="drop" id="drop"><span style="color:var(--mute)">${ic(I.up,28,1.7)}</span><b style="font-size:15px">Tarik file ke sini</b><span class="small" style="font-size:13px">JPG, PNG, atau PDF banyak halaman</span><button type="button" class="btn dark" data-act="pilih">Pilih file</button></div>
-      <button type="button" class="btn" data-act="contoh">Coba dengan KTP contoh (data buatan)</button></section>
+      <button type="button" class="btn" data-act="contoh">Coba dengan KTP contoh (data buatan)</button><button type="button" class="btn" data-act="contohlain" data-t="akta">Contoh Akta Kelahiran</button><button type="button" class="btn" data-act="contohlain" data-t="kk">Contoh Kartu Keluarga</button></section>
    </div>
    <div class="col" style="flex:2 1 480px;min-width:0;gap:14px">
     ${S.docs.length?`<div class="row"><h2 class="grow" style="flex:1 1 160px">${S.docs.length} dokumen · ${np} halaman</h2><button type="button" class="btn blue" data-act="bacasemua">${ic(I.redo,15)}Baca ulang semua</button></div>${docs}<div class="row" style="justify-content:flex-end"><button type="button" class="btn dark" data-act="step" data-s="2" ${S.docs.some(d=>d.fields)?'':'disabled'}>Lanjut periksa</button></div>`
@@ -676,7 +779,7 @@ function catatanKualitas(p){return[...((p.kualitas&&p.kualitas.catatan)||[]),...
 const fmtSkor=f=>f.mesin==='pdf'?'Teks PDF':f.mesin==='gemini'?(f.conf===0?'AI Gemini · AI ragu pada kolom ini':'AI Gemini · tanpa skor'):f.conf==null?mesinNama(f.mesin)+' · tanpa skor':`${mesinNama(f.mesin)} · skor ${f.mesin==='vision'?'huruf':'kata'} terendah ${Math.round(f.conf)}`;
 /** Baris info di bawah setiap kolom: asal, skor OCR, validasi, kandidat, pemeriksaan — dipisah, tidak digabung jadi satu angka. */
 function metaKolom(f){
-  const s=statusOf(f),v=OCRCORE.validasi(f.key,f.src),bagian=[];
+  const s=statusOf(f),v=validasi(f.key,f.src),bagian=[];
   bagian.push(`<span>${f.srcEdited?'<b>Dikoreksi pengguna</b>':f.src?esc(fmtSkor(f)):'—'}</span>`);
   if(f.src)bagian.push(`<span>${v.ok?(v.catatan?esc(v.catatan):'Format sesuai'):'<b style="color:#9B2318">'+esc(v.alasan)+'</b>'}</span>`);
   if(f.checked)bagian.push('<span><b style="color:#136C3F">Sudah diperiksa</b></span>');
@@ -716,7 +819,7 @@ function viewPeriksa(){
     <div class="pnf"><span style="display:flex;align-items:center;gap:6px"><button type="button" class="mb" data-act="pilihArea" aria-pressed="${!!S.pilihArea}" ${S.selField&&pg.ocrCanvas?'':'disabled'} title="Tarik kotak di gambar untuk membaca ulang area itu ke kolom terpilih">${S.pilihArea?'Batal pilih area':'Pilih area'}</button><span>${S.selField?'Kolom terpilih: <b>'+esc(DEF[S.selField].label)+'</b>':'Klik satu kolom dulu'}</span></span><span>dibaca ${esc(mesinNama(pg.engine))}${pg.ulang?' · '+pg.ulang+' potongan diulang':''}</span></div></section>`:'';
   return `<div class="ws">
   <div class="tbar" role="toolbar" aria-label="Tindakan dokumen">
-   ${S.docs.length>1?docTabs():''}${chip(d.jenis?d.jenis.nama:'KTP','biru')}
+   ${S.docs.length>1?docTabs():''}<select id="tipesel" class="tbtn" aria-label="Jenis dokumen" title="Jenis dokumen — ganti bila salah terdeteksi (dokumen dibaca ulang)">${Object.keys(TIPE).map(k=>`<option value="${k}" ${(d.tipe||'ktp')===k?'selected':''}>${TIPE[k].nama}</option>`).join('')}</select>
    <button type="button" class="tbtn" data-act="bacacur">Baca ulang</button><button type="button" class="tbtn" data-act="simpan">Simpan</button><span class="sep"></span>
    <button type="button" class="tbtn" data-act="berikut">Masalah berikutnya</button><span id="chips" class="info">${countChips(d)}</span>
    <span class="kanan"><span id="simpanst" class="info" aria-live="polite"></span><button type="button" class="tbtn" data-act="step" data-s="1">Ganti berkas</button><button type="button" class="tbtn dark" data-act="step" data-s="3">Pratinjau &amp; unduh</button></span>
@@ -753,6 +856,7 @@ function showHL(key){const d=curDoc(),hl=$('#hl');if(!d)return;const f=d.fields.
 /* ---------- Hasil: nilai, pratinjau, DOCX, PDF ---------- */
 const NYT='[NOT YET TRANSLATED]';
 function vals(d,draft){
+  if(d.tipe==='akta')return valsAkta(d,draft);if(d.tipe==='kk')return valsKK(d,draft);
   const g=k=>{const f=d.fields.find(x=>x.key===k);return f?String(needsTr(k)?f.en:f.src).trim():''};const t=k=>g(k)||(draft?NYT:'');
   const tl=g('tempat_lahir'),tg=g('tanggal_lahir');
   return{tanda_draf:draft?'DRAFT — NOT YET REVIEWED':'',provinsi_en:t('provinsi'),kabupaten_kota_en:t('kabkota'),nik:g('nik'),nama:g('nama'),ttl:[tl,tg].filter(Boolean).join(', '),jenis_kelamin_en:t('jk'),gol_darah:g('gol')||'-',alamat:g('alamat'),rt_rw:g('rtrw'),kel_desa:g('kel'),kecamatan:g('kec'),agama_en:t('agama'),status_en:t('status'),pekerjaan_en:t('kerja'),kewarganegaraan_en:t('wn'),berlaku_hingga_en:t('berlaku'),kota_terbit_en:g('kota_terbit'),tanggal_terbit:g('tgl_terbit')};
@@ -773,6 +877,78 @@ function fillDocx(bytes,v){
     x=x.replace(/\{\{([a-z0-9_]+)\}\}/g,(m,k)=>k in v?xmlEsc(v[k]):m);const lo=x.replace(/<[^>]+>/g,'').match(/\{\{[^}]*\}\}/g);if(lo)leftovers.push(...lo);z.file(name,x)}
   return{blob:z.generate({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document',compression:'DEFLATE'}),leftovers};
 }
+/* ---------- Hasil: Akta Kelahiran & Kartu Keluarga (pratinjau, Word, PDF akta) ---------- */
+const TTE_EN='This document has been signed electronically using the electronic certificate that is issued by the Authority of Electronic Certification (BSrE), State Agency of Cyber and Code (BSSN)';
+function ambilNilai(d,draft){const g=k=>{const f=d.fields.find(x=>x.key===k);return f?String(needsTr(k)?f.en:f.src).trim():''};return{g,t:k=>g(k)||(draft&&DEF[k]&&(DEF[k].req||String((d.fields.find(x=>x.key===k)||{}).src||'').trim())?NYT:'')}}
+function valsAkta(d,draft){const {g,t}=ambilNilai(d,draft);
+  return{tipe:'akta',tanda_draf:draft?'DRAFT — NOT YET REVIEWED':'',nik:g('a_nik'),wn:t('a_wn'),no:g('a_no'),stbld:t('a_stbld'),tempat:g('a_tempat_lahir'),tgl:t('a_tgl_lahir'),thn:t('a_thn_lahir'),nama:g('a_nama'),anak_ke:t('a_anak_ke'),jk:t('a_jk'),ayah:g('a_ayah'),ibu:g('a_ibu'),kota:t('a_kota_terbit'),tgl_t:t('a_tgl_terbit'),thn_t:t('a_thn_terbit'),jabatan:t('a_jabatan'),pejabat:g('a_pejabat'),nip:g('a_nip'),tte:/^YA$/i.test(g('a_tte')),catatan:t('a_catatan')}}
+/** Baris-baris terjemahan akta (dipakai pratinjau, Word, dan PDF supaya isinya selalu sama). [teks, gaya] — gaya: j=judul, b=tebal, k=kecil, kiri */
+function barisAkta(v){const L=[];
+  if(v.nik)L.push(['Personal Identity Number: '+v.nik,'kiri']);
+  L.push(['(Logo)',''],['CIVIL REGISTRY OFFICE','b'],[v.wn,'b'],['EXCERPT OF BIRTH CERTIFICATE','j'],['By virtue of Birth Certificate Number '+v.no,'']);
+  if(v.stbld)L.push(['in accordance with '+v.stbld,'']);
+  L.push(['that in '+v.tempat+' on date '+v.tgl,''],['in the year '+v.thn+' was born',''],[v.nama,'j']);
+  L.push(['child number '+v.anak_ke+', '+v.jk+(v.ayah?' OF A FATHER '+v.ayah+' AND A MOTHER '+v.ibu:' OF A MOTHER '+v.ibu),'']);
+  L.push(['',''],['The excerpt is issued in '+v.kota,''],['on date '+v.tgl_t,''],['in the year '+v.thn_t,''],[v.jabatan,''],[v.tte?'(QR Code)':'(Stamp and signature)',''],[v.pejabat,'b']);
+  if(v.nip)L.push(['REG. NO. '+v.nip,'']);
+  if(v.tte)L.push(['',''],[TTE_EN,'k']);
+  if(v.catatan)L.push(['',''],['Marginal note: '+v.catatan,'kiri']);
+  return L}
+const kotakTr=`<div style="display:flex;justify-content:flex-end"><span style="border:1px solid #000;padding:5px 12px">TRANSLATION</span></div>`;
+function sheetAkta(v){
+  return `<div style="color:#B00020;font-weight:700;font-size:12px;min-height:14px">${esc(v.tanda_draf)}</div>${kotakTr}<div style="margin-top:22px;text-align:center;line-height:1.55" data-sheet="akta">`+
+   barisAkta(v).map(([t,g])=>`<div style="${g==='kiri'?'text-align:left;':''}${g==='j'?'font-weight:700;font-size:18.7px;margin:6px 0;':''}${g==='b'?'font-weight:700;':''}${g==='k'?'font-size:13.3px;line-height:1.3;':''}min-height:10px;overflow-wrap:anywhere">${esc(t)}</div>`).join('')+`</div>`}
+const KK_T1=[['No',3],['Full Name',17],['Personal Identity Number',13],['Sex',6],['Place of Birth',11],['Date of Birth',8],['Religion',8],['Education',14],['Occupation',12],['Blood Type',8]];
+const KK_T2=[['No',3],['Marital Status',11],['Date of Marriage',9],['Relationship in Family',12],['Nationality',9],['Passport No.',10],['KITAP No.',10],['Father',18],['Mother',18]];
+function valsKK(d,draft){const {g,t}=ambilNilai(d,draft);const n=jumlahAnggota(d);const A=[];
+  for(let i=1;i<=n;i++){const m=k=>'m'+i+'_'+k,z=k=>t(m(k))||'-';
+    A.push({t1:[String(i),g(m('nama')),g(m('nik')),z('jk'),g(m('tempat_lahir')),g(m('tgl_lahir')),z('agama'),z('pendidikan'),z('kerja'),z('gol')],t2:[String(i),z('status'),g(m('tgl_kawin'))||'-',z('hub'),z('wn'),g(m('paspor'))||'-',g(m('kitap'))||'-',g(m('ayah'))||'-',g(m('ibu'))||'-']})}
+  return{tipe:'kk',tanda_draf:draft?'DRAFT — NOT YET REVIEWED':'',no:g('k_no_kk'),kepala:g('k_kepala'),alamat:g('k_alamat'),rtrw:g('k_rtrw'),kodepos:g('k_kodepos'),kel:g('k_kel'),kec:g('k_kec'),kab:t('k_kab'),prov:t('k_prov'),tgl:g('k_tgl_terbit'),jabatan:t('k_jabatan'),pejabat:g('k_pejabat'),nip:g('k_nip'),tte:/^YA$/i.test(g('k_tte')),anggota:A}}
+const kkInfo=v=>[[['Head of Family',v.kepala],['Address',v.alamat],['RT/RW',v.rtrw],['Zip Code',v.kodepos]],[['Village/Sub-district',v.kel],['District',v.kec],['Regency/City',v.kab],['Province',v.prov]]];
+function sheetKK(v){
+  const tb=(H,rows,mulai)=>`<table style="width:100%;border-collapse:collapse;table-layout:fixed;margin-top:8px;font-size:10.5px;line-height:1.15"><colgroup>${H.map(([,w])=>`<col style="width:${w}%">`).join('')}</colgroup><tr>${H.map(([h])=>`<th style="border:1px solid #000;padding:3px 2px;font-weight:700">${h}</th>`).join('')}</tr><tr>${H.map((h,i)=>`<td style="border:1px solid #000;text-align:center;font-size:9px">${i?'('+(mulai+i-1)+')':''}</td>`).join('')}</tr>${rows.map(r=>`<tr>${r.map((c,i)=>`<td style="border:1px solid #000;padding:3px 3px;overflow-wrap:anywhere;${i===0?'text-align:center':''}">${esc(c)}</td>`).join('')}</tr>`).join('')}</table>`;
+  const info=kkInfo(v).map(col=>`<div style="flex:1;min-width:0">${col.map(([l,x])=>`<div style="display:grid;grid-template-columns:128px 8px minmax(0,1fr)"><span>${l}</span><span>:</span><span style="overflow-wrap:anywhere">${esc(x)}</span></div>`).join('')}</div>`).join('');
+  return `<div data-sheet="kk" style="font-size:12px;line-height:1.3"><div style="display:flex;justify-content:space-between;align-items:flex-start"><span style="color:#B00020;font-weight:700;font-size:11px">${esc(v.tanda_draf)}</span><span style="border:1px solid #000;padding:3px 10px">TRANSLATION</span></div>
+  <div style="text-align:center"><div>(Logo)</div><div style="font-weight:700;font-size:20px">FAMILY CARD</div><div style="font-weight:700;font-size:14px">No. ${esc(v.no)}</div></div>
+  <div style="display:flex;gap:28px;margin-top:8px">${info}</div>${tb(KK_T1,v.anggota.map(a=>a.t1),1)}${tb(KK_T2,v.anggota.map(a=>a.t2),10)}
+  <div style="display:flex;justify-content:space-between;gap:16px;margin-top:10px;text-align:center"><div style="flex:1;text-align:left">Issued on Date : ${esc(v.tgl)}</div><div style="flex:1">HEAD OF FAMILY<div style="height:30px"></div>${esc(v.kepala)}<div style="font-size:10px">Signature/Thumb Print</div></div><div style="flex:1.4">${esc(v.jabatan)}<div style="margin:6px 0">${v.tte?'(QR Code)':'(Stamp and signature)'}</div>${esc(v.pejabat)}${v.nip?'<div>REG.NO. '+esc(v.nip)+'</div>':''}</div></div>
+  ${v.tte?`<div style="margin-top:8px;font-size:9.5px">${TTE_EN}</div>`:''}</div>`}
+/* Word (.docx) dibuat langsung dari data (tanpa template unggahan): Times New Roman, kotak TRANSLATION, tanpa tanda tangan/cap/nomor registrasi penerjemah. */
+const wR=(t,o={})=>`<w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/>${o.b?'<w:b/>':''}${o.merah?'<w:color w:val="B00020"/>':''}<w:sz w:val="${o.sz||24}"/><w:szCs w:val="${o.sz||24}"/></w:rPr><w:t xml:space="preserve">${xmlEsc(t==null?'':t)}</w:t></w:r>`;
+const wP=(t,o={})=>`<w:p><w:pPr><w:spacing w:before="0" w:after="${o.after==null?60:o.after}"/><w:jc w:val="${o.al||'left'}"/></w:pPr>${wR(t,o)}</w:p>`;
+const wSel=(isi,w,o={})=>`<w:tc><w:tcPr><w:tcW w:w="${w}" w:type="dxa"/>${o.polos?'<w:tcBorders><w:top w:val="nil"/><w:left w:val="nil"/><w:bottom w:val="nil"/><w:right w:val="nil"/></w:tcBorders>':''}<w:tcMar><w:left w:w="50" w:type="dxa"/><w:right w:w="50" w:type="dxa"/></w:tcMar></w:tcPr>${isi}</w:tc>`;
+const wTbl=(baris,lebar,o={})=>`<w:tbl><w:tblPr><w:tblW w:w="${lebar.reduce((a,b)=>a+b,0)}" w:type="dxa"/><w:jc w:val="${o.al||'left'}"/>${o.polos?'':'<w:tblBorders>'+['top','left','bottom','right','insideH','insideV'].map(x=>`<w:${x} w:val="single" w:sz="4" w:space="0" w:color="000000"/>`).join('')+'</w:tblBorders>'}<w:tblLayout w:type="fixed"/></w:tblPr><w:tblGrid>${lebar.map(w=>`<w:gridCol w:w="${w}"/>`).join('')}</w:tblGrid>${baris.map(r=>'<w:tr>'+r.map((c,i)=>wSel(c,lebar[i],o)).join('')+'</w:tr>').join('')}</w:tbl>`;
+function docxBuat(body,datar){
+  const z=new PizZip();
+  z.file('[Content_Types].xml','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>');
+  z.file('_rels/.rels','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>');
+  const sek=datar?'<w:pgSz w:w="16838" w:h="11906" w:orient="landscape"/><w:pgMar w:top="720" w:right="720" w:bottom="720" w:left="720" w:header="400" w:footer="400" w:gutter="0"/>':'<w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="708" w:footer="708" w:gutter="0"/>';
+  z.file('word/document.xml','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>'+body+'<w:sectPr>'+sek+'</w:sectPr></w:body></w:document>');
+  return z.generate({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document',compression:'DEFLATE'})}
+const wKotakTr=(lebarHal,sz)=>wTbl([[wP('TRANSLATION',{al:'center',after:0,sz})]],[2200],{al:'right'});
+function docxAkta(v){
+  let b=(v.tanda_draf?wP(v.tanda_draf,{b:1,merah:1,sz:18}):'')+wKotakTr()+wP('',{after:120});
+  for(const [t,g] of barisAkta(v))b+=wP(t,{al:g==='kiri'?'left':'center',b:g==='j'||g==='b',sz:g==='j'?28:g==='k'?20:24,after:g==='j'?120:60});
+  return docxBuat(b,false)}
+function docxKK(v){
+  const W=15398,sz=16;const lb=H=>{const l=H.map(([,p])=>Math.floor(W*p/100));l[1]+=W-l.reduce((a,b)=>a+b,0);return l};
+  const tb=(H,rows,mulai)=>wTbl([H.map(([h])=>wP(h,{al:'center',b:1,sz,after:0})),H.map((h,i)=>wP(i?'('+(mulai+i-1)+')':'',{al:'center',sz:14,after:0})),...rows.map(r=>r.map((c,i)=>wP(c,{al:i?'left':'center',sz,after:0})))],lb(H));
+  const inf=kkInfo(v),half=Math.floor(W/2),li=[1900,200,half-2100,1900,200,W-half-2100];
+  let b=(v.tanda_draf?wP(v.tanda_draf,{b:1,merah:1,sz:16,after:0}):'')+wKotakTr()+wP('(Logo)',{al:'center',sz:18,after:0})+wP('FAMILY CARD',{al:'center',b:1,sz:32,after:0})+wP('No. '+v.no,{al:'center',b:1,sz:22,after:100});
+  b+=wTbl(inf[0].map((x,i)=>[wP(x[0],{sz:18,after:0}),wP(':',{sz:18,after:0}),wP(x[1],{sz:18,after:0}),wP(inf[1][i][0],{sz:18,after:0}),wP(':',{sz:18,after:0}),wP(inf[1][i][1],{sz:18,after:0})]),li,{polos:1})+wP('',{sz:10,after:0});
+  b+=tb(KK_T1,v.anggota.map(a=>a.t1),1)+wP('',{sz:10,after:0})+tb(KK_T2,v.anggota.map(a=>a.t2),10)+wP('',{sz:10,after:0});
+  const k3=[Math.floor(W*.3),Math.floor(W*.3),W-2*Math.floor(W*.3)],c=(t,o={})=>wP(t,{al:'center',sz:18,after:0,...o});
+  b+=wTbl([[wP('Issued on Date : '+v.tgl,{sz:18,after:0}),c('HEAD OF FAMILY')+c('')+c('')+c(v.kepala)+c('Signature/Thumb Print',{sz:14}),c(v.jabatan)+c(v.tte?'(QR Code)':'(Stamp and signature)')+c(v.pejabat)+(v.nip?c('REG.NO. '+v.nip):'')]],k3,{polos:1});
+  if(v.tte)b+=wP(TTE_EN,{sz:14,after:0});
+  return docxBuat(b,true)}
+function pdfAkta(v){
+  const {jsPDF}=window.jspdf;const doc=new jsPDF({unit:'pt',format:'a4'});const M=72,W=595.28-2*M;let y=M;
+  doc.setFont('times','bold');doc.setFontSize(9);doc.setTextColor(176,0,32);if(v.tanda_draf)doc.text(v.tanda_draf.replace('—','-'),M,y);doc.setTextColor(0);
+  doc.setFont('times','normal');doc.setFontSize(12);y+=6;const tw=doc.getTextWidth('TRANSLATION')+18;doc.rect(M+W-tw,y,tw,22);doc.text('TRANSLATION',M+W-tw+9,y+15.5);y+=22+30;
+  for(const [t,g] of barisAkta(v)){const sz=g==='j'?14:g==='k'?10:12;doc.setFont('times',g==='j'||g==='b'?'bold':'normal');doc.setFontSize(sz);
+    if(!t){y+=10;continue}const ls=doc.splitTextToSize(t,W);for(const l of ls){if(g==='kiri')doc.text(l,M,y);else doc.text(l,M+W/2,y,{align:'center'});y+=sz*1.5}if(g==='j')y+=4}
+  return doc.output('blob')}
+const sheetDok=(d,v)=>d.tipe==='akta'?sheetAkta(v):d.tipe==='kk'?sheetKK(v):sheetHTML(v,d.tpl==='belakang');
 function tplBytes(d){if(d.tpl==='khusus'&&S.customTpl)return S.customTpl.bytes;return b64bytes(TPL_B64[d.tpl==='belakang'?'belakang':'depan'])}
 function makePDF(v,back){
   const {jsPDF}=window.jspdf;const doc=new jsPDF({unit:'pt',format:'a4'});const M=72,W=595.28-2*M;let y=M;
@@ -806,11 +982,14 @@ window.addEventListener('message',e=>{
   if(e.origin!==location.origin||!e.data)return;
   if(e.data.type==='st-file'&&e.data.blob){S.view='proses';S.step=1;addFiles([new File([e.data.blob],e.data.name||'dokumen',{type:e.data.blob.type||''})]);toast('Dokumen dari tugas dimuat: '+(e.data.name||''))}
 });
-function fileBase(d,draft){const n=(d.fields.find(f=>f.key==='nama')||{}).src||'Tanpa Nama';return (draft?'DRAF ':'')+'Personal Identity Card '+n.replace(/[^A-Za-z0-9 .,'-]/g,'').trim()}
+const namaDok=d=>(d.fields.find(f=>f.key===(d.tipe==='akta'?'a_nama':d.tipe==='kk'?'k_kepala':'nama'))||{}).src||'';
+function fileBase(d,draft){const n=namaDok(d)||'Tanpa Nama';return (draft?'DRAF ':'')+(d.tipe==='akta'?'Birth Certificate ':d.tipe==='kk'?'Family Card ':'Personal Identity Card ')+n.replace(/[^A-Za-z0-9 .,'-]/g,'').trim()}
 async function unduh(kind,draft){
   const d=curDoc();if(!d||!d.fields)return;const is=issues(d);
   if(!draft&&(is.length||!d.confirmed)){toast('Final belum bisa: bereskan catatan dan centang "sudah diperiksa".');return}
   const v=vals(d,draft);
+  if(d.tipe==='akta'||d.tipe==='kk'){if(kind!=='docx'&&d.tipe==='kk'){toast('PDF Kartu Keluarga belum tersedia — unduh Word, lalu simpan sebagai PDF dari Word.');return}
+    const blob=kind==='docx'?(d.tipe==='akta'?docxAkta(v):docxKK(v)):pdfAkta(v);if(await simpanHasil(fileBase(d,draft)+'.'+kind,blob,draft))done(d,draft);return}
   if(kind==='docx'){const r=fillDocx(tplBytes(d),v);if(r.leftovers.length){toast('Template masih punya placeholder tak dikenal: '+r.leftovers.join(', '));if(!draft)return}
     if(await simpanHasil(fileBase(d,draft)+'.docx',r.blob,draft))done(d,draft)}
   else{if(d.tpl==='khusus'){toast('PDF hanya untuk template master.');return}if(await simpanHasil(fileBase(d,draft)+'.pdf',makePDF(v,d.tpl==='belakang'),draft))done(d,draft)}
@@ -819,14 +998,14 @@ function done(d,draft){if(!draft)d.finalDone=true;saveJob(d,true);if(S.view==='p
 function viewHasil(){
   const d=curDoc();if(!d||!d.fields)return steps()+`<section class="c20">Belum ada data.</section>`;
   const is=issues(d),okFinal=!is.length&&d.confirmed,draft=!okFinal;const v=vals(d,draft);
-  const tp=[['depan','KTP — depan saja','Inggris · A4 · '+TPL_VERSION],['belakang','KTP — depan + belakang','Inggris · A4 · '+TPL_VERSION]];if(S.customTpl)tp.push(['khusus','Template unggahan',S.customTpl.name]);
+  const lain=d.tipe==='akta'||d.tipe==='kk';const tp=lain?[[d.tipe,TIPE[d.tipe].nama+' — Inggris',(d.tipe==='kk'?'A4 mendatar · ':'A4 · ')+TIPE[d.tipe].versi]]:[['depan','KTP — depan saja','Inggris · A4 · '+TPL_VERSION],['belakang','KTP — depan + belakang','Inggris · A4 · '+TPL_VERSION]];if(S.customTpl&&!lain)tp.push(['khusus','Template unggahan',S.customTpl.name]);const tanpaPdf=d.tpl==='khusus'||d.tipe==='kk';
   const ck=(ok,t,k='')=>`<div class="ck"><i style="background:${ok?'#E3F5EC':'#FFF1C7'};color:${ok?'#136C3F':'#6B4600'}">${ok?'✓':'!'}</i><span class="grow">${t}</span>${k?`<span class="small">${esc(k)}</span>`:''}</div>`;
-  const reqMiss=d.fields.filter(f=>DEF[f.key].req&&!String(f.src).trim()).length,man=d.fields.filter(f=>statusOf(f).t==='manual').length,cek=d.fields.filter(f=>statusOf(f).t==='cek').length,nik=statusOf(d.fields.find(f=>f.key==='nik'));
+  const reqMiss=d.fields.filter(f=>DEF[f.key].req&&!String(f.src).trim()).length,man=d.fields.filter(f=>statusOf(f).t==='manual').length,cek=d.fields.filter(f=>statusOf(f).t==='cek').length,nikBad=d.fields.filter(f=>(f.key==='nik'||DEF[f.key].val==='nik')&&String(f.src).trim()&&!validasi(f.key,f.src).ok).length;
   const glos=d.fields.filter(f=>f.src&&f.en&&f.src.toUpperCase()!==f.en.toUpperCase()&&!f.enManual).slice(0,3).map(f=>chip(f.src+' → '+f.en,'biru')).join('');
   return steps()+(S.docs.length>1?docTabs():'')+`<div class="two">
   <section class="c20" aria-label="Pratinjau terjemahan" style="flex:999 1 640px">
    <div class="row" style="justify-content:space-between;gap:12px"><div class="col" style="gap:4px;flex:1 1 220px"><h2>Pratinjau terjemahan</h2><span class="small" style="font-size:14px">Indonesia → Inggris · ${draft?'masih draf — bereskan catatan di kanan':'siap final'}</span></div>${draft?chip('DRAF','cek'):chip('FINAL','ok')}</div>
-   ${d.tpl==='khusus'?`<div class="small">Template unggahan tidak bisa dipratinjau di sini. Unduh DOCX untuk melihat hasilnya.</div>`:`<div class="sheetwrap" id="sheetwrap"><div id="sheetbox"><div class="sheet" id="sheet">${sheetHTML(v,d.tpl==='belakang')}</div></div></div>`}
+   ${d.tpl==='khusus'?`<div class="small">Template unggahan tidak bisa dipratinjau di sini. Unduh DOCX untuk melihat hasilnya.</div>`:`<div class="sheetwrap" id="sheetwrap"><div id="sheetbox"><div class="sheet" id="sheet" ${d.tipe==='kk'?'style="width:1123px;min-height:794px;padding:40px"':''}>${sheetDok(d,v)}</div></div></div>`}
   </section>
   <aside class="col" aria-label="Pengaturan dan unduh" style="flex:1 1 340px;min-width:0;gap:16px">
    <section class="c20" aria-label="Atur hasil"><h2>Atur hasil</h2>
@@ -834,16 +1013,16 @@ function viewHasil(){
     ${glos?`<div class="col" style="gap:8px;background:#F6F7FB;border-radius:14px;padding:14px"><b style="font-size:14px;font-weight:600">Dipakai dari Glosarium</b><div class="row" style="gap:6px">${glos}</div></div>`:''}
    </section>
    <section class="c20" aria-label="Pemeriksaan" style="gap:6px"><h2>Sebelum unduh final</h2>
-    ${ck(!reqMiss,'Kolom wajib terisi',reqMiss?reqMiss+' kosong':'')}${ck(nik.t==='ok','NIK 16 digit',nik.t==='ok'?'':nik.x)}${ck(!man,'Semua terjemahan terisi',man?man+' belum':'')}${ck(!cek,'Data meragukan sudah dicek',cek?cek+' belum':'')}
+    ${ck(!reqMiss,'Kolom wajib terisi',reqMiss?reqMiss+' kosong':'')}${ck(!nikBad,'Nomor identitas 16 digit',nikBad?nikBad+' tidak sesuai':'')}${ck(!man,'Semua terjemahan terisi',man?man+' belum':'')}${ck(!cek,'Data meragukan sudah dicek',cek?cek+' belum':'')}
     <label class="cekbox"><input type="checkbox" id="konf" ${d.confirmed?'checked':''}>Saya sudah memeriksa data ini</label></section>
    <section class="c20" aria-label="Unduh" style="gap:10px"><h2>Unduh</h2>
     <button type="button" class="btn dark lg" data-act="dl" data-k="docx" data-f="1" ${okFinal?'':'disabled'}>${ic(I.down,18)}${TUGAS?'Kirim Word (.docx) ke tugas':'Unduh Word (.docx)'}</button>
-    <button type="button" class="btn lg" data-act="dl" data-k="pdf" data-f="1" ${okFinal&&d.tpl!=='khusus'?'':'disabled'}>${TUGAS?'Kirim PDF ke tugas':'Unduh PDF'}</button>
-    <div class="row" style="gap:8px"><button type="button" class="btn sm grow" data-act="dl" data-k="docx">Draf .docx</button><button type="button" class="btn sm grow" data-act="dl" data-k="pdf" ${d.tpl!=='khusus'?'':'disabled'}>Draf PDF</button></div>
+    <button type="button" class="btn lg" data-act="dl" data-k="pdf" data-f="1" ${okFinal&&!tanpaPdf?'':'disabled'} ${d.tipe==='kk'?'title="PDF Kartu Keluarga belum tersedia — pakai Word"':''}>${TUGAS?'Kirim PDF ke tugas':'Unduh PDF'}</button>
+    <div class="row" style="gap:8px"><button type="button" class="btn sm grow" data-act="dl" data-k="docx">Draf .docx</button><button type="button" class="btn sm grow" data-act="dl" data-k="pdf" ${!tanpaPdf?'':'disabled'}>Draf PDF</button></div>
     ${TUGAS?'<span class="small"><b>Final</b> langsung masuk ke “Hasil pekerjaan Anda” di ATLAS. Draf terunduh ke perangkat.</span>':''}<span class="small">Pernyataan, tanda tangan, dan cap tidak dibuat otomatis.</span></section>
   </aside></div>`;
 }
-function fitSheet(){const w=$('#sheetwrap'),b=$('#sheetbox'),s=$('#sheet');if(!w||!s)return;const k=Math.min(1,(w.clientWidth-32)/794);s.style.transform='scale('+k+')';b.style.width=794*k+'px';b.style.height=s.offsetHeight*k+'px';b.style.boxShadow='0 2px 10px rgba(20,27,52,.15)';b.style.flexShrink='0'}
+function fitSheet(){const w=$('#sheetwrap'),b=$('#sheetbox'),s=$('#sheet');if(!w||!s)return;const sw=s.offsetWidth||794,k=Math.min(1,(w.clientWidth-32)/sw);s.style.transform='scale('+k+')';b.style.width=sw*k+'px';b.style.height=s.offsetHeight*k+'px';b.style.boxShadow='0 2px 10px rgba(20,27,52,.15)';b.style.flexShrink='0'}
 
 /* ---------- Daftar pekerjaan (tersimpan di browser ini) ---------- */
 let JOBS=store.get('st_jobs_v1',[]);
@@ -860,8 +1039,8 @@ function jamKini(){return new Date().toLocaleTimeString('id-ID',{hour:'2-digit',
 function setSimpan(st,ket){SIMPAN.st=st;if(st==='ok'||st==='lokal')SIMPAN.at=jamKini();const el=document.getElementById('simpanst');if(!el)return;
   const t={jalan:'Menyimpan…',ok:'✓ Tersimpan '+(SIMPAN.at||''),lokal:'✓ Tersimpan di perangkat ini '+(SIMPAN.at||''),gagal:'Gagal menyimpan'+(ket?' ('+ket+')':''),bentrok:'Diubah di sesi lain — buka ulang dari Riwayat',tunda:'Belum disimpan'}[st]||'';
   el.innerHTML=st==='gagal'?`<span style="color:#9B2318;font-weight:600">${esc(t)}</span> <button type="button" class="tbtn" data-act="simpan">Coba lagi</button>`:`<span style="color:${st==='ok'||st==='lokal'?'#14713F':st==='bentrok'?'#9B2318':'#5B6178'}">${esc(t)}</span>`}
-function muatanServer(d,j){return{file_name:d.name||(d.pages&&d.pages[0]&&d.pages[0].name)||'',jenis:(d.jenis&&d.jenis.nama)||'KTP',mesin:[...new Set((d.pages||[]).map(p=>p.engine).filter(Boolean))].join('+')||null,status:j.status,tpl:j.tpl,
-  doc:{fields:j.fields,confirmed:!!j.confirmed,tplVersi:j.versi,nama:j.nama}}}
+function muatanServer(d,j){return{file_name:d.name||(d.pages&&d.pages[0]&&d.pages[0].name)||'',jenis:d.tipe?TIPE[d.tipe].nama:(d.jenis&&d.jenis.nama)||'KTP',mesin:[...new Set((d.pages||[]).map(p=>p.engine).filter(Boolean))].join('+')||null,status:j.status,tpl:j.tpl,
+  doc:{fields:j.fields,confirmed:!!j.confirmed,tplVersi:j.versi,nama:j.nama,tipe:j.tipe||'ktp'}}}
 async function simpanServer(d,j){
   if(!sbInfo()){setSimpan('lokal');return}
   if(SIMPAN.jalan){SIMPAN.ulang=true;return}SIMPAN.jalan=true;setSimpan('jalan');
@@ -880,9 +1059,9 @@ function jadwalSimpan(ms){const d=curDoc();if(!d||!d.fields)return;clearTimeout(
 window.addEventListener('beforeunload',e=>{if(SIMPAN.st==='tunda'||SIMPAN.st==='jalan'||SIMPAN.st==='gagal'){e.preventDefault();e.returnValue=''}});
 async function muatRiwayat(){if(!sbInfo()||S.riwayatMuat)return;S.riwayatMuat=true;const r=await sb('GET','st_proses?select=id,file_name,jenis,status,versi,rev,project_id,invoice_no,user_nama,mesin,created_at,updated_at,nama:doc->>nama&order=updated_at.desc&limit=200');S.riwayatMuat=false;S.riwayat=r.ok&&Array.isArray(r.data)?r.data:[];S.riwayatGalat=r.ok?'':(r.status===401?'Sesi berakhir — masuk ulang ke ATLAS':r.net?'Koneksi gagal':'Riwayat tidak bisa dimuat');if(S.view==='pekerjaan')render()}
 function saveJob(d,quiet){
-  if(!d.fields)return;if(!d.jobId)d.jobId='J'+Date.now()+'-'+d.id;const nama=(d.fields.find(f=>f.key==='nama')||{}).src||'(tanpa nama)';
+  if(!d.fields)return;if(!d.jobId)d.jobId='J'+Date.now()+'-'+d.id;const nama=namaDok(d)||'(tanpa nama)';
   const st=d.finalDone?'Siap diunduh':(d.confirmed&&!issues(d).length?'Sudah diperiksa':'Perlu diperiksa');
-  const j={id:d.jobId,nama,jenis:'KTP',waktu:new Date().toISOString(),status:st,tpl:d.tpl,versi:d.tpl==='khusus'&&S.customTpl?S.customTpl.name:TPL_VERSION,confirmed:d.confirmed,fields:d.fields.map(f=>({key:f.key,src:f.src,raw:f.raw,en:f.en,srcEdited:f.srcEdited,enManual:f.enManual,review:f.review,checked:f.checked,conf:f.conf,mesin:f.mesin,absen:f.absen,hist:(f.hist||[]).slice(-10)}))};
+  const j={id:d.jobId,nama,jenis:TIPE[d.tipe||'ktp'].nama,tipe:d.tipe||'ktp',waktu:new Date().toISOString(),status:st,tpl:d.tpl,versi:d.tpl==='khusus'&&S.customTpl?S.customTpl.name:TIPE[d.tipe||'ktp'].versi,confirmed:d.confirmed,fields:d.fields.map(f=>({key:f.key,src:f.src,raw:f.raw,en:f.en,srcEdited:f.srcEdited,enManual:f.enManual,review:f.review,checked:f.checked,conf:f.conf,mesin:f.mesin,absen:f.absen,hist:(f.hist||[]).slice(-10)}))};
   const i=JOBS.findIndex(x=>x.id===j.id);j.sid=d.sid||(i>=0?JOBS[i].sid:null)||null;if(i>=0)JOBS[i]=j;else JOBS.unshift(j);const ok=store.set('st_jobs_v1',JOBS);clearTimeout(SIMPAN.timer);if(!quiet&&!sbInfo())toast(ok?'Draf disimpan di perangkat ini':'Penyimpanan browser tidak tersedia');simpanServer(d,j);
 }
 function viewPekerjaan(){
@@ -928,7 +1107,7 @@ function viewTpl(){
   const c=S.customTpl;
   const page=`<div class="tprev"><div class="tpage"><i style="height:6px;width:70%;margin:0 auto;background:#9FB2D1"></i><i style="width:50%;margin:0 auto 4px;background:#C8D3E6"></i><i style="width:90%"></i><i style="width:80%"></i><i style="width:86%"></i><i style="width:72%"></i><i style="width:90%"></i><i style="width:60%"></i><i style="height:14px;width:40%;margin-top:auto;align-self:flex-end;background:transparent;border:1px solid #C8D3E6;border-radius:3px"></i></div></div>`;
   const card=(nama,sub,siap,aksi)=>`<article class="tcard">${page}<div class="col" style="gap:4px;padding:0 4px"><b style="font-size:16px;font-weight:600">${nama}</b><span class="small">${sub}</span></div><div class="row" style="justify-content:space-between;padding:0 4px 2px"><span class="chip ${siap?'c-ok':'c-cek'}">${siap?'Siap dipakai':'Menyusul'}</span>${aksi||''}</div></article>`;
-  const master=[['KTP — depan','A4 · Times New Roman 12 · '+TPL_VERSION,1,`<button type="button" class="btn sm" data-act="dltpl" data-t="depan">${ic(I.down,16)}Unduh</button>`],['KTP — depan + belakang','A4 · '+TPL_VERSION,1,`<button type="button" class="btn sm" data-act="dltpl" data-t="belakang">${ic(I.down,16)}Unduh</button>`],['Kartu Keluarga','Tabel anggota · TTE',0],['Akta Kelahiran','Dukcapil · QR',0],['Buku Nikah','KUA · 2 buku',0],['Akta Perkawinan','Dukcapil',0],['Ijazah','SMA / S1 · format tanggal',0],['Transkrip Nilai','Tabel mata kuliah',0]];
+  const master=[['KTP — depan','A4 · Times New Roman 12 · '+TPL_VERSION,1,`<button type="button" class="btn sm" data-act="dltpl" data-t="depan">${ic(I.down,16)}Unduh</button>`],['KTP — depan + belakang','A4 · '+TPL_VERSION,1,`<button type="button" class="btn sm" data-act="dltpl" data-t="belakang">${ic(I.down,16)}Unduh</button>`],['Kartu Keluarga','A4 mendatar · tabel anggota · KK-EN v1',1],['Akta Kelahiran','A4 · kutipan · AKTA-EN v1',1],['Buku Nikah','KUA · 2 buku',0],['Akta Perkawinan','Dukcapil',0],['Ijazah','SMA / S1 · format tanggal',0],['Transkrip Nilai','Tabel mata kuliah',0]];
   return head('Template',`<button type="button" class="btn lg" data-act="pilihtpl">Unggah template Word</button>`,'Format terjemahan per jenis dokumen — dipilih otomatis sesuai hasil baca')+`
   <div class="cards4">${master.map(m=>card(...m)).join('')}</div>
   ${c?`<section class="c20" style="gap:8px"><h2>${esc(c.name)}</h2>
@@ -957,6 +1136,7 @@ document.addEventListener('click',async e=>{
   else if(a==='step'){S.step=+b.dataset.s;render();window.scrollTo(0,0)}
   else if(a==='pilih')$('#fileIn').click();
   else if(a==='contoh'){const c=contohKTP();c.toBlob(bl=>addFiles([new File([bl],'ktp-contoh.png',{type:'image/png'})]))}
+  else if(a==='contohlain'){const t=b.dataset.t,nm='contoh-'+t+'.png';CONTOH_AI[nm]={tipe:t,data:CONTOH_DATA[t]};contohLain(t).toBlob(bl=>addFiles([new File([bl],nm,{type:'image/png'})]))}
   else if(a==='putar'){const p=S.docs[di].pages[pi];p.rot=(p.rot+90)%360;p.status='antre';render();runQueue()}
   else if(a==='naik'||a==='turun'){const ps=S.docs[di].pages;const j=pi+(a==='naik'?-1:1);[ps[pi],ps[j]]=[ps[j],ps[pi]];render()}
   else if(a==='hapushal'){const d=S.docs[di];d.pages.splice(pi,1);if(!d.pages.length)S.docs.splice(di,1);render()}
@@ -983,7 +1163,7 @@ document.addEventListener('click',async e=>{
     tambahKandidat(f,o,'baca ulang kolom',pg);render();toast(norm(o.v)===norm(f.src)?'Hasil baca ulang sama':'Hasil baca ulang berbeda — lihat kandidat')}
   else if(a==='simpan')saveJob(curDoc());
   else if(a==='dl'){b.disabled=true;try{await unduh(b.dataset.k,!b.dataset.f)}finally{b.disabled=false}}
-  else if(a==='bukajob'||a==='bukaproses'){let j,row=null;if(a==='bukaproses'){b.disabled=true;const r=await sb('GET','st_proses?id=eq.'+encodeURIComponent(b.dataset.sid)+'&select=*');row=r.ok&&r.data&&r.data[0];if(!row){b.disabled=false;toast(r.status===401?'Sesi berakhir — masuk ulang ke ATLAS':'Riwayat tidak bisa dibuka');return}j={id:'S'+row.id,tpl:row.tpl||'depan',confirmed:!!(row.doc&&row.doc.confirmed),fields:(row.doc&&row.doc.fields)||[]}}else j=JOBS.find(x=>x.id===b.dataset.id);if(!j)return;const d=newDoc();d.jobId=j.id;d.tpl=j.tpl==='khusus'?'depan':j.tpl;d.confirmed=!!j.confirmed;d.fields=FIELDS.map(df=>{const f=j.fields.find(x=>x.key===df.key)||{};return{key:df.key,src:f.src||'',raw:f.raw||'',en:f.en||'',srcEdited:!!f.srcEdited,enManual:!!f.enManual,review:!!f.review,checked:!!f.checked,conf:f.conf??null,mesin:f.mesin||null,bbox:null,labelAda:!!f.src,cands:[],beda:false,absen:f.absen||null,hist:f.hist||[]}});if(row){d.sid=row.id;d.rev=row.rev;d.versiProses=row.versi;d.name=row.file_name||d.name;SIMPAN.at=new Date(row.updated_at).toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'});SIMPAN.st='ok'}else{d.sid=j.sid||null;SIMPAN.st=''}S.docs.push(d);S.cur=S.docs.length-1;S.view='proses';S.step=2;render()}
+  else if(a==='bukajob'||a==='bukaproses'){let j,row=null;if(a==='bukaproses'){b.disabled=true;const r=await sb('GET','st_proses?id=eq.'+encodeURIComponent(b.dataset.sid)+'&select=*');row=r.ok&&r.data&&r.data[0];if(!row){b.disabled=false;toast(r.status===401?'Sesi berakhir — masuk ulang ke ATLAS':'Riwayat tidak bisa dibuka');return}j={id:'S'+row.id,tpl:row.tpl||'depan',tipe:(row.doc&&row.doc.tipe)||'ktp',confirmed:!!(row.doc&&row.doc.confirmed),fields:(row.doc&&row.doc.fields)||[]}}else j=JOBS.find(x=>x.id===b.dataset.id);if(!j)return;const d=newDoc();d.jobId=j.id;d.tpl=j.tpl==='khusus'?'depan':j.tpl;d.confirmed=!!j.confirmed;d.tipe=TIPE[j.tipe]?j.tipe:'ktp';if(d.tipe!=='ktp'){d.tpl=d.tipe;d.jenis={nama:TIPE[d.tipe].nama,siap:true,cocok:[]}}d.fields=defsDoc(d.tipe,Object.fromEntries(j.fields.map(f=>[f.key,1]))).map(df=>{const f=j.fields.find(x=>x.key===df.key)||{};return{key:df.key,src:f.src||'',raw:f.raw||'',en:f.en||'',srcEdited:!!f.srcEdited,enManual:!!f.enManual,review:!!f.review,checked:!!f.checked,conf:f.conf??null,mesin:f.mesin||null,bbox:null,labelAda:!!f.src,cands:[],beda:false,absen:f.absen||null,hist:f.hist||[]}});if(row){d.sid=row.id;d.rev=row.rev;d.versiProses=row.versi;d.name=row.file_name||d.name;SIMPAN.at=new Date(row.updated_at).toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'});SIMPAN.st='ok'}else{d.sid=j.sid||null;SIMPAN.st=''}S.docs.push(d);S.cur=S.docs.length-1;S.view='proses';S.step=2;render()}
   else if(a==='hapusjob'){JOBS=JOBS.filter(x=>x.id!==b.dataset.id);store.set('st_jobs_v1',JOBS);render()}
   else if(a==='hapussemua'){if(b.dataset.sure){JOBS=[];store.set('st_jobs_v1',JOBS);render()}else{b.dataset.sure='1';b.textContent='Klik lagi untuk hapus semua'}}
   else if(a==='glosadd'){const g=$('#gg').value,s=norm($('#gs').value),en=$('#ge').value.trim().toUpperCase();if(!s||!en){toast('Isi sumber dan terjemahan');return}GLOS=GLOS.filter(x=>!(x.g===g&&norm(x.src)===s));GLOS.unshift({g,src:s,en});store.set('st_glos_v1',GLOS);render()}
@@ -1001,6 +1181,7 @@ document.addEventListener('input',e=>{
   if(t.dataset.k&&t.dataset.c){const d=curDoc();const f=d.fields.find(x=>x.key===t.dataset.k);
     if(t.dataset.c==='src'){f.src=t.value;f.srcEdited=true;d.finalDone=false;if(!needsTr(f.key)||!f.enManual){f.en=translate(f.key,f.src);const o=document.querySelector(`input[data-k="${f.key}"][data-c="en"]`);if(o)o.value=f.en}else f.review=true}
     else{f.en=t.value;d.finalDone=false;if(needsTr(f.key)){f.enManual=true;f.review=false}else{f.src=t.value;f.srcEdited=true;const o=document.querySelector(`input[data-k="${f.key}"][data-c="src"]`);if(o)o.value=f.src}}
+    for(const k of silangDoc(d)){const o=document.querySelector(`input[data-k="${k}"][data-c="en"]`);if(o)o.value=d.fields.find(x=>x.key===k).en;if(k!==f.key)refreshStatus(k)}
     refreshStatus(f.key)}
   else if(t.dataset.gi){GLOS[+t.dataset.gi].en=t.value.toUpperCase();store.set('st_glos_v1',GLOS)}
   else if(t.id==='q'){S.q=t.value;const pos=t.selectionStart;render();const n=$('#q');n.focus();n.setSelectionRange(pos,pos)}
@@ -1009,6 +1190,10 @@ document.addEventListener('change',e=>{
   const t=e.target;
   if(t.id==='fileIn'){addFiles([...t.files]);t.value=''}
   else if(t.name==='tpl'){curDoc().tpl=t.value;render()}
+  else if(t.id==='tipesel'){const d=curDoc();if(!d||t.value===(d.tipe||'ktp'))return;const v=t.value;d.tipePaksa=v;d.confirmed=false;d.finalDone=false;d.tpl=v==='ktp'?'depan':v;d.jenis={nama:TIPE[v].nama,siap:true,cocok:[]};S.selField=null;
+    if(d.sid){d.asalId=d.sid;d.sid=null;d.rev=null;d.versiProses=(d.versiProses||1)+1}
+    if(!d.pages.length){d.tipe=v;d.fields=defsDoc(v,{}).map(df=>fieldBaru(df,null,{},null));toast('Jenis diganti ke '+TIPE[v].nama+' — kolom dikosongkan');render();return}
+    d.fields=null;d.tipe=null;d.pages.forEach(p=>{p.status='antre';p.tipeHint=null});toast('Jenis diganti ke '+TIPE[v].nama+' — dokumen dibaca ulang');S.step=1;render();runQueue()}
   else if(t.id==='konf'){curDoc().confirmed=t.checked;render()}
   else if(t.id==='tplIn'&&t.files[0]){const file=t.files[0];file.arrayBuffer().then(buf=>{try{const bytes=new Uint8Array(buf);const r=checkTpl(bytes);S.customTpl={name:file.name,bytes,r,usable:!r.pecah.length&&!r.asing.length&&r.ok.length>0}}catch(err){S.customTpl=null;toast(err.message||'Template tidak bisa dibaca')}render()});t.value=''}
 });
@@ -1038,6 +1223,16 @@ document.addEventListener('drop',e=>{const d=e.target.closest&&e.target.closest(
 window.addEventListener('resize',()=>{if(S.view==='proses'&&S.step===3)fitSheet()});
 
 /* ---------- KTP contoh (data buatan, bukan data orang) ---------- */
+const CONTOH_DATA={
+ akta:{nik:'5171010203190001',wn:'WARGA NEGARA INDONESIA',no:'5171-LT-02032019-0001',stbld:'',tempat_lahir:'DENPASAR',tgl_lahir:'DUA MARET',thn_lahir:'DUA RIBU SEMBILAN BELAS',nama:'BUDI CONTOH SANTOSO',anak_ke:'KESATU',jk:'LAKI-LAKI',ayah:'AGUS CONTOH SANTOSO',ibu:'SARI DEWI LESTARI CONTOH',kota_terbit:'KOTA DENPASAR',tgl_terbit:'DUA PULUH MARET',thn_terbit:'DUA RIBU SEMBILAN BELAS',jabatan:'PEJABAT PENCATATAN SIPIL',pejabat:'I MADE CONTOH, S.H.',nip:'197001011995031001',tte:'YA',catatan:''},
+ kk:{no_kk:'5171010101190002',kepala:'AGUS CONTOH SANTOSO',alamat:'JL. CONTOH RAYA NO. 12',rtrw:'003/007',kodepos:'80111',kel:'PEMECUTAN KAJA',kec:'DENPASAR UTARA',kab:'KOTA DENPASAR',prov:'BALI',tgl_terbit:'12-03-2021',jabatan:'KEPALA DINAS KEPENDUDUKAN DAN PENCATATAN SIPIL KOTA DENPASAR',pejabat:'I MADE CONTOH, S.H.',nip:'197001011995031001',tte:'YA',anggota:[
+  {nama:'AGUS CONTOH SANTOSO',nik:'5171010101850001',jk:'LAKI-LAKI',tempat_lahir:'DENPASAR',tgl_lahir:'01-01-1985',agama:'HINDU',pendidikan:'DIPLOMA IV/STRATA I',kerja:'KARYAWAN SWASTA',gol:'O',status:'KAWIN TERCATAT',tgl_kawin:'10-10-2015',hub:'KEPALA KELUARGA',wn:'WNI',paspor:'-',kitap:'-',ayah:'KETUT CONTOH',ibu:'NYOMAN CONTOH'},
+  {nama:'SARI DEWI LESTARI CONTOH',nik:'5171014107900001',jk:'PEREMPUAN',tempat_lahir:'DENPASAR',tgl_lahir:'01-07-1990',agama:'HINDU',pendidikan:'SLTA/SEDERAJAT',kerja:'MENGURUS RUMAH TANGGA',gol:'TIDAK TAHU',status:'KAWIN TERCATAT',tgl_kawin:'10-10-2015',hub:'ISTRI',wn:'WNI',paspor:'-',kitap:'-',ayah:'WAYAN CONTOH',ibu:'MADE CONTOH'},
+  {nama:'BUDI CONTOH SANTOSO',nik:'5171010203190001',jk:'LAKI-LAKI',tempat_lahir:'DENPASAR',tgl_lahir:'02-03-2019',agama:'HINDU',pendidikan:'TIDAK/BELUM SEKOLAH',kerja:'BELUM/TIDAK BEKERJA',gol:'TIDAK TAHU',status:'BELUM KAWIN',tgl_kawin:'-',hub:'ANAK',wn:'WNI',paspor:'-',kitap:'-',ayah:'AGUS CONTOH SANTOSO',ibu:'SARI DEWI LESTARI CONTOH'}]}};
+function contohLain(t){const kk=t==='kk',c=document.createElement('canvas');c.width=kk?1600:1000;c.height=kk?1000:1300;const x=c.getContext('2d');x.fillStyle='#F3F6EE';x.fillRect(0,0,c.width,c.height);x.fillStyle='#111';x.textAlign='center';
+  x.font='bold 38px Arial';x.fillText(kk?'KARTU KELUARGA':'KUTIPAN AKTA KELAHIRAN',c.width/2,70);x.font='22px Arial';x.fillStyle='#9B2318';x.fillText('CONTOH — DATA BUATAN, BUKAN DOKUMEN ASLI',c.width/2,110);x.fillStyle='#111';x.textAlign='left';x.font='20px Arial';
+  const d=CONTOH_DATA[t];let y=160;const baris=kk?[...Object.entries(d).filter(([k])=>k!=='anggota').map(([k,v])=>k+' : '+v),...d.anggota.map((a,i)=>(i+1)+'. '+[a.nama,a.nik,a.jk,a.tempat_lahir,a.tgl_lahir,a.agama,a.pendidikan,a.kerja,a.status,a.hub].join(' | '))]:Object.entries(d).map(([k,v])=>k+' : '+v);
+  for(const l of baris){x.fillText(l.slice(0,kk?150:90),40,y);y+=kk?40:50}return c}
 function contohKTP(){
   const c=document.createElement('canvas');c.width=1300;c.height=820;const x=c.getContext('2d');x.fillStyle='#DCEBF5';x.fillRect(0,0,1300,820);x.fillStyle='#111';x.textAlign='center';x.font='bold 40px Arial';x.fillText('PROVINSI BALI',650,62);x.fillText('KOTA DENPASAR',650,110);
   x.textAlign='left';x.font='bold 46px Arial';x.fillText('NIK',40,190);x.fillText(': 5171014107900001',250,190);x.font='27px Arial';
