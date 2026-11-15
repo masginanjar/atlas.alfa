@@ -258,6 +258,72 @@ main{padding:0;margin-top:20px}
 body.embed .nav,body.embed .brand{display:none}
 body.embed main{padding:0}
 body.embed #app{padding:16px}
+
+/* ===== Ruang kerja ringkas tiga panel (15 Nov 2026) — mengikuti kanvas desain ===== */
+.ovl{position:fixed;inset:0;z-index:50;background:rgba(20,27,52,.42);display:flex;align-items:center;justify-content:center;padding:12px}
+.dlg{position:relative;width:min(1180px,100%);max-height:94dvh;overflow:auto;background:#F4F5F9;border-radius:10px;box-shadow:0 18px 50px rgba(20,27,52,.28);padding:12px 14px 14px}
+.dlgh{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}.dlgh b{font-size:14px;font-weight:600}
+.tbtn{font:inherit;font-size:12.5px;font-weight:600;min-height:28px;padding:0 10px;border-radius:6px;border:1px solid #CDD2E0;background:#fff;color:#141B34;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:5px}
+.tbtn.dark{background:#141B34;border-color:#141B34;color:#fff}.tbtn:disabled{opacity:.5;cursor:not-allowed}.tbtn[aria-pressed=true]{background:#EDF0FD;border-color:#2F4BC6}
+.ws{display:flex;flex-direction:column;gap:7px}
+.tbar{display:flex;align-items:center;gap:6px;min-height:36px;flex-wrap:wrap}
+.tbar .sep{width:1px;height:20px;background:#DDE1EC}.tbar .info{font-size:12px;color:#5B6178;display:flex;gap:4px;flex-wrap:wrap}.tbar .info .chip{font-size:11.5px;padding:1px 8px}
+.tbar .kanan{margin-left:auto;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.p3{display:flex;flex-direction:column;gap:8px}
+.pn{background:#fff;border:1px solid #DDE1EC;border-radius:8px;overflow:hidden;display:flex;flex-direction:column;min-width:0}
+.pnh{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:32px;flex:none;padding:0 10px;border-bottom:1px solid #DDE1EC;background:#FAFBFD;font-size:12px;color:#5B6178}
+.pnh b{font-size:13px;font-weight:600;color:#141B34;white-space:nowrap}.pnh .kn{display:flex;align-items:center;gap:4px;min-width:0}
+.pnh .ket{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mb{font:inherit;font-size:12px;font-weight:600;min-width:26px;height:24px;padding:0 6px;border-radius:5px;border:1px solid #CDD2E0;background:#fff;color:#141B34;cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
+.mb[aria-pressed=true]{background:#141B34;border-color:#141B34;color:#fff}.mb:disabled{opacity:.45;cursor:not-allowed}.mb svg{width:14px;height:14px}
+.pnb{flex:1;min-height:0;overflow:auto}
+.pnf{flex:none;min-height:26px;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:2px 10px;border-top:1px solid #DDE1EC;font-size:11.5px;color:#5B6178}
+.pnf button.lk{font:inherit;font-size:11.5px;color:#2F4BC6;background:none;border:0;padding:0;cursor:pointer;text-decoration:underline}
+.spl{display:none}
+.r3{display:grid;grid-template-columns:18px 104px minmax(0,1fr);align-items:center;column-gap:8px;min-height:30px;padding:0 10px;border-top:1px solid #EEF0F6}
+.r3:first-child{border-top:0}.r3.warn{background:#FFFDF3}.r3.sel{background:#EDF0FD;box-shadow:inset 3px 0 0 #2F4BC6}
+.r3 .lb{font-size:12.5px;color:#5B6178;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.r3 input{font:inherit;font-size:13.5px;font-weight:600;color:#141B34;width:100%;height:24px;border:1.5px solid transparent;border-radius:5px;background:transparent;padding:0 5px;min-width:0}
+.r3 input:hover{border-color:#DDE1EC}.r3 input:focus{border-color:#2F4BC6;background:#fff;outline:0}.r3 input[readonly]{color:#3B4260;font-weight:500}
+.g3{width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;box-sizing:border-box}
+.g3.ok{border-radius:99px;background:#E3F4EA;color:#14713F}.g3.cek{border-radius:4px;background:#FFE9A8;color:#6B4700}.g3.salah{border-radius:4px;background:#FBD5D0;color:#8E1B10}.g3.na{border-radius:99px;border:1.5px dashed #A8AEC2}
+.detil{flex:none;border-top:1px solid #DDE1EC;background:#FAFBFD;padding:6px 10px;min-height:54px;max-height:132px;overflow:auto;font-size:12px}
+.detil .meta{display:none;padding-left:0;font-size:12px}.detil .meta.on{display:flex}.detil .kos{color:#5B6178}
+.detil .cand,.detil .mini-btn{min-height:26px;font-size:12px}
+.ws .docview{flex:1;min-height:220px;max-height:none;border-radius:0;background:#E9ECF4;padding:10px}
+.ws .cat3{flex:none;font-size:11.5px;line-height:1.4;padding:5px 10px;border-bottom:1px solid #DDE1EC;color:#3B4260;background:#F4F5FA}
+.ws .cat3.merah{background:#FDECEC;color:#7A1F1F}
+.ws .pot3{flex:none;border-top:1px solid #DDE1EC;padding:6px 10px;display:flex;align-items:center;gap:10px;font-size:11.5px;color:#5B6178;min-height:44px}
+.ws .pot3 canvas{max-height:40px;max-width:100%;width:auto;border-radius:5px;background:#EEF2FB}
+.ws pre.raw{flex:1;min-height:0;margin:0;border-radius:0;overflow:auto;font-size:12px}
+@media (max-width:999px){.p3 .pn{flex:none!important}.pnb{overflow:visible}.r3{min-height:46px;grid-template-columns:18px 96px minmax(0,1fr)}.r3 input{font-size:16px;height:38px}.tbtn,.mb{min-height:44px}.mb{min-width:44px}.pn[data-pn="0"] .docview{max-height:46dvh}}
+@media (min-width:1000px) and (max-height:820px){.r3{min-height:27px}.r3 input{height:22px}.detil{max-height:96px}}
+@media (min-width:1000px){
+ html,body{height:100%}
+ #app{max-width:none;padding:8px 10px;height:100dvh;display:flex;flex-direction:column;gap:7px;overflow:hidden}
+ .tophead{flex:none;height:42px;gap:10px;flex-wrap:nowrap}
+ .tophead .logo{width:30px;height:30px;border-radius:8px}.tophead .logo svg{width:16px;height:16px}
+ .tophead .htext{flex:1 1 auto;flex-direction:row;align-items:baseline;gap:10px;min-width:0}
+ .tophead h1{font-size:15px;white-space:nowrap}.tophead p{font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+ .vcard{border-radius:99px;padding:0 10px;height:26px;gap:6px}
+ .vcard .dot{width:7px;height:7px}.vcard .vb{min-width:0;flex-direction:row;align-items:center;gap:8px}.vcard .vt{font-size:12px;gap:6px;white-space:nowrap}.vcard .track,.vcard small{display:none}
+ .tabs{flex:none;margin-top:0;gap:2px;height:32px;align-items:center;border-bottom:1px solid #DDE1EC;flex-wrap:nowrap}
+ .tabs button{min-height:31px;height:31px;padding:0 10px;border:0;border-radius:0;background:transparent;color:#5B6178;font-size:13px;font-weight:400}
+ .tabs button[aria-current=page]{background:transparent;color:#141B34;font-weight:600;box-shadow:inset 0 -2px 0 #141B34}
+ #app>main{flex:1;min-height:0;overflow:auto;margin-top:0}
+ .wrap{gap:10px;max-width:none}
+ .ptitle{font-size:16px}.psub{font-size:12.5px}
+ .c20{border-radius:8px;padding:12px 14px;gap:10px}
+ #app>main.kerja{overflow:hidden}
+ main.kerja .wrap{height:100%;max-width:none;margin:0;padding:0}
+ .ws{height:100%;min-height:0}
+ .tbar{flex:none;flex-wrap:nowrap}.tbar .kanan{flex-wrap:nowrap}
+ .p3{flex:1;min-height:0;flex-direction:row;gap:0}
+ .pn{min-height:0}
+ .spl{display:flex;width:8px;flex:none;cursor:col-resize;align-items:center;justify-content:center;touch-action:none}
+ .spl::after{content:"";width:3px;height:36px;border-radius:99px;background:#C3C9DA}
+ .ws .docview{min-height:0;display:flex;align-items:flex-start;justify-content:center}
+}
 </style>
 </head>
 <body>
@@ -555,7 +621,8 @@ function bacaInfo(){const ps=S.docs.flatMap(d=>d.pages);if(!ps.length)return{st:
   if(ps.some(p=>p.status==='baca'||p.status==='antre'))return{st:'now',t:'Membaca…'};
   const v=ps.filter(p=>p.engine==='vision').length,te=ps.filter(p=>p.engine==='tesseract').length,pdf=ps.filter(p=>p.viaText).length;
   return{st:'done',t:v?'Google Vision'+(te?' + Tesseract':''):te?'Tesseract':pdf?'Teks PDF':'Selesai'}}
-function steps(){
+function steps(){return ''}
+function stepsLama(){
   const d=curDoc(),np=S.docs.reduce((a,x)=>a+x.pages.length,0),can2=S.docs.some(x=>x.fields),b=bacaInfo();
   const nCek=d&&d.fields?d.fields.filter(f=>{const s=statusOf(f);return s.t!=='ok'&&(s.block||s.t==='cek')}).length:0;
   const it=[
@@ -622,41 +689,58 @@ function metaKolom(f){
   if(!f.src||f.absen)aksi.push(`<button type="button" class="mini-btn" data-act="absen" data-k="${f.key}">${f.absen?'Batalkan “tidak tercantum”':'Tidak tercantum'}</button>`);
   return `<div class="meta" id="meta-${f.key}">${bagian.join('<i>·</i>')}${lain.length?'<div class="cands">Kandidat lain: '+lain.join('')+'</div>':''}${aksi.length?'<div class="acts">'+aksi.join('')+'</div>':''}</div>`;
 }
+/** Tanda status kecil (bentuk + warna + keterangan saat diarahkan) untuk baris padat. */
+function stCell3(f){const s=statusOf(f);const k=s.t==='ok'?'ok':s.t==='na'?'na':s.t==='salah'?'salah':'cek';const t=s.t==='ok'?(s.x||'Beres'):s.x||s.t;return `<span class="g3 ${k}" role="img" aria-label="${esc(t)}" title="${esc(t)}">${k==='ok'?'✓':k==='na'?'':'!'}</span>`}
+const LEBAR_BAWAAN=[34,33,33];
+function lebarPanel(){try{const v=JSON.parse(localStorage.getItem('st_lebar')||'null');if(Array.isArray(v)&&v.length===3&&v.every(x=>x>=18&&x<=64))return v}catch(e){}return LEBAR_BAWAAN.slice()}
+/** Ruang kerja: Dokumen sumber | Hasil ekstraksi | Hasil terjemahan dalam satu layar. */
 function viewPeriksa(){
-  const d=curDoc();if(!d||!d.fields)return steps()+`<section class="c20">Belum ada data untuk diperiksa.</section>`;
-  const pg=d.pages.find(p=>p.id===d.fieldPage)||d.pages[0];
-  const mesin=[...new Set(d.pages.map(p=>p.engine).filter(Boolean))].map(mesinNama).join(' + ')||'—';
-  const kota=(d.fields.find(f=>f.key==='kabkota')||{}).src||'';
-  const rows=d.fields.map(f=>{const df=DEF[f.key];const tr=needsTr(f.key);return `<div class="fr ${rowWarn(f)?'warn':''} ${S.selField===f.key?'sel':''}" data-row="${f.key}" id="row-${f.key}"><label class="lab" for="s-${f.key}">${df.label}${df.req?'':' <span class="small">(opsional)</span>'}</label>
-    <span><span class="mini">Sumber (Indonesia)</span><input class="inp" id="s-${f.key}" type="text" data-k="${f.key}" data-c="src" value="${esc(f.src)}" autocomplete="off" spellcheck="false" ${['nik','tanggal_lahir','tgl_terbit'].includes(f.key)?'inputmode="numeric"':''}></span>
-    <span><span class="mini">Terjemahan (Inggris)</span><input class="inp" type="text" data-k="${f.key}" data-c="en" value="${esc(f.en)}" aria-label="${df.label} — terjemahan" autocomplete="off" spellcheck="false" ${tr?'':'readonly title="Tidak diterjemahkan (nama/nomor/alamat disalin apa adanya)"'}></span>
-    <span class="st" id="st-${f.key}">${stCell(f)}</span>${metaKolom(f)}</div>`}).join('');
+  const d=curDoc();if(!d||!d.fields)return `<section class="c20">Belum ada data untuk diperiksa.</section>`;
+  const pg=d.pages.find(p=>p.id===d.fieldPage)||d.pages[0];const L=lebarPanel();
+  const pi=d.pages.indexOf(pg)+1;
+  const brs=(c)=>d.fields.map(f=>{const df=DEF[f.key];const tr=needsTr(f.key);const src=c==='src';
+    return `<div class="r3 ${rowWarn(f)?'warn':''} ${S.selField===f.key?'sel':''}" ${src?`data-row="${f.key}" id="row-${f.key}"`:`id="rowt-${f.key}"`}><span class="st" id="${src?'st':'stt'}-${f.key}">${stCell3(f)}</span><label class="lb" for="${src?'s':'e'}-${f.key}" title="${esc(df.label)}${df.req?'':' (opsional)'}">${df.label}</label>
+     ${src?`<input id="s-${f.key}" type="text" data-k="${f.key}" data-c="src" value="${esc(f.src)}" title="${esc(f.src)}" autocomplete="off" spellcheck="false" ${['nik','tanggal_lahir','tgl_terbit'].includes(f.key)?'inputmode="numeric"':''}>`
+          :`<input id="e-${f.key}" type="text" data-k="${f.key}" data-c="en" value="${esc(f.en)}" title="${esc(f.en)}" aria-label="${df.label} — terjemahan" autocomplete="off" spellcheck="false" ${tr?'':'readonly title="Tidak diterjemahkan (nama/nomor/alamat disalin apa adanya)"'}>`}</div>`}).join('');
   const q=pg?catatanKualitas(pg):[];
-  const left=pg?`<section class="c20" aria-label="Dokumen asli" style="flex:1 1 420px">
-    <div class="row" style="justify-content:space-between"><div class="col" style="gap:2px;flex:1 1 160px"><h2>Dokumen asli</h2><span class="small">${esc(d.name||pg.name)} · ${d.pages.length} halaman · dibaca ${esc(mesinNama(pg.engine))}${pg.ulang?' · '+pg.ulang+' potongan dibaca ulang':''}</span></div>
-     <div class="row" style="gap:8px"><div class="seg" role="tablist"><button type="button" role="tab" aria-pressed="${S.srcTab==='gambar'}" data-act="srctab" data-t="gambar">Gambar</button><button type="button" role="tab" aria-pressed="${S.srcTab==='teks'}" data-act="srctab" data-t="teks">Teks OCR</button></div>
-     <button type="button" class="ib" style="border:1px solid #E3E6EF;border-radius:12px" data-act="zoom" aria-label="Perbesar" aria-pressed="${S.zoom}" title="Perbesar">${ic(I.zoom)}</button><button type="button" class="ib" style="border:1px solid #E3E6EF;border-radius:12px" data-act="putarcur" aria-label="Putar 90° lalu baca ulang" title="Putar 90° lalu baca ulang">${ic(I.rot)}</button></div></div>
-    ${pg.engineNote?`<div class="hint" style="background:#FDECEC;color:#7A1F1F">${esc(pg.engineNote)}</div>`:''}
-    ${pg.aiCatatan?`<div class="hint" data-ai-catatan>${esc(pg.aiCatatan)}</div>`:''}
-    ${S.srcTab==='gambar'?`<div class="docview ${S.pilihArea?'pilih':''}" id="docview"><div class="srcinner ${S.zoom?'zoom':''}" id="srcinner"><div class="hl" id="hl"></div></div></div>`:`<pre class="raw" style="border-radius:16px">${esc(pg.text||'(tidak ada teks)')}</pre>`}
-    <div class="row" style="gap:8px"><button type="button" class="btn sm" data-act="pilihArea" aria-pressed="${!!S.pilihArea}" ${S.selField&&pg.ocrCanvas?'':'disabled'} title="Tarik kotak di gambar untuk membaca ulang area itu ke kolom terpilih">${S.pilihArea?'Batal pilih area':'Pilih area manual'}</button><span class="small">${S.selField?'Kolom terpilih: <b>'+esc(DEF[S.selField].label)+'</b>':'Klik salah satu kolom di kanan dulu'}</span></div>
-    <div class="qbox" id="potbox" ${S.selField?'':'hidden'}><b>Potongan sumber</b><canvas id="potongan" width="10" height="10"></canvas></div>
-    ${q.length?`<div class="qbox"><b>Indikasi kualitas gambar</b>${q.map(c=>'<span>• '+esc(c.x)+'</span>').join('')}<span class="small">Hasil pemeriksaan otomatis (heuristik), bukan skor. Dokumen tetap dibaca.</span></div>`:''}
-    <div class="row" style="gap:10px"><button type="button" class="btn grow" data-act="step" data-s="1">Ganti foto</button><button type="button" class="btn grow" data-act="bacacur">Baca ulang halaman</button></div></section>`:'';
-  return steps()+(S.docs.length>1?docTabs():'')+`<div class="two">${left}
-  <section class="c20" aria-label="Hasil baca" style="flex:1.45 1 560px">
-   <div class="row" style="justify-content:space-between;gap:12px"><div class="col" style="gap:4px;flex:1 1 220px"><h2>Hasil baca</h2><span class="small" style="font-size:14px">Dibaca ${esc(mesin)} · ${d.fields.length} kolom</span><span id="chips" class="row" style="gap:6px">${countChips(d)}</span></div>
-    <div class="row">${chip(d.jenis?d.jenis.nama:'KTP','biru')}${kota?chip('Kota: '+kota,'kosong'):''}<button type="button" class="btn sm" data-act="berikut">Masalah berikutnya ↓</button></div></div>
-   <div class="fhead"><span>Kolom</span><span>Sumber (Indonesia)</span><span>Terjemahan (Inggris)</span><span>Status</span></div>
-   <div class="frows">${rows}</div>
-   <div class="small">Skor OCR berasal dari mesin pembaca (Vision: skor huruf terendah di kolom itu; Tesseract: skor kata terendah) dan tidak sama dengan kebenaran. Nama, nomor, dan tanggal tidak pernah diperbaiki otomatis. Koreksi Anda tidak ditimpa saat baca ulang.</div>
-   <div class="foot"><button type="button" class="ghost" data-act="step" data-s="1">${ic('M19 12H5M12 19l-7-7 7-7',18,2)}Kembali</button>
-    <div class="row" style="gap:10px"><button type="button" class="btn lg" data-act="simpan">Simpan draf</button><button type="button" class="btn dark lg" data-act="step" data-s="3">Lanjut ke terjemahan${ic('M5 12h14M12 5l7 7-7 7',18,2)}</button></div></div>
-  </section></div>`;
+  const kiri=pg?`<section class="pn" aria-label="Dokumen sumber" data-pn="0" style="flex:${L[0]} 1 0">
+    <div class="pnh"><b>Dokumen sumber</b><span class="kn"><span class="ket" title="${esc(d.name||pg.name)}">${esc(d.name||pg.name)} · ${pi}/${d.pages.length}</span>
+      <button type="button" class="mb" role="tab" aria-pressed="${S.srcTab==='gambar'}" data-act="srctab" data-t="gambar">Gambar</button><button type="button" class="mb" role="tab" aria-pressed="${S.srcTab==='teks'}" data-act="srctab" data-t="teks">Teks</button>
+      <button type="button" class="mb" data-act="zoom" aria-label="Perbesar" aria-pressed="${S.zoom}" title="Perbesar / sesuaikan">${ic(I.zoom)}</button><button type="button" class="mb" data-act="putarcur" aria-label="Putar 90° lalu baca ulang" title="Putar 90° lalu baca ulang">${ic(I.rot)}</button></span></div>
+    ${pg.engineNote?`<div class="cat3 merah" title="${esc(pg.engineNote)}">${esc(pg.engineNote)}</div>`:''}
+    ${pg.aiCatatan?`<div class="cat3" data-ai-catatan title="${esc(pg.aiCatatan)}">${esc(pg.aiCatatan)}</div>`:''}
+    ${q.length?`<details class="cat3"><summary>${q.length} indikasi kualitas gambar (pemeriksaan otomatis, bukan skor)</summary>${q.map(c=>'<div>• '+esc(c.x)+'</div>').join('')}</details>`:''}
+    ${S.srcTab==='gambar'?`<div class="docview ${S.pilihArea?'pilih':''}" id="docview"><div class="srcinner ${S.zoom?'zoom':''}" id="srcinner"><div class="hl" id="hl"></div></div></div>`:`<pre class="raw">${esc(pg.text||'(tidak ada teks)')}</pre>`}
+    <div class="pot3" id="potbox" ${S.selField?'':'hidden'}><span>Potongan sumber</span><canvas id="potongan" width="10" height="10"></canvas></div>
+    <div class="detil" id="detil"><span class="kos" id="detilkos">Klik satu kolom untuk melihat asal bacaan, pilihan bacaan lain, dan tindakannya.</span>${d.fields.map(metaKolom).join('')}</div>
+    <div class="pnf"><span style="display:flex;align-items:center;gap:6px"><button type="button" class="mb" data-act="pilihArea" aria-pressed="${!!S.pilihArea}" ${S.selField&&pg.ocrCanvas?'':'disabled'} title="Tarik kotak di gambar untuk membaca ulang area itu ke kolom terpilih">${S.pilihArea?'Batal pilih area':'Pilih area'}</button><span>${S.selField?'Kolom terpilih: <b>'+esc(DEF[S.selField].label)+'</b>':'Klik satu kolom dulu'}</span></span><span>dibaca ${esc(mesinNama(pg.engine))}${pg.ulang?' · '+pg.ulang+' potongan diulang':''}</span></div></section>`:'';
+  return `<div class="ws">
+  <div class="tbar" role="toolbar" aria-label="Tindakan dokumen">
+   ${S.docs.length>1?docTabs():''}${chip(d.jenis?d.jenis.nama:'KTP','biru')}
+   <button type="button" class="tbtn" data-act="bacacur">Baca ulang</button><button type="button" class="tbtn" data-act="simpan">Simpan</button><span class="sep"></span>
+   <button type="button" class="tbtn" data-act="berikut">Masalah berikutnya</button><span id="chips" class="info">${countChips(d)}</span>
+   <span class="kanan"><button type="button" class="tbtn" data-act="step" data-s="1">Ganti berkas</button><button type="button" class="tbtn dark" data-act="step" data-s="3">Pratinjau &amp; unduh</button></span>
+  </div>
+  <div class="p3" id="p3">${kiri}<div class="spl" data-spl="0" role="separator" aria-orientation="vertical" aria-label="Geser pembatas panel"></div>
+   <section class="pn" aria-label="Hasil ekstraksi" data-pn="1" style="flex:${L[1]} 1 0"><div class="pnh"><b>Hasil ekstraksi</b><span class="ket">Isi dokumen · bisa diedit</span></div>
+    <div class="pnb" id="pnb-src">${brs('src')}</div>
+    <div class="pnf"><span>${d.fields.length} kolom</span><span>Koreksi Anda tidak ditimpa saat baca ulang</span></div></section>
+   <div class="spl" data-spl="1" role="separator" aria-orientation="vertical" aria-label="Geser pembatas panel"></div>
+   <section class="pn" aria-label="Hasil terjemahan" data-pn="2" style="flex:${L[2]} 1 0"><div class="pnh"><b>Hasil terjemahan</b><span class="ket">Inggris · bisa diedit</span></div>
+    <div class="pnb" id="pnb-en">${brs('en')}</div>
+    <div class="pnf"><span>Sejajar dengan ekstraksi</span><button type="button" class="lk" data-act="resetlebar">Reset lebar panel</button></div></section>
+  </div></div>`;
 }
+function tandaiPilih(k){document.querySelectorAll('.r3.sel').forEach(x=>x.classList.remove('sel'));document.querySelectorAll('.detil .meta.on').forEach(x=>x.classList.remove('on'));
+  if(!k)return;for(const id of ['row-'+k,'rowt-'+k]){const n=document.getElementById(id);if(n)n.classList.add('sel')}const m=document.getElementById('meta-'+k);if(m)m.classList.add('on');const ks=document.getElementById('detilkos');if(ks)ks.hidden=true}
+/** Paskan gambar sumber ke ruang panel (tanpa memotong, rasio tetap). Zoom = sengaja diperbesar, bisa digeser. */
+function pasGambar(){const dv=$('#docview'),box=$('#srcinner'),c=$('#srccanvas');if(!dv||!box||!c)return;if(S.zoom||window.innerWidth<1000){box.style.width='';return}
+  const aw=dv.clientWidth-20,ah=dv.clientHeight-20;if(aw<50||ah<50)return;box.style.width=Math.max(120,Math.min(aw,ah*c.width/c.height))+'px'}
 function afterPeriksa(){
   const d=curDoc();if(!d)return;const pg=d.pages.find(p=>p.id===d.fieldPage)||d.pages[0];const box=$('#srcinner');
   if(box&&pg){const c=drawRot(pg.src,pg.rot,1400);c.id='srccanvas';box.insertBefore(c,box.firstChild)}
+  pasGambar();tandaiPilih(S.selField);
+  const a=$('#pnb-src'),b2=$('#pnb-en');if(a&&b2){let kunci=false;const sink=(x,y)=>()=>{if(kunci)return;kunci=true;y.scrollTop=x.scrollTop;requestAnimationFrame(()=>{kunci=false})};a.addEventListener('scroll',sink(a,b2));b2.addEventListener('scroll',sink(b2,a))}
   if(S.selField)showHL(S.selField);
 }
 /** Sorot area sumber (persentase terhadap gambar OCR — tetap tepat setelah ukuran layar/zoom berubah) + potongan sumber yang diperbesar. */
@@ -821,16 +905,16 @@ function viewTpl(){
 
 /* ---------- Render & aksi ---------- */
 function render(){
-  renderNav();const v=$('#view');const sy=window.scrollY;
+  renderNav();const v=$('#view');const sy=window.scrollY;v.parentElement.classList.toggle('kerja',S.view==='proses'&&S.step>=2&&!!(curDoc()&&curDoc().fields));
   if(S.view==='proses'){if(S.cur>=S.docs.length)S.cur=Math.max(0,S.docs.length-1);if(S.step>1&&!S.docs.some(d=>d.fields))S.step=1;if(S.step>1&&curDoc()&&!curDoc().fields){const i=S.docs.findIndex(d=>d.fields);if(i>=0)S.cur=i}
-    v.innerHTML=S.step===1?viewUnggah():S.step===2?viewPeriksa():viewHasil();if(S.step===2)afterPeriksa();if(S.step===3)fitSheet()}
+    v.innerHTML=S.step===1?viewUnggah():S.step===2?viewPeriksa():viewPeriksa()+`<div class="ovl" id="ovl"><div class="dlg" role="dialog" aria-label="Pratinjau hasil"><div class="dlgh"><b>Pratinjau hasil &amp; unduh</b><button type="button" class="tbtn" data-act="step" data-s="2">Tutup (Esc)</button></div>${viewHasil()}</div></div>`;if(S.step>=2)afterPeriksa();if(S.step===3)fitSheet()}
   else if(S.view==='pekerjaan')v.innerHTML=viewPekerjaan();
   else if(S.view==='glosarium')v.innerHTML=viewGlos();
   else if(S.view==='referensi')v.innerHTML=(typeof viewRef==='function')?viewRef():'';
   else v.innerHTML=viewTpl();
   window.scrollTo(0,sy);
 }
-function refreshStatus(key){const d=curDoc();const f=d.fields.find(x=>x.key===key);const c=$('#st-'+key);if(c)c.innerHTML=stCell(f);const rw=$('#row-'+key);if(rw)rw.classList.toggle('warn',rowWarn(f));const m=$('#meta-'+key);if(m)m.outerHTML=metaKolom(f);const ch=$('#chips');if(ch)ch.innerHTML=countChips(d)}
+function refreshStatus(key){const d=curDoc();const f=d.fields.find(x=>x.key===key);const c=$('#st-'+key);if(c)c.innerHTML=stCell3(f);const c2=$('#stt-'+key);if(c2)c2.innerHTML=stCell3(f);for(const id of ['#row-','#rowt-']){const rw=$(id+key);if(rw)rw.classList.toggle('warn',rowWarn(f))}const m=$('#meta-'+key);if(m){m.outerHTML=metaKolom(f);if(S.selField===key){const m2=$('#meta-'+key);if(m2)m2.classList.add('on')}}const ch=$('#chips');if(ch)ch.innerHTML=countChips(d)}
 document.addEventListener('click',async e=>{
   const b=e.target.closest('[data-act]');if(!b)return;const a=b.dataset.act,di=+b.dataset.d,pi=+b.dataset.p;
   if(a==='view'){S.view=b.dataset.v;render()}
@@ -853,6 +937,7 @@ document.addEventListener('click',async e=>{
   else if(a==='absen'){const f=curDoc().fields.find(x=>x.key===b.dataset.k);f.absen=f.absen?null:'tidak-tercantum';f.hist.push({at:Date.now(),ke:f.absen||'(dibatalkan)',oleh:'pengguna'});refreshStatus(f.key)}
   else if(a==='pakai'){const f=curDoc().fields.find(x=>x.key===b.dataset.k);const c=f.cands[+b.dataset.i];if(!c)return;setSumber(f,c.v,'pengguna memilih kandidat ('+c.cara+')');f.raw=c.raw;f.conf=c.conf;f.mesin=c.mesin;f.bbox=c.box||f.bbox;f.srcEdited=true;f.beda=false;f.checked=true;render()}
   else if(a==='pilihArea'){S.pilihArea=!S.pilihArea;render()}
+  else if(a==='resetlebar'){try{localStorage.removeItem('st_lebar')}catch(e){}document.querySelectorAll('#p3 .pn').forEach((x,i)=>{x.style.flex=LEBAR_BAWAAN[i]+' 1 0'});pasGambar()}
   else if(a==='berikut'){const d=curDoc();const ks=d.fields.filter(f=>{const s=statusOf(f);return s.t!=='ok'&&s.t!=='na'}).map(f=>f.key);if(!ks.length){toast('Tidak ada masalah tersisa');return}const i=ks.indexOf(S.selField);const k=ks[(i+1)%ks.length];const el=$('#s-'+k);if(el){el.focus();el.scrollIntoView({block:'center',behavior:'smooth'})}}
   else if(a==='ulangkolom'){if(b.disabled)return;const d=curDoc(),f=d.fields.find(x=>x.key===b.dataset.k),pg=d.pages.find(p=>p.id===(f.page||d.fieldPage));let bx=f.bbox;
     if(!bx){const k2=['tempat_lahir','tanggal_lahir'].includes(f.key)?'ttl':f.key;const l=(pg.lines||[]).find(l=>{const m=OCRCORE.cocokLabel(l.text);return m&&m.key===k2});bx=l&&l.box}
@@ -891,11 +976,17 @@ document.addEventListener('change',e=>{
   else if(t.id==='konf'){curDoc().confirmed=t.checked;render()}
   else if(t.id==='tplIn'&&t.files[0]){const file=t.files[0];file.arrayBuffer().then(buf=>{try{const bytes=new Uint8Array(buf);const r=checkTpl(bytes);S.customTpl={name:file.name,bytes,r,usable:!r.pecah.length&&!r.asing.length&&r.ok.length>0}}catch(err){S.customTpl=null;toast(err.message||'Template tidak bisa dibaca')}render()});t.value=''}
 });
-document.addEventListener('focusin',e=>{const k=e.target.dataset&&e.target.dataset.k;if(k&&DEF[k]){if(S.selField!==k){const o=$('#row-'+S.selField);if(o)o.classList.remove('sel');S.selField=k;const n=$('#row-'+k);if(n)n.classList.add('sel');const pb=$('[data-act=pilihArea]');if(pb){const d=curDoc(),pg=d&&d.pages.find(p=>p.id===d.fieldPage);pb.disabled=!(pg&&pg.ocrCanvas)}const lbl=pb&&pb.nextElementSibling;if(lbl)lbl.innerHTML='Kolom terpilih: <b>'+esc(DEF[k].label)+'</b>'}showHL(k)}});
+document.addEventListener('focusin',e=>{const k=e.target.dataset&&e.target.dataset.k;if(k&&DEF[k]){if(S.selField!==k){S.selField=k;tandaiPilih(k);const pbx=$('#potbox');if(pbx)pbx.hidden=false;const pb=$('[data-act=pilihArea]');if(pb){const d=curDoc(),pg=d&&d.pages.find(p=>p.id===d.fieldPage);pb.disabled=!(pg&&pg.ocrCanvas)}const lbl=pb&&pb.nextElementSibling;if(lbl)lbl.innerHTML='Kolom terpilih: <b>'+esc(DEF[k].label)+'</b>'}showHL(k)}});
 /* Riwayat koreksi: dicatat saat pengguna selesai mengubah kolom */
 document.addEventListener('change',e=>{const t=e.target;if(t.dataset&&t.dataset.k&&t.dataset.c==='src'){const f=curDoc().fields.find(x=>x.key===t.dataset.k);if(f)f.hist.push({at:Date.now(),ke:f.src,oleh:'pengguna'})}});
 /* Pilih area manual: tarik kotak di gambar → baca area itu dengan Google Vision → kandidat untuk kolom terpilih */
 let tarik=null;
+let geser=null;
+document.addEventListener('pointerdown',e=>{const sp=e.target.closest&&e.target.closest('.spl');if(!sp)return;const p=[...document.querySelectorAll('#p3 .pn')];if(p.length!==3)return;e.preventDefault();const i=Number(sp.dataset.spl);const W=$('#p3').clientWidth-16;geser={i,x:e.clientX,W,awal:p.map(x=>x.getBoundingClientRect().width/W*100),p};sp.setPointerCapture&&sp.setPointerCapture(e.pointerId)});
+document.addEventListener('pointermove',e=>{if(!geser)return;const g=geser,dx=(e.clientX-g.x)/g.W*100;let a=g.awal[g.i]+dx,b=g.awal[g.i+1]-dx;const mn=20;if(a<mn){b-=mn-a;a=mn}if(b<mn){a-=mn-b;b=mn}if(a<mn||b<mn)return;const L=g.awal.slice();L[g.i]=a;L[g.i+1]=b;g.kini=L;g.p.forEach((x,k)=>{x.style.flex=L[k]+' 1 0'});pasGambar()});
+document.addEventListener('pointerup',()=>{if(!geser)return;if(geser.kini){try{localStorage.setItem('st_lebar',JSON.stringify(geser.kini.map(x=>Math.round(x*10)/10)))}catch(e){}}geser=null;if(S.selField)showHL(S.selField)});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&S.view==='proses'&&S.step===3&&$('#ovl')){S.step=2;render()}});
+window.addEventListener('resize',()=>{pasGambar()});
 document.addEventListener('pointerdown',e=>{if(!S.pilihArea)return;const c=e.target.closest&&e.target.closest('#srcinner');if(!c)return;e.preventDefault();const r=c.getBoundingClientRect();tarik={r,x:e.clientX-r.left,y:e.clientY-r.top,el:document.createElement('div')};tarik.el.className='selbox';c.appendChild(tarik.el)});
 document.addEventListener('pointermove',e=>{if(!tarik)return;const x=e.clientX-tarik.r.left,y=e.clientY-tarik.r.top;Object.assign(tarik.el.style,{left:Math.min(x,tarik.x)+'px',top:Math.min(y,tarik.y)+'px',width:Math.abs(x-tarik.x)+'px',height:Math.abs(y-tarik.y)+'px'})});
 document.addEventListener('pointerup',async e=>{if(!tarik)return;const t=tarik;tarik=null;const x=e.clientX-t.r.left,y=e.clientY-t.r.top;t.el.remove();if(Math.abs(x-t.x)<8||Math.abs(y-t.y)<6)return;
