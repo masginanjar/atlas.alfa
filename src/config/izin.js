@@ -135,6 +135,8 @@ export const MODUL = [
   ] },
   { id: 'kolaborasi', label: 'Kolaborasi', fitur: [
     f('agenda', 'Agenda', ['menu', 'lihat', 'tambah', 'ubah', 'hapus'], { semua: plus(SEMUA, 'agenda') }),
+    // 15 Nov 2026: penerjemah/proofreader/otorisator (freelance) tidak perlu tahu siapa yang sedang online.
+    f('tim-online', 'Lihat siapa yang online', ['lihat'], { lihat: SEMUA.filter((r) => !PELAKSANA.includes(r)) }),
     f('jadwal', 'Jadwal Kerja', ['menu', 'lihat', 'tambah', 'ubah'], { semua: plus(SEMUA, 'jadwal') }),
     // 15 Nov 2026: login harian = absen hadir. Rekap kehadiran untuk Superadmin & Direktur.
     f('kehadiran', 'Rekap Kehadiran (login harian)', ['menu', 'lihat', 'ekspor'], { semua: ['superadmin', 'direktur'] }),

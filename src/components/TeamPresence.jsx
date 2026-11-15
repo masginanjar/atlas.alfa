@@ -41,7 +41,7 @@ export function teamFor(viewer, users, now = Date.now()) {
     const st = tim.map((u) => statusOf(u, now))
     const best = st.includes('online') ? 'online' : st.includes('idle') ? 'idle' : 'offline'
     const since = tim.map((u) => u.last_active_at).filter(Boolean).sort().pop()
-    rows.push({ id: PROOFREADER_TEAM.id, name: PROOFREADER_TEAM.lead, role: 'proofreader', roleText: 'Tim Proofreader & Otorisasi', place: 'Freelance', status: best, since, team: tim.length, online: st.filter((x) => x === 'online').length })
+    rows.push({ id: PROOFREADER_TEAM.id, name: PROOFREADER_TEAM.lead, role: 'proofreader', roleText: 'Tim Proofreader & Otorisasi', place: 'Mitra', status: best, since, team: tim.length, online: st.filter((x) => x === 'online').length })
   }
   return rows.sort((a, b) => (b.dir ? 1 : 0) - (a.dir ? 1 : 0) || ORDER[a.status] - ORDER[b.status] || a.name.localeCompare(b.name))
 }

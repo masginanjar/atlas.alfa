@@ -342,7 +342,7 @@ export default function Penugasan() {
             <PapanKapasitas baris={kandidat(sheet)} dipilih={sheet} hlm={hlmSub(sheet)} onTugaskan={(t) => tugaskan(sheet, 'internal', t.u.id)} sibuk={!!sibuk[sheet.id]} besar />
             {vendors.length > 0 && (
               <div className="border-t border-slate-100 px-5 py-3">
-                <p className="mb-1.5 text-[10.5px] font-bold uppercase tracking-wider text-ink-mute">Vendor / freelance eksternal</p>
+                <p className="mb-1.5 text-[10.5px] font-bold uppercase tracking-wider text-ink-mute">Vendor eksternal</p>
                 <div className="flex flex-wrap gap-1.5">
                   {vendors.slice(0, 8).map((v) => <button key={v.id} type="button" onClick={() => tugaskan(sheet, 'vendor', v.id)} className="h-9 rounded-xl bg-white px-3 text-xs font-semibold text-ink-soft ring-1 ring-slate-200 hover:ring-brand">{v.name}</button>)}
                 </div>

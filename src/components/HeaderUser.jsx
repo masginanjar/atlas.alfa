@@ -98,7 +98,7 @@ export default function HeaderUser({ atas, rel, lebar } = {}) {
             <Avatar user={row} size={36} ring={false} className="ring-1 ring-slate-200" />
             <div className="min-w-0 flex-1">
               <p className="truncate text-[13px] font-bold text-ink">{user.display_name || user.name}</p>
-              <p className="truncate text-[11px] text-ink-mute">{roleLabel(user)} · {isFreelance(user) ? 'Freelance' : isMultiBranch(user) ? `${branchesOf(user).length} cabang` : placeOf(user)}</p>
+              <p className="truncate text-[11px] text-ink-mute">{roleLabel(user)} · {isFreelance(user) ? 'Mitra' : isMultiBranch(user) ? `${branchesOf(user).length} cabang` : placeOf(user)}</p>
               <p className="mt-1 flex items-center gap-1.5 text-[11px]">
                 <span className={cx('h-1.5 w-1.5 rounded-full', st.dot)} /><span className={st.text}>{st.label}</span>
                 {row.status_text && <span className="truncate text-ink-mute">· {row.status_text}</span>}

@@ -333,7 +333,7 @@ export default function App() {
 
         <main className="mx-auto w-full max-w-5xl px-4 pb-28 pt-4 md:px-6 md:pb-12 md:pt-6 xl:max-w-[1280px] 2xl:max-w-[1440px]">
           {/* Baris atas isi halaman: pencarian (kiri) · tombol tambah (kanan) — bukan top bar global */}
-          <BarisAtas cariBawaan={<GlobalSearch ikon placeholder={CARI_HALAMAN[page] || 'Cari invoice, pelanggan, menu…'} />} tambahBawaan={<HeadAdd />} ikonLain={<><PintasAtas page={page} param={param} user={user} /><TeamPresence ikon /><NotificationBell ikon /><TombolHantu ikon /></>} />
+          <BarisAtas cariBawaan={<GlobalSearch ikon placeholder={CARI_HALAMAN[page] || 'Cari invoice, pelanggan, menu…'} />} tambahBawaan={<HeadAdd />} ikonLain={<><PintasAtas page={page} param={param} user={user} />{boleh(user, 'tim-online.lihat') && <TeamPresence ikon />}<NotificationBell ikon /><TombolHantu ikon /></>} />
           {((branchPicker && !alatSendiri) || (!user._hantu && (rolesOf(user).length > 1 || personaList.length > 0 || user._actor))) && (
           <KeAtas slot="sesudah"><div className="flex min-w-0 items-center gap-2 lg:hidden" data-baris-cabang>
             {branchPicker && !alatSendiri && (

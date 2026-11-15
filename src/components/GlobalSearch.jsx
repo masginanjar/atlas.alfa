@@ -7,6 +7,7 @@ import { roleLabel } from '../config/access.js'
 import { daysLeft } from '../lib/format.js'
 import { isDone, progressOf, stageLabel, flowOf } from '../config/workflows.js'
 import { statusOf } from '../lib/presence.js'
+import { boleh } from '../lib/izin.js'
 import Avatar from './Avatar.jsx'
 import { scopeRequests, REQ_KINDS } from './Requests.jsx'
 import { myNotes } from '../lib/personal.js'
@@ -137,6 +138,7 @@ function pintasan(user, data, branchFilter, invoices) {
 }
 
 function Pratinjau({ r, nameOf }) {
+  const { user } = useApp()
   if (!r) return <p className="p-6 text-center text-xs text-ink-mute">Arahkan ke hasil untuk melihat pratinjau.</p>
   if (r.kind === 'project' && r.p) {
     const p = r.p; const d = daysLeft(p.about?.deadline)
@@ -166,7 +168,7 @@ function Pratinjau({ r, nameOf }) {
         <div className="mx-auto w-fit"><Avatar user={r.user} size={64} /></div>
         <p className="mt-2 text-[15px] font-extrabold">{r.user.name}</p>
         <p className="text-[12px] text-ink-mute">{r.sub}</p>
-        <p className="mt-1 text-[11px] font-semibold text-emerald-700">{st?.label || ''}</p>
+        {boleh(user, 'tim-online.lihat') && <p className="mt-1 text-[11px] font-semibold text-emerald-700">{st?.label || ''}</p>}
         <button type="button" onClick={r.open} className="mt-3 h-10 w-full rounded-lg bg-white text-[12px] font-bold ring-1 ring-slate-200"><CalendarRange className="mr-1 inline h-4 w-4" />Lihat jadwal</button>
       </div>
     )

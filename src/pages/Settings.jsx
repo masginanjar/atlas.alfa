@@ -244,7 +244,7 @@ function ProfilData() {
       <Card className="space-y-3 p-5">
         <p className="text-xs font-bold uppercase tracking-wide text-ink-mute">Data yang diatur admin</p>
         <div className="grid gap-x-4 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
-          {[['Peran', roleLabel(user)], ['Cabang', branchLabel(user)], ['Status', user.active === false ? 'Nonaktif' : isFreelance(user) ? 'Freelance' : 'Aktif'],
+          {[['Peran', roleLabel(user)], ['Cabang', branchLabel(user)], ['Status', user.active === false ? 'Nonaktif' : isFreelance(user) ? 'Mitra' : 'Aktif'],
             ['ID pegawai', user.id], ['Zona waktu', zonaPengguna(user).label]].map(([k, v]) => (
             <div key={k} className="rounded-xl bg-slate-50 px-3 py-2 ring-1 ring-slate-200">
               <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-mute">{k}</p>
@@ -962,12 +962,12 @@ function Users() {
     { key: 'nama', label: 'Nama', sort: (r) => String(r.name || '').toLowerCase(),
       sel: (r) => <><span className={cx('block text-sm font-semibold', r.active === false && 'text-ink-mute line-through')}>{r.name}</span><span className="block truncate text-[11px] text-ink-mute">{r.email}</span></> },
     { key: 'role', label: 'Role', sort: (r) => roleLabel(r).toLowerCase(), sel: (r) => <span className="text-sm">{roleLabel(r)}{(r.extra_roles || []).length ? <span className="text-ink-mute"> +{r.extra_roles.length}</span> : null}</span> },
-    { key: 'cabang', label: 'Cabang', sort: (r) => String(isFreelance(r) ? 'zz' : r.branch || '').toLowerCase(), sel: (r) => <span className="text-sm">{isFreelance(r) ? 'Freelance' : [r.branch, ...(r.branches || [])].filter(Boolean).join(', ')}</span> },
+    { key: 'cabang', label: 'Cabang', sort: (r) => String(isFreelance(r) ? 'zz' : r.branch || '').toLowerCase(), sel: (r) => <span className="text-sm">{isFreelance(r) ? 'Mitra' : [r.branch, ...(r.branches || [])].filter(Boolean).join(', ')}</span> },
     { key: 'status', label: 'Status', sort: (r) => (r.active === false ? 1 : 0), sel: (r) => <span className={cx('rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1', r.active === false ? 'bg-slate-100 text-ink-mute ring-slate-200' : 'bg-emerald-50 text-emerald-700 ring-emerald-200')}>{r.active === false ? 'Nonaktif' : 'Aktif'}</span> },
   ]
   const FILTER_USER = [
     { key: 'role', label: 'Semua role', aria: 'Filter role', opsi: (rows) => [...new Set(rows.map((r) => roleLabel(r)))].sort(), cocok: (r, v) => roleLabel(r) === v },
-    { key: 'cabang', label: 'Semua cabang', aria: 'Filter cabang', opsi: (rows) => [...new Set(rows.map((r) => (isFreelance(r) ? 'Freelance' : r.branch)).filter(Boolean))].sort(), cocok: (r, v) => (isFreelance(r) ? 'Freelance' : r.branch) === v },
+    { key: 'cabang', label: 'Semua cabang', aria: 'Filter cabang', opsi: (rows) => [...new Set(rows.map((r) => (isFreelance(r) ? 'Mitra' : r.branch)).filter(Boolean))].sort(), cocok: (r, v) => (isFreelance(r) ? 'Mitra' : r.branch) === v },
     { key: 'aktif', label: 'Aktif & nonaktif', aria: 'Filter status', opsi: () => ['Aktif', 'Nonaktif'], cocok: (r, v) => (v === 'Aktif' ? r.active !== false : r.active === false) },
   ]
   return (
@@ -990,10 +990,10 @@ function Users() {
           <div className="grid grid-cols-2 gap-3">
             <Field label="Role"><Select value={e.role} onChange={(x) => { const n = { ...e, role: x.target.value }; set(isFreelance(n) ? { ...n, branch: '', branches: [] } : { ...n, branch: n.branch || BRANCHES[0] }) }}>{Object.entries(semuaRole()).map(([k, r]) => <option key={k} value={k}>{r.label}</option>)}</Select></Field>
             {isFreelance(e)
-              ? <Field label="Cabang"><p className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-ink-soft ring-1 ring-slate-200">Freelance — tanpa cabang</p></Field>
+              ? <Field label="Cabang"><p className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-ink-soft ring-1 ring-slate-200">Mitra — semua cabang</p></Field>
               : <Field label="Cabang utama"><Select value={e.branch} onChange={(x) => set({ ...e, branch: x.target.value })}>{BRANCHES.map((b) => <option key={b}>{b}</option>)}</Select></Field>}
           </div>
-          {isFreelance(e) && <p className="-mt-1 text-[11px] text-ink-mute">Penerjemah, Proofreader & Otorisator bekerja freelance dari mana saja — menerima tugas dari semua cabang.</p>}
+          {isFreelance(e) && <p className="-mt-1 text-[11px] text-ink-mute">Penerjemah, Proofreader & Otorisator adalah mitra yang bekerja dari mana saja — menerima tugas dari semua cabang.</p>}
           {!isFreelance(e) && !['superadmin', 'admin_pusat', 'supervisor', 'direktur', 'akunting'].includes(e.role) && (
             <Field label="Akses cabang tambahan" hint="Untuk CS multi cabang / backup — centang cabang lain yang boleh diakses.">
               <div className="flex flex-wrap gap-1.5">

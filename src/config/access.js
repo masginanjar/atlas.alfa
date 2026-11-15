@@ -27,8 +27,8 @@ export const isMultiBranch = (u) => branchesOf(u).length > 1
 export const FREELANCE_ROLES = ['penerjemah', 'proofreader', 'otorisator']
 export const isFreelance = (u) => { const r = [...new Set([u?.base_role || u?.role, ...(u?.extra_roles || [])].filter(Boolean))]; return r.length > 0 && r.every((x) => FREELANCE_ROLES.includes(x)) }
 /** Lokasi singkat untuk label: "Bali" / "Freelance". */
-export const placeOf = (u) => (isFreelance(u) ? 'Freelance' : u?.branch || '—')
-export const branchLabel = (u) => (isFreelance(u) ? 'Freelance (semua lokasi)' : isMultiBranch(u) ? `Multi Cabang (${branchesOf(u).join(', ')})` : u?.branch)
+export const placeOf = (u) => (isFreelance(u) ? 'Mitra' : u?.branch || '—')
+export const branchLabel = (u) => (isFreelance(u) ? 'Mitra (semua cabang)' : isMultiBranch(u) ? `Multi Cabang (${branchesOf(u).join(', ')})` : u?.branch)
 
 export const ROLES = {
   superadmin: { label: 'Superadmin' },

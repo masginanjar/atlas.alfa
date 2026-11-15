@@ -10,7 +10,7 @@ import { broadcastSignOut, markActivity, setIdleReason, simpanTujuan, ambilTujua
 import { CHAT_ENABLED } from './flags.js'
 import { DONE, stagesOf, flowOf, isBilled, regComplete, stageLabel } from '../config/workflows.js'
 import { docListOf } from '../config/workflows.js'
-import { setKonfigIzin } from './izin.js'
+import { setKonfigIzin, boleh } from './izin.js'
 import { barisRegistrasi, ambilNomor, kodeArah, jumlahDok, namaDefault } from './registrasi.js'
 import { cariStok, cariPeringatan, kunciPeringatan, teksPeringatan, sudahTercatat, arahLabel, canKelolaAffidavit, AMBANG_RENDAH } from './affidavit.js'
 
@@ -272,7 +272,7 @@ export function AppProvider({ children }) {
   // Rekan yang baru online → satu toast gabungan, dan tidak "meledak" saat pertama login
   const firstSeen = useRef(0)
   useEffect(() => {
-    if (!baseUser) { prevOnline.current = null; firstSeen.current = 0; return }
+    if (!baseUser || !boleh(baseUser, 'tim-online.lihat')) { prevOnline.current = null; firstSeen.current = 0; return }
     const live = new Set(data.users.filter((u) => u.id !== baseUser.id && statusOf(u) === 'online').map((u) => u.id))
     const before = prevOnline.current
     prevOnline.current = live

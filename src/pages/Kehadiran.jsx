@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Download, Lock, UserCheck, UserX, Clock, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useApp } from '../lib/store.jsx'
-import { BRANCHES, roleLabel } from '../config/access.js'
+import { BRANCHES, roleLabel, placeOf } from '../config/access.js'
 import { boleh, izinEfektif, dalamCakupan } from '../lib/izin.js'
 import { hariIniAbsen, ZONA_ABSEN } from '../lib/session.js'
 import { Card, Empty, Select, Sheet, cx } from '../components/ui.jsx'
@@ -83,7 +83,7 @@ export default function Kehadiran() {
           <div className="mt-3">
             <p className="mb-1.5 flex items-center gap-1 text-[11px] font-bold uppercase tracking-wide text-rose-700"><UserX className="h-3.5 w-3.5" />Belum login hari ini ({belum.length})</p>
             <div className="flex flex-wrap gap-1.5">
-              {belum.map(({ u }, i) => <button type="button" key={u.id} onClick={() => setDetail(u)} className={cx(chip, 'bg-rose-50 text-rose-800 ring-rose-200', i >= 6 && !semuaBelum && 'max-md:hidden')}>{u.name}<span className="text-rose-500">· {u.branch || '–'}</span></button>)}
+              {belum.map(({ u }, i) => <button type="button" key={u.id} onClick={() => setDetail(u)} className={cx(chip, 'bg-rose-50 text-rose-800 ring-rose-200', i >= 6 && !semuaBelum && 'max-md:hidden')}>{u.name}<span className="text-rose-500">· {placeOf(u)}</span></button>)}
               {belum.length > 6 && !semuaBelum && <button type="button" onClick={() => setSemuaBelum(true)} className={cx(chip, 'bg-white text-ink-soft ring-slate-200 md:hidden')}>+{belum.length - 6} lainnya</button>}
             </div>
           </div>
@@ -129,7 +129,7 @@ export default function Kehadiran() {
                       <td className="sticky left-0 z-10 bg-white px-3 py-1.5">
                         <button type="button" onClick={() => setDetail(u)} className="text-left">
                           <span className="block font-semibold text-ink hover:text-brand">{u.name}</span>
-                          <span className="block text-[11px] text-ink-mute">{roleLabel(u)} · {u.branch || '–'}</span>
+                          <span className="block text-[11px] text-ink-mute">{roleLabel(u)} · {placeOf(u)}</span>
                         </button>
                       </td>
                       <td className="px-2 text-center font-bold">{hadir}<span className="font-normal text-ink-mute">/{hari.length}</span></td>
@@ -152,7 +152,7 @@ export default function Kehadiran() {
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <p className="truncate text-[14px] font-semibold">{u.name}</p>
-                    <p className="text-[12px] text-ink-mute">{roleLabel(u)} · {u.branch || '–'}</p>
+                    <p className="text-[12px] text-ink-mute">{roleLabel(u)} · {placeOf(u)}</p>
                   </div>
                   {hariIni ? <span className={cx(chip, 'shrink-0 bg-emerald-50 text-emerald-800 ring-emerald-200')}><Clock className="h-3.5 w-3.5" />{jam(hariIni.masuk_at)}</span>
                     : <span className={cx(chip, 'shrink-0 bg-rose-50 text-rose-700 ring-rose-200')}>Belum login</span>}
@@ -170,7 +170,7 @@ export default function Kehadiran() {
         </>
       )}
 
-      <Sheet open={!!detail} onClose={() => setDetail(null)} title={detail?.name || ''} subtitle={detail ? `${roleLabel(detail)} · ${detail.branch || '–'} · ${NAMA_BULAN[m - 1]} ${y}` : ''}>
+      <Sheet open={!!detail} onClose={() => setDetail(null)} title={detail?.name || ''} subtitle={detail ? `${roleLabel(detail)} · ${placeOf(detail)} · ${NAMA_BULAN[m - 1]} ${y}` : ''}>
         {detail && (() => {
           const rows = hari.slice().reverse()
           return (
