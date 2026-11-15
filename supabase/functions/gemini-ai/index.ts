@@ -85,6 +85,17 @@ const TUGAS: Record<string, { prompt: string; skema: unknown; maksKeluar: number
       ragu: { type: "ARRAY", items: { type: "STRING" } } }, required: ["jenis", "ragu", "anggota", ...KK_KEPALA.map(([k]) => k)] },
     maksKeluar: 9000,
   },
+  ijazah: {
+    prompt: "Gambar ini seharusnya ijazah / sertifikat kelulusan Indonesia (sekolah atau perguruan tinggi). Salin SEMUA teks yang tercetak, baris demi baris dari atas ke bawah, PERSIS seperti tertulis (tanpa memperbaiki ejaan, tanpa melengkapi, tanpa menebak). Bila ijazah dwibahasa, salin hanya teks bahasa Indonesia. " +
+      "Untuk tiap baris isi juga \"en\": terjemahan bahasa Inggris yang setia dan formal untuk baris itu. Nama orang, nomor, NIK, NIM/NISN, NIP, dan gelar di belakang nama TIDAK diterjemahkan (disalin apa adanya); NIP ditulis REG. NO. diikuti angkanya. " +
+      "Elemen bukan teks ditulis sebagai baris tersendiri dengan teks dan en yang sama: (Logo), (Photograph), (Signature and stamp), (QR Code), (Hologram seal). " +
+      "jenis baris: judul (nama lembaga, judul IJAZAH, nama pemilik yang dicetak menonjol), ttd (baris di blok tanda tangan: jabatan, tanda tangan, nama, NIP), selain itu isi. kolom: untuk baris ttd isi nomor blok tanda tangan dihitung dari kiri (1, 2, atau 3); selain itu 0. " +
+      "nama = nama pemilik ijazah. orientasi = MENDATAR atau TEGAK sesuai bentuk kertas. ragu = nomor urut baris (mulai 1, sebagai teks) yang tidak terbaca dengan yakin. \"jenis\" (di luar baris): tulis IJAZAH bila ini ijazah/sertifikat kelulusan, selain itu nama jenis dokumennya.",
+    skema: { type: "OBJECT", properties: { jenis: S("IJAZAH atau jenis dokumen lain"), nama: S("Nama pemilik ijazah"), orientasi: S("MENDATAR atau TEGAK"),
+      baris: { type: "ARRAY", items: { type: "OBJECT", properties: { teks: S("teks baris persis seperti tercetak"), en: S("terjemahan Inggris baris itu"), jenis: S("judul | isi | ttd"), kolom: S("0, 1, 2, atau 3") }, required: ["teks", "en", "jenis", "kolom"] } },
+      ragu: { type: "ARRAY", items: { type: "STRING" } } }, required: ["jenis", "nama", "orientasi", "baris", "ragu"] },
+    maksKeluar: 7000,
+  },
   bukti: {
     prompt: "Gambar ini tangkapan layar daftar transaksi transfer dari internet banking (tabel dengan baris judul kolom). Untuk SETIAP baris transaksi, dari atas ke bawah, salin isi selnya PERSIS seperti tertulis (tanpa mengubah angka, tanpa menebak). Baris judul kolom tidak dihitung. " +
       "jumlah = nominal transfer persis seperti tertulis; dari = rekening sumber (nomor dan nama); ke = rekening tujuan (nomor dan nama); status = status transaksi; tgl = tanggal transfer; berita = berita/keterangan; ref = nomor referensi. Sel yang tidak ada atau tidak terbaca: string kosong.",
@@ -224,8 +235,8 @@ Deno.serve(async (req: Request) => {
     const m = String(b.gambar ?? "").match(/^data:(image\/(?:jpeg|png|webp));base64,(.+)$/s);
     if (!m) return json({ ok: false, alasan: "gambar harus JPG/PNG/WebP" }, 400);
     if (m[2].length * 0.75 > MAKS_BYTE) return json({ ok: false, alasan: "gambar terlalu besar (maks 8 MB)" }, 400);
-    // Smart Translator: jenis dokumen boleh dipilih pemanggil (akta kelahiran / kartu keluarga); selain itu tugas bawaan fitur.
-    const tugasJalan = fitur === "penerjemah" && ["akta", "kk"].includes(String(b.tugas ?? "")) ? String(b.tugas) : F.tugas;
+    // Smart Translator: jenis dokumen boleh dipilih pemanggil (akta kelahiran / kartu keluarga / ijazah); selain itu tugas bawaan fitur.
+    const tugasJalan = fitur === "penerjemah" && ["akta", "kk", "ijazah"].includes(String(b.tugas ?? "")) ? String(b.tugas) : F.tugas;
     return json(await satu(fitur, model, tugasJalan, m[2], m[1]));
   }
 
@@ -252,7 +263,7 @@ Deno.serve(async (req: Request) => {
     }
     const model = String(b.model ?? ""); if (!/^gemini-[\w.\-]+$/.test(model)) return json({ ok: false, alasan: "model tidak dikenal" }, 400);
     let url = "";
-    if (["ktp", "akta", "kk"].includes(tugas) && /^[a-z0-9_\-]+\.jpg$/i.test(String(b.berkas ?? ""))) url = "https://raw.githubusercontent.com/masginanjar/atlas.alfa/uji-ocr/uji/ocr/img/" + b.berkas;
+    if (["ktp", "akta", "kk", "ijazah"].includes(tugas) && /^[a-z0-9_\-]+\.jpg$/i.test(String(b.berkas ?? ""))) url = "https://raw.githubusercontent.com/masginanjar/atlas.alfa/uji-ocr/uji/ocr/img/" + b.berkas;
     else if (tugas === "bukti") url = "https://raw.githubusercontent.com/masginanjar/atlas.alfa/main/public/contoh/contoh-klikbca-transfer.png";
     else return json({ ok: false, alasan: "tugas uji tidak dikenal" }, 400);
     const ib = await fetch(url); if (!ib.ok) return json({ ok: false, alasan: "data uji tidak ditemukan" }, 404);
