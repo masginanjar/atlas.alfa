@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Play, Send, FolderOpen, Hand, CheckCircle2, FileText, Upload, Loader2, Circle, Inbox, Building2, Headset, Printer, Eye, Download, ChevronDown, ChevronRight, Undo2, MapPin } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Play, Send, FolderOpen, Hand, CheckCircle2, FileText, Upload, Loader2, Circle, Inbox, Building2, Headset, Printer, Eye, Download, ChevronDown, ChevronRight, Undo2, MapPin, Languages, X } from 'lucide-react'
 import { useApp } from '../lib/store.jsx'
 import { TolakTugasBtn } from './GantiPenerjemah.jsx'
 import { can, activeClaim, placeOf, seeProofreaderIdentity, pickProofreader, invoiceLabel } from '../config/access.js'
@@ -14,6 +14,7 @@ import CopyText from './CopyText.jsx'
 import { drive } from '../lib/integrations.js'
 import { StagePanel } from '../pages/ProjectDetail.jsx'
 import { saveBlob, dataUrlToBlob } from '../lib/download.js'
+import { boleh } from '../lib/izin.js'
 import { Button, Card, Empty, Sheet, cx } from './ui.jsx'
 
 // Tahap yang dikerjakan tiap role pelaksana — tombolnya tampil langsung di My Project
@@ -194,6 +195,43 @@ function UploadBtn({ t, label, big }) {
   )
 }
 
+/** Bisa dibuka di Smart Translator? (foto / PDF dokumen sumber) */
+const bisaST = (f) => f?._label === 'Dokumen sumber' && /\.(jpe?g|png|pdf)$/i.test(f.name || '')
+
+/**
+ * Smart Translator dari tugas: dokumen sumber dikirim ke aplikasi Smart Translator,
+ * hasil FINAL (DOCX/PDF) dikembalikan ke sini lalu masuk ke "Hasil pekerjaan Anda" (folder project).
+ */
+function SmartTranslatorTugas({ file, onClose, onHasil }) {
+  const { notify } = useApp()
+  const ref = useRef(null)
+  const kirimSumber = async () => {
+    try {
+      const blob = file.url?.startsWith('data:') ? dataUrlToBlob(file.url) : await drive.blob(file)
+      ref.current?.contentWindow?.postMessage({ type: 'st-file', name: file.name, blob }, window.location.origin)
+    } catch (e) { notify(`Dokumen tidak bisa dimuat ke Smart Translator: ${e.message}`, 'err') }
+  }
+  useEffect(() => {
+    const onMsg = (e) => {
+      if (e.origin !== window.location.origin || e.source !== ref.current?.contentWindow || e.data?.type !== 'st-hasil' || !e.data.blob) return
+      onHasil(new File([e.data.blob], e.data.filename || 'hasil-terjemahan', { type: e.data.blob.type || '' }))
+    }
+    window.addEventListener('message', onMsg)
+    return () => window.removeEventListener('message', onMsg)
+  }, [onHasil])
+  return (
+    <div className="fixed inset-0 z-[70] flex flex-col bg-white" role="dialog" aria-modal="true" aria-label={`Smart Translator — ${file.name}`} data-st-tugas
+      style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
+      <div className="flex items-center gap-2 border-b border-slate-200 px-3 py-2">
+        <Languages className="h-5 w-5 shrink-0 text-brand" />
+        <span className="min-w-0 flex-1"><span className="block text-sm font-bold text-ink">Smart Translator</span><span className="block truncate text-xs text-ink-mute">{file.name} · hasil final langsung masuk ke tugas ini</span></span>
+        <Button size="sm" variant="outline" onClick={onClose} className="max-md:min-h-11" data-aksi="tutup-st"><X className="h-4 w-4" />Tutup</Button>
+      </div>
+      <iframe ref={ref} title="Smart Translator" src="smart-translator/app.html?embed=1&tugas=1" onLoad={kirimSumber} className="block w-full flex-1 border-0" style={{ minHeight: 0 }} />
+    </div>
+  )
+}
+
 /** Jendela kerja: dokumen sumber → upload hasil → kirim. Isinya sama persis dengan tombol di baris. */
 function WorkSheet({ project, sub, t, onClose }) {
   // Tahap Nomor Registrasi tidak memakai upload hasil — pakai form nomor (sama dengan di detail project)
@@ -209,8 +247,11 @@ function WorkSheet({ project, sub, t, onClose }) {
 }
 
 function WorkSheetBerkas({ project, sub, t, onClose }) {
-  const { notify } = useApp()
+  const { user, notify } = useApp()
   const [preview, setPreview] = useState(null)
+  const [st, setSt] = useState(null) // dokumen yang sedang dibuka di Smart Translator
+  const pakaiST = t.stage.key === 'penerjemahan' && boleh(user, 'smart-translator.lihat')
+  const terimaHasilST = (file) => { setSt(null); notify('Hasil Smart Translator diterima — simpan ke Hasil pekerjaan Anda'); t.upload([file]) }
   const [dl, setDl] = useState(null)
   // hanya dokumen tahap ini (sumber + hasil tahap sebelumnya) — file sub project lain tidak ikut
   const berkas = t.sources.map((f) => ({ ...f, _sumber: true }))
@@ -276,6 +317,7 @@ function WorkSheetBerkas({ project, sub, t, onClose }) {
                   {berkas.length > 1 && <input type="checkbox" className="h-4 w-4 shrink-0 rounded border-slate-300 text-brand focus:ring-brand" checked={pilih.has(i)} onChange={() => togglePilih(i)} aria-label={`Pilih ${f.name}`} data-aksi="pilih-dokumen" />}
                   <FileText className={cx('h-4 w-4 shrink-0', f._sumber ? 'text-brand' : 'text-ink-mute')} />
                   <span className="min-w-0 flex-1 basis-24"><span className="block truncate text-sm font-semibold text-ink">{f.name}</span><span className="text-[11px] text-ink-mute">{f._label}</span></span>
+                  {pakaiST && bisaST(f) && <Button size="sm" variant="outline" onClick={() => setSt(f)} aria-label={`Buka ${f.name} di Smart Translator`} title="Baca otomatis & buat draf terjemahan" className="!h-9 !px-2.5 !text-brand !ring-brand/40" data-aksi="smart-translator"><Languages className="h-4 w-4" /><span className="hidden sm:inline">Smart Translator</span></Button>}
                   <Button size="sm" variant="outline" onClick={() => setPreview(f)} aria-label={`Baca ${f.name}`} className="!h-9 !px-2.5"><Eye className="h-4 w-4" /><span className="hidden sm:inline">Baca</span></Button>
                   <Button size="sm" variant="outline" loading={dl === i} onClick={() => download(f, i)} aria-label={`Unduh ${f.name}`} className="!h-9 !px-2.5"><Download className="h-4 w-4" /><span className="hidden sm:inline">Unduh</span></Button>
                 </li>
@@ -330,6 +372,7 @@ function WorkSheetBerkas({ project, sub, t, onClose }) {
 
       </div>
       {preview && <FilePreview file={preview} onClose={() => setPreview(null)} />}
+      {st && <SmartTranslatorTugas file={st} onClose={() => setSt(null)} onHasil={terimaHasilST} />}
     </Sheet>
   )
 }

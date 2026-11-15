@@ -15,11 +15,10 @@ export default function SmartTranslator() {
   const src = 'smart-translator/app.html?embed=1'
   return (
     <div className="space-y-2" data-halaman-smart-translator>
-      <div className="flex items-center justify-between gap-2">
-        <h1 className="flex items-center gap-2 text-[17px] font-extrabold leading-tight tracking-tight"><Languages className="h-5 w-5 text-brand" />Smart Translator</h1>
+      <div className="flex items-center justify-end gap-2">
         <a href="smart-translator/app.html" target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-white px-3 text-[13px] font-semibold ring-1 ring-slate-200 hover:text-brand md:min-h-8"><ExternalLink className="h-4 w-4" />Buka layar penuh</a>
       </div>
-      <iframe title="Smart Translator" src={src} className="block w-full rounded-2xl bg-white ring-1 ring-[#E7E8F0]" style={{ height: 'calc(100dvh - 150px)', minHeight: 520 }} />
+      <iframe title="Smart Translator" src={src} className="block w-full rounded-2xl bg-[#F4F5F9] ring-1 ring-[#E7E8F0]" style={{ height: 'calc(100dvh - 120px)', minHeight: 520 }} />
     </div>
   )
 }

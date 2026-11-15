@@ -112,16 +112,149 @@ body.embed .nav{width:100%;height:auto;position:sticky;top:0;z-index:5;flex-dire
 body.embed .brand,body.embed .navnote{display:none}
 body.embed .navlist{flex-direction:row}
 body.embed main{padding:14px 12px 40px}
+
+/* ===== Desain baru 15 Nov 2026 (kanvas "Smart Translator — Redesign") — huruf lebih besar, kartu lega, warna ATLAS ===== */
+:root{--ink:#141B34;--mute:#5B6178;--bg:#F4F5F9;--line:#E3E6EF;--line2:#E3E6EF;--soft:#EEF0F6}
+body{font-size:15px;line-height:1.5}
+h1{font-size:24px;font-weight:700}
+h2{font-size:17px;font-weight:600}
+.card{border-radius:20px;border-color:var(--line)}
+.pad{padding:20px}
+.btn{border-radius:12px;font-size:15px;min-height:46px}
+.btn.sm{font-size:14px}
+.btn.dark{background:#141B34}
+.btn.blue{background:#E8EEFF;color:#23358F}
+.chip{min-height:28px;padding:0 12px;border-radius:99px;font-size:13px;font-weight:600}
+.c-ok{background:#E3F5EC;color:#136C3F}.c-cek{background:#FFF1C7;color:#6B4600}.c-biru{background:#E8EEFF;color:#23358F}
+.small{font-size:13px}
+.field{font-size:14px;font-weight:500;color:var(--mute)}
+.inp{min-height:48px;border-radius:12px;font-size:16px}
+.thead{background:#F6F7FB;color:var(--mute);font-size:13px;text-transform:uppercase;letter-spacing:.04em}
+.frow{min-height:58px}
+.frow .lab{font-size:14px;font-weight:500;color:var(--mute)}
+.steps{gap:10px}
+.steps button{min-height:48px;border-radius:14px;padding:0 16px 0 10px;font-size:15px;font-weight:600;border-color:var(--line);color:var(--ink)}
+.steps i{width:30px;height:30px;border-radius:99px;background:#EEF0F6;color:var(--mute);font-weight:700;font-size:14px}
+.steps button[aria-current=step] i{background:#fff;color:#141B34}
+.steps button[data-done] i{background:#E3F5EC;color:#136C3F}
+.drop{border-color:#C9CFE3;border-radius:18px;background:#FAFBFD;padding:32px 16px}
+.pg{padding:12px 0}
+.thumb{border-radius:10px;width:104px;height:68px}
+.radio{border-radius:14px;min-height:56px}
+.cekbox{border-radius:14px}
+#visionChip.chip{min-height:40px;padding:0 14px;border-radius:12px;font-size:14px}
+body.embed .nav{gap:8px;padding:12px 16px;background:#F4F5F9;border-bottom:0}
+body.embed .navlist{gap:8px}
+body.embed .navlist button{min-height:46px;padding:0 18px;border:1px solid #E3E6EF;background:#fff;font-size:15px;font-weight:500}
+body.embed .navlist button[aria-current=page]{border-color:#141B34;background:#141B34;color:#fff;font-weight:600}
+body.embed main{padding:8px 16px 40px}
+@media (max-width:900px){body.embed .nav{padding:10px 12px}body.embed .navlist button{padding:0 14px;font-size:14px}}
+
+/* ===== Tata letak sama persis dengan kanvas desain (15 Nov 2026) ===== */
+#app{display:block;max-width:1360px;margin:0 auto;padding:24px;min-height:0}
+main{padding:0;margin-top:20px}
+.wrap{gap:20px}
+.tophead{display:flex;flex-wrap:wrap;align-items:center;gap:16px}
+.tophead .logo{width:48px;height:48px;border-radius:14px;background:#141B34;display:flex;align-items:center;justify-content:center;flex:none}
+.tophead .htext{flex:1 1 240px;display:flex;flex-direction:column;gap:2px}
+.tophead h1{margin:0;font-size:24px;font-weight:700;letter-spacing:-.01em}
+.tophead p{margin:0;font-size:15px;color:#5B6178}
+.vcard{display:flex;align-items:center;gap:14px;background:#fff;border:1px solid #E3E6EF;border-radius:16px;padding:10px 16px}
+.vcard .dot{width:10px;height:10px;border-radius:99px;flex:none}
+.vcard .vb{display:flex;flex-direction:column;gap:6px;min-width:220px}
+.vcard .vt{display:flex;justify-content:space-between;gap:12px;font-size:14px}
+.vcard .vt b{font-weight:600}.vcard .vt span{color:#5B6178}
+.vcard .track{height:6px;border-radius:99px;background:#E8EBF3}.vcard .track>div{height:6px;border-radius:99px}
+.vcard small{font-size:12px;color:#5B6178}
+.tabs{display:flex;flex-wrap:wrap;gap:8px;margin-top:20px}
+.tabs button{min-height:46px;padding:0 18px;border:1px solid #E3E6EF;border-radius:12px;background:#fff;color:#141B34;font-size:15px;font-weight:500}
+.tabs button[aria-current=page]{background:#141B34;border-color:#141B34;color:#fff;font-weight:600}
+.stepper{list-style:none;margin:0;padding:16px 20px;background:#fff;border:1px solid #E3E6EF;border-radius:18px;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+.stepper button{display:flex;align-items:center;gap:12px;width:100%;min-height:48px;padding:0;border:0;background:transparent;text-align:left;color:#141B34}
+.stepper button:disabled{opacity:1;cursor:default}
+.stepper .n{width:36px;height:36px;flex:none;border-radius:99px;background:#EEF0F6;color:#5B6178;font-size:15px;font-weight:600;display:flex;align-items:center;justify-content:center}
+.stepper .done .n{background:#E3F5EC;color:#136C3F}
+.stepper .now .n{background:#141B34;color:#fff;font-weight:700}
+.stepper .t{display:flex;flex-direction:column;min-width:0}
+.stepper .t b{font-size:15px;font-weight:600}
+.stepper .todo .t b{font-weight:500;color:#5B6178}
+.stepper .now .t b{font-weight:700}
+.stepper .t span{font-size:13px;color:#5B6178;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stepper .t span.warn{color:#8A5A00}
+.ptitle{margin:0;font-size:24px;font-weight:700;letter-spacing:-.01em}
+.psub{margin:0;font-size:15px;color:#5B6178}
+.two{display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start}
+.c20{background:#fff;border:1px solid #E3E6EF;border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:16px;min-width:0}
+.c20 h2{font-size:18px;font-weight:600}
+.hint{display:flex;gap:10px;align-items:flex-start;background:#FFF6DE;border-radius:14px;padding:14px 16px;font-size:15px;line-height:1.5;color:#6B4600}
+.docview{position:relative;background:#EEF2FB;border-radius:16px;overflow:auto;max-height:62vh}
+.docview .srcinner{padding:12px}
+.hl{border-color:#E0A800;background:rgba(242,201,76,.28)}
+.frows{display:flex;flex-direction:column;gap:8px}
+.fr{display:grid;grid-template-columns:170px minmax(0,1fr) minmax(0,1fr) auto;align-items:center;gap:12px;border-radius:14px;padding:4px 12px;border:1.5px solid transparent}
+.fr.warn{background:#FFF8E6;border-color:#F2C94C;padding:8px 12px}
+.fr .lab{font-size:15px;font-weight:500;color:#5B6178}
+.fr.warn .lab{font-weight:600;color:#6B4600}
+.fr .inp{background:#FAFBFD;border-color:#E3E6EF;font-weight:500}
+.fr.warn .inp{background:#fff;border-color:#E0B43C}
+.fr .mini{display:none;font-size:12px;font-weight:600;color:#5B6178}
+.fr .st{justify-content:flex-end}
+.fhead{display:grid;grid-template-columns:170px minmax(0,1fr) minmax(0,1fr) auto;gap:12px;padding:0 12px;font-size:12px;font-weight:600;color:#5B6178;text-transform:uppercase;letter-spacing:.04em}
+.foot{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px;border-top:1px solid #E3E6EF;padding-top:16px}
+.foot .ghost{display:inline-flex;align-items:center;gap:8px;min-height:48px;padding:0 16px;border:0;border-radius:12px;background:transparent;color:#141B34;font-size:15px;font-weight:600}
+.btn.lg{min-height:48px;padding:0 22px}
+.seg{display:flex;background:#EEF0F6;border-radius:12px;padding:4px}
+.seg button{min-height:40px;padding:0 14px;border:0;border-radius:9px;background:transparent;color:#2B3A5C;font-size:14px;font-weight:500}
+.seg button[aria-pressed=true]{background:#fff;color:#141B34;font-weight:600}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.stat{background:#fff;border:1px solid #E3E6EF;border-radius:18px;padding:18px;display:flex;flex-direction:column;gap:6px}
+.stat span{font-size:14px;color:#5B6178}.stat b{font-size:30px;font-weight:700}
+.search{flex:1 1 320px;display:flex;align-items:center;gap:10px;background:#fff;border:1px solid #E3E6EF;border-radius:12px;padding:0 14px;min-height:48px}
+.search input{flex:1;border:0;outline:0;font:400 16px Inter,system-ui,sans-serif;background:transparent;min-height:44px;color:#141B34}
+.pill{min-height:48px;padding:0 16px;border-radius:99px;border:1px solid #E3E6EF;background:#fff;color:#141B34;font-size:14px;font-weight:500}
+.pill[aria-pressed=true]{border-color:#141B34;background:#141B34;color:#fff;font-weight:600}
+.tblbox{background:#fff;border:1px solid #E3E6EF;border-radius:20px;overflow-x:auto}
+.tblbox table{width:100%;border-collapse:collapse;min-width:820px;font-size:15px}
+.tblbox th{text-align:left;padding:14px 12px;font-size:13px;font-weight:600;color:#5B6178;text-transform:uppercase;letter-spacing:.04em}
+.tblbox th:first-child,.tblbox td:first-child{padding-left:20px}.tblbox th:last-child,.tblbox td:last-child{padding-right:20px;text-align:right}
+.tblbox td{padding:14px 12px;border-top:1px solid #EEF0F6}
+.ficon{width:40px;height:40px;border-radius:10px;background:#EEF2FB;display:flex;align-items:center;justify-content:center;flex:none;color:#23358F}
+.cards3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.cards4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
+.gcard{background:#fff;border:1px solid #E3E6EF;border-radius:18px;padding:18px;display:flex;flex-direction:column;gap:10px}
+.gcard .src{font-size:17px;font-weight:600}
+.gcard .en{display:flex;align-items:center;gap:8px;color:#23358F}
+.gcard .en input{flex:1;min-width:0;border:1px solid transparent;border-radius:10px;padding:6px 8px;margin-left:-8px;font:600 17px Inter,system-ui,sans-serif;color:#23358F;background:transparent}
+.gcard .en input:hover,.gcard .en input:focus{border-color:#E3E6EF;background:#FAFBFD}
+.tcard{background:#fff;border:1px solid #E3E6EF;border-radius:20px;padding:14px;display:flex;flex-direction:column;gap:12px}
+.tprev{background:#EEF0F6;border-radius:12px;padding:16px;height:170px;box-sizing:border-box;display:flex;justify-content:center}
+.tpage{width:118px;background:#fff;border-radius:4px;padding:12px 10px;box-sizing:border-box;display:flex;flex-direction:column;gap:6px}
+.tpage i{display:block;height:4px;border-radius:2px;background:#DDE3EE}
+.sheetwrap{background:#EEF0F6;border-radius:16px}
+@media (max-width:900px){
+ #app{padding:14px 12px}
+ .stepper{grid-template-columns:repeat(5,minmax(150px,1fr));overflow-x:auto}
+ .fr,.fhead{grid-template-columns:minmax(0,1fr)}
+ .fhead{display:none}.fr .mini{display:block}.fr .st{justify-content:flex-start}
+ .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .cards3{grid-template-columns:minmax(0,1fr)}
+ .cards4{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .vcard .vb{min-width:0;flex:1}.vcard{flex:1 1 100%}
+}
+body.embed .nav,body.embed .brand{display:none}
+body.embed main{padding:0}
+body.embed #app{padding:16px}
 </style>
 </head>
 <body>
 <script>if(/[?&]embed=1/.test(location.search))document.body.classList.add('embed')</script>
 <div id="app">
-  <aside class="nav">
-    <div class="brand"><b>Smart Translator</b><span>ATLAS · demo</span></div>
-    <nav class="navlist" aria-label="Menu Smart Translator" id="navlist"></nav>
-    <div class="navnote">Gambar dibaca di browser ini. Tidak ada yang dikirim ke server.</div>
-  </aside>
+  <header class="tophead">
+    <div class="logo" aria-hidden="true"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="m22 22-5-10-5 10"/><path d="M14 18h6"/></svg></div>
+    <div class="htext"><h1>Smart Translator</h1><p>Foto dokumen, dibaca otomatis, terjemahan siap unduh</p></div>
+    <div id="visionCard"></div>
+  </header>
+  <nav class="tabs" aria-label="Menu Smart Translator" id="navlist"></nav>
   <main><div class="wrap" id="view"></div></main>
 </div>
 <div id="toast" role="status" aria-live="polite"></div>
@@ -228,6 +361,30 @@ function parseKTP(lines){
   return out;
 }
 
+/* ---------- Analisa jenis dokumen (dari teks hasil baca) ---------- */
+const JENIS_DOK=[
+ ['KTP',true,[['NIK',3],['BERLAKU HINGGA',3],['GOL. DARAH',2],['GOL DARAH',2],['KEWARGANEGARAAN',1],['RT/RW',2],['KEL/DESA',2],['KECAMATAN',1]]],
+ ['Kartu Keluarga',false,[['KARTU KELUARGA',4],['NO. KK',3],['KEPALA KELUARGA',3],['STATUS HUBUNGAN DALAM KELUARGA',3],['DOKUMEN IMIGRASI',1]]],
+ ['Akta Kelahiran',false,[['AKTA KELAHIRAN',4],['KELAHIRAN',2],['TELAH LAHIR',3],['ANAK KE',2]]],
+ ['Akta Perkawinan',false,[['AKTA PERKAWINAN',4],['PERKAWINAN',2]]],
+ ['Buku Nikah',false,[['BUKU NIKAH',4],['AKTA NIKAH',4],['KANTOR URUSAN AGAMA',3],['WALI NIKAH',2],['MAHAR',2]]],
+ ['Akta Perceraian',false,[['AKTA PERCERAIAN',4],['PERCERAIAN',2]]],
+ ['Akta Kematian',false,[['AKTA KEMATIAN',4],['KEMATIAN',2],['MENINGGAL',2]]],
+ ['Paspor',false,[['PASPOR',4],['PASSPORT',4],['P<IDN',4]]],
+ ['Ijazah',false,[['IJAZAH',4],['TELAH MENYELESAIKAN',2],['DINYATAKAN LULUS',2]]],
+ ['Transkrip Nilai',false,[['TRANSKRIP',4],['INDEKS PRESTASI',3],['MATA KULIAH',2],['SKS',1]]],
+ ['Rapor',false,[['RAPOR',4],['LAPORAN HASIL BELAJAR',4],['CAPAIAN KOMPETENSI',2]]],
+ ['SKCK',false,[['CATATAN KEPOLISIAN',4],['SKCK',3]]],
+ ['NPWP',false,[['NOMOR POKOK WAJIB PAJAK',4],['NPWP',3]]],
+ ['Surat Keterangan',false,[['SURAT KETERANGAN',2],['MENERANGKAN BAHWA',2]]]
+];
+function deteksiJenis(teks){
+  const u=' '+String(teks||'').toUpperCase().replace(/\s+/g,' ')+' ';
+  const skor=JENIS_DOK.map(([nama,siap,kw])=>({nama,siap,s:kw.reduce((a,[k,w])=>a+(u.includes(k)?w:0),0)})).sort((a,b)=>b.s-a.s);
+  const [a,b]=skor;if(!a||a.s<3)return{nama:'Tidak dikenali',siap:false,yakin:0};
+  return{nama:a.nama,siap:a.siap,yakin:Math.min(99,Math.round(a.s/(a.s+(b?b.s:0))*100))};
+}
+function teksDok(d){return d.pages.map(p=>p.text||'').join('\n\n').trim()}
 /* ---------- Keadaan aplikasi ---------- */
 const S={view:'proses',step:1,docs:[],cur:0,srcTab:'gambar',zoom:false,busy:false,customTpl:null,q:''};
 let uid=0;
@@ -293,9 +450,38 @@ function getWorker(){
   })().catch(e=>{workerP=null;throw e});
   return workerP;
 }
+/* ---------- Google Vision (lewat server ATLAS, kunci di Supabase Secrets) ----------
+   Dipakai bila pengguna login ATLAS (sesi Supabase di perangkat ini). Kuota gratis habis / gagal → Tesseract. */
+const VISION={kuota:null,info:''};
+function sesiAtlas(){try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);const m=k&&k.match(/^sb-([a-z0-9]+)-auth-token$/);if(!m)continue;const v=JSON.parse(localStorage.getItem(k)||'null');const t=v&&(v.access_token||(v.currentSession&&v.currentSession.access_token));if(t)return{url:'https://'+m[1]+'.supabase.co/functions/v1/vision-ocr',token:t}}}catch(e){}return null}
+async function visionPanggil(body){const s=sesiAtlas();if(!s)return null;const r=await fetch(s.url,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+s.token},body:JSON.stringify(body)});return r.json().catch(()=>null)}
+function setKuota(k){if(k&&k.batas){VISION.kuota=k;renderVision()}}
+function visionChip(){return ''}
+function renderVision(){const el=document.getElementById('visionCard');if(!el)return;const k=VISION.kuota;
+  if(!k){el.innerHTML=`<div class="vcard"><span class="dot" style="background:#9AA1B8"></span><div class="vb"><div class="vt"><b>Pembaca: Tesseract</b><span>di perangkat</span></div><small>${sesiAtlas()?'Menghubungkan Google Vision…':'Google Vision aktif saat dibuka dari ATLAS'}</small></div></div>`;return}
+  const sisa=Math.max(0,k.batas-k.halaman),pct=Math.min(100,k.halaman/k.batas*100),hampir=k.halaman>=k.ingat,habis=sisa<=0,c=habis?'#C0392B':hampir?'#E0A800':'#1E9E5A';
+  el.innerHTML=`<div class="vcard"><span class="dot" style="background:${c}"></span><div class="vb"><div class="vt"><b>${habis?'Kuota Vision habis — Tesseract':hampir?'Google Vision hampir habis':'Google Vision aktif'}</b><span>${k.halaman.toLocaleString('id-ID')} / ${k.batas.toLocaleString('id-ID')}</span></div><div class="track"><div style="width:${pct}%;background:${c}"></div></div><small>Gratis bulan ini · sisa ${sisa.toLocaleString('id-ID')} halaman</small></div></div>`}
+/** Kata Vision → baris (dikelompokkan per tinggi baris), format sama dengan Tesseract. */
+function barisDariKata(kata){
+  const w=kata.map(k=>({t:k.t,c:k.c,x0:k.v[0],y0:k.v[1],x1:k.v[2],y1:k.v[3],yc:(k.v[1]+k.v[3])/2,h:Math.max(1,k.v[3]-k.v[1])})).sort((a,b)=>a.yc-b.yc);
+  const rows=[];for(const k of w){const r=rows.find(r=>Math.abs(r.yc-k.yc)<Math.min(r.h,k.h)*0.55);if(r){r.w.push(k);r.yc=(r.yc*(r.w.length-1)+k.yc)/r.w.length}else rows.push({yc:k.yc,h:k.h,w:[k]})}
+  return rows.sort((a,b)=>a.yc-b.yc).map(r=>{r.w.sort((a,b)=>a.x0-b.x0);let txt='';r.w.forEach((k,i)=>{txt+=(i&&!/^[:.,)]/.test(k.t)&&!/[(]$/.test(r.w[i-1].t)?' ':'')+k.t});
+    return{text:txt,conf:Math.min(...r.w.map(k=>k.c)),bbox:{x0:Math.min(...r.w.map(k=>k.x0)),y0:Math.min(...r.w.map(k=>k.y0)),x1:Math.max(...r.w.map(k=>k.x1)),y1:Math.max(...r.w.map(k=>k.y1))}}});
+}
+async function ocrVision(p,c){
+  if(!sesiAtlas())return false;
+  const g=c.toDataURL('image/jpeg',0.88);
+  let j=null;try{j=await visionPanggil({aksi:'baca',gambar:g})}catch(e){j=null}
+  if(!j){if(!VISION.info){VISION.info='x';toast('Google Vision tidak terjangkau — memakai Tesseract')}return false}
+  if(j.kuota)setKuota(j.kuota);
+  if(!j.ok){if(j.alasan&&VISION.info!==j.alasan){VISION.info=j.alasan;toast(j.alasan)}return false}
+  p.lines=barisDariKata(j.kata||[]);p.text=j.teks||p.lines.map(l=>l.text).join('\n');p.engine='vision';p.status='ok';return true;
+}
 async function ocrPage(p){
   if(p.pdfText){p.lines=p.pdfText.map(t=>({text:t,conf:null,bbox:null}));p.text=p.pdfText.join('\n');p.ocrW=0;p.status='ok';p.viaText=true;return}
   const c=gray(drawRot(p.src,p.rot,2000));p.ocrW=c.width;p.ocrH=c.height;
+  if(await ocrVision(p,drawRot(p.src,p.rot,2000)))return;
+  p.engine='tesseract';
   const w=await getWorker();curPage=p;
   const {data}=await w.recognize(c);curPage=null;
   p.text=data.text||'';p.lines=(data.lines||[]).map(l=>({text:l.text,conf:l.confidence,bbox:l.bbox}));
@@ -308,7 +494,7 @@ async function runQueue(){
     for(;;){
       let job=null;for(const d of S.docs){const p=d.pages.find(x=>x.status==='antre');if(p){job=[d,p];break}}
       if(!job)break;const [d,p]=job;p.status='baca';p.progress=0;p.err='';render();
-      try{await ocrPage(p);const first=d.pages.find(x=>x.status==='ok'&&x.lines&&x.lines.length>3&&Object.keys(parseKTP(x.lines)).length>=3);
+      try{await ocrPage(p);d.jenis=deteksiJenis(teksDok(d));if(TUGAS)keAtlas({type:'st-jenis',nama:d.jenis.nama,yakin:d.jenis.yakin});const first=d.pages.find(x=>x.status==='ok'&&x.lines&&x.lines.length>3&&Object.keys(parseKTP(x.lines)).length>=3);
         if(first===p||(!d.fields&&first)){mergeFields(d,parseKTP(first.lines));d.fieldPage=first.id}
         else if(!d.fields&&d.pages.every(x=>x.status==='ok'||x.status==='gagal')){d.fields=makeFields({})}
       }catch(e){curPage=null;p.status='gagal';p.err=(e&&e.message)||String(e)}
@@ -320,18 +506,33 @@ function rereadDoc(d){for(const p of d.pages){p.status='antre'}render();runQueue
 
 /* ---------- Tampilan ---------- */
 const NAV=[['proses','Proses dokumen'],['referensi','Referensi kota'],['pekerjaan','Daftar pekerjaan'],['glosarium','Glosarium'],['template','Template']];
-function renderNav(){$('#navlist').innerHTML=NAV.map(([k,l])=>`<button type="button" data-act="view" data-v="${k}" ${S.view===k?'aria-current="page"':''}>${l}</button>`).join('')}
-function head(title,extra=''){return `<div class="row"><h1 class="grow" style="flex:1 1 200px">${title}</h1>${extra}</div>`}
-function steps(){const can2=S.docs.some(d=>d.fields);return `<ol class="steps" aria-label="Langkah">${['Unggah','Periksa','Unduh'].map((l,i)=>`<li><button type="button" data-act="step" data-s="${i+1}" ${S.step===i+1?'aria-current="step"':''} ${i>0&&!can2?'disabled':''}><i>${i+1}</i>${l}</button></li>`).join('')}</ol>`}
+function renderNav(){$('#navlist').innerHTML=NAV.map(([k,l])=>`<button type="button" data-act="view" data-v="${k}" ${S.view===k?'aria-current="page"':''}>${l}</button>`).join('');renderVision()}
+function head(title,extra='',sub=''){return `<div class="row" style="gap:16px;justify-content:space-between"><div class="col" style="gap:4px;flex:1 1 300px"><h2 class="ptitle">${title}</h2>${sub?`<p class="psub">${sub}</p>`:''}</div>${extra}</div>`}
+function bacaInfo(){const ps=S.docs.flatMap(d=>d.pages);if(!ps.length)return{st:'todo',t:'Google Vision / Tesseract'};
+  if(ps.some(p=>p.status==='baca'||p.status==='antre'))return{st:'now',t:'Membaca…'};
+  const v=ps.filter(p=>p.engine==='vision').length,te=ps.filter(p=>p.engine==='tesseract').length,pdf=ps.filter(p=>p.viaText).length;
+  return{st:'done',t:v?'Google Vision'+(te?' + Tesseract':''):te?'Tesseract':pdf?'Teks PDF':'Selesai'}}
+function steps(){
+  const d=curDoc(),np=S.docs.reduce((a,x)=>a+x.pages.length,0),can2=S.docs.some(x=>x.fields),b=bacaInfo();
+  const nCek=d&&d.fields?d.fields.filter(f=>{const s=statusOf(f);return s.t!=='ok'&&(s.block||s.t==='cek')}).length:0;
+  const it=[
+   ['Unggah',np?np+' halaman':'Foto atau PDF',np?(S.step===1&&b.st!=='done'?'now':'done'):(S.step===1?'now':'todo'),1,true,''],
+   ['Baca otomatis',b.t,b.st,1,!!np,''],
+   ['Periksa',!can2?'Kolom hasil baca':nCek?nCek+' kolom perlu dicek':'Semua beres',S.step===2?'now':S.step>2?'done':'todo',2,can2,nCek&&S.step<=2?'warn':''],
+   ['Terjemahan','Indonesia → Inggris',S.step===3&&!(d&&d.finalDone)?'now':(d&&d.finalDone)?'done':'todo',3,can2,''],
+   ['Unduh','Word / PDF',d&&d.finalDone?'done':'todo',3,can2,'']];
+  return `<ol class="stepper" aria-label="Langkah">${it.map(([t,sub,st,go,ok,w],i)=>`<li class="${st}"><button type="button" data-act="step" data-s="${go}" ${ok?'':'disabled'} ${st==='now'?'aria-current="step"':''}><span class="n">${st==='done'?ic(I.check,18,2.5):i+1}</span><span class="t"><b>${t}</b><span class="${w}">${esc(sub)}</span></span></button></li>`).join('')}</ol>`;
+}
 const chip=(t,c)=>`<span class="chip c-${c}">${esc(t)}</span>`;
-function pageStatus(p){return p.status==='ok'?(p.viaText?chip('Teks PDF','ok'):(p.text.trim().length>20?chip('Terbaca','ok'):chip('Tanpa teks','kosong'))):p.status==='baca'?`<span class="chip c-cek" id="pct${p.id}">Membaca ${p.progress}%</span>`:p.status==='gagal'?chip('Gagal dibaca','salah'):chip('Antre','kosong')}
+function pageStatus(p){return p.status==='ok'?(p.viaText?chip('Teks PDF','ok'):(p.text.trim().length>20?chip(p.engine==='vision'?'Terbaca · Google Vision':p.engine==='tesseract'?'Terbaca · Tesseract':'Terbaca','ok'):chip('Tanpa teks','kosong'))):p.status==='baca'?`<span class="chip c-cek" id="pct${p.id}">Membaca ${p.progress}%</span>`:p.status==='gagal'?chip('Gagal dibaca','salah'):chip('Antre','kosong')}
 function thumbURL(p){if(!p.thumb||p.thumbRot!==p.rot){p.thumb=drawRot(p.src,p.rot,220).toDataURL('image/jpeg',.7);p.thumbRot=p.rot}return p.thumb}
 function viewUnggah(){
-  const jenis=[['KTP',1],['Kartu Keluarga',0],['Akta Kelahiran',0],['Akta Perkawinan',0],['Paspor',0],['Ijazah',0],['Transkrip Nilai',0]].map(([l,on])=>`<button type="button" class="btn" ${on?'aria-pressed="true" style="background:var(--ink);color:#fff;border-color:var(--ink)"':'disabled aria-pressed="false"'}>${l}${on?'':' · menyusul'}</button>`).join('');
+  const terdeteksi=new Set(S.docs.map(d=>d.jenis&&d.jenis.nama).filter(Boolean));const jenis=[['KTP',1],['Kartu Keluarga',0],['Akta Kelahiran',0],['Akta Perkawinan',0],['Paspor',0],['Ijazah',0],['Transkrip Nilai',0]].map(([l,on])=>`<button type="button" class="btn" ${on?'aria-pressed="true" style="background:var(--ink);color:#fff;border-color:var(--ink)"':'disabled aria-pressed="false"'+(terdeteksi.has(l)?' style="opacity:1;border-color:#E0A800;color:#6B4600"':'')}>${l}${on?'':terdeteksi.has(l)?' · terdeteksi':' · menyusul'}</button>`).join('');
   const docs=S.docs.map((d,di)=>`<section class="card pad" aria-label="Dokumen ${di+1}">
-    <div class="row" style="padding-bottom:10px"><b style="font-size:15px">Dokumen ${di+1}</b>${chip('KTP','biru')}<span class="small">${d.pages.length} halaman</span><span class="grow"></span>
+    <div class="row" style="padding-bottom:10px"><b style="font-size:15px">Dokumen ${di+1}</b>${d.jenis?chip(d.jenis.nama,d.jenis.siap?'biru':'cek'):chip('Menganalisa jenis…','kosong')}<span class="small">${d.jenis&&d.jenis.yakin?'terdeteksi otomatis · yakin '+d.jenis.yakin+'% · ':''}${d.pages.length} halaman</span><span class="grow"></span>
     ${di>0?`<button type="button" class="btn sm" data-act="gabung" data-d="${di}">Gabung ke Dokumen ${di}</button>`:''}${d.pages.length>1?`<button type="button" class="btn sm" data-act="pisah" data-d="${di}">Pisahkan halaman</button>`:''}
     <button type="button" class="ib" data-act="hapusdok" data-d="${di}" aria-label="Hapus Dokumen ${di+1}" title="Hapus dokumen">${ic(I.trash)}</button></div>
+    ${d.jenis&&!d.jenis.siap&&d.pages.some(p=>p.status==='ok')?`<div class="col" style="gap:8px;background:#FFF6DE;border-radius:12px;padding:12px 14px;margin-bottom:10px"><span style="font-size:14px;line-height:1.45;color:#6B4600">${d.jenis.nama==='Tidak dikenali'?'Jenis dokumen <b>belum dikenali</b>.':'Terdeteksi <b>'+esc(d.jenis.nama)+'</b>.'} Template otomatis saat ini baru untuk KTP — teks hasil baca tetap bisa dipakai untuk menerjemahkan manual.</span><div class="row"><button type="button" class="btn sm" data-act="salinteks" data-d="${di}">Salin teks</button><button type="button" class="btn sm" data-act="unduhteks" data-d="${di}">Unduh teks (.txt)</button></div></div>`:''}
     ${d.pages.map((p,pi)=>`<div class="pg"><img class="thumb" alt="" src="${thumbURL(p)}"><div class="col grow" style="flex:1 1 180px;gap:6px"><div class="row"><b style="font-weight:600;overflow-wrap:anywhere">Hal. ${pi+1} · ${esc(p.name)}</b>${pageStatus(p)}</div>
       ${p.status==='baca'?`<div class="bar" role="progressbar" aria-label="Progres baca" aria-valuemin="0" aria-valuemax="100"><div id="bar${p.id}" style="width:${p.progress}%"></div></div>`:''}
       ${p.status==='gagal'?`<span class="small" style="color:#9B2318">${esc(p.err)} — koreksi yang sudah diketik tetap aman.</span>`:''}</div>
@@ -342,7 +543,7 @@ function viewUnggah(){
       <button type="button" class="ib" data-act="hapushal" data-d="${di}" data-p="${pi}" aria-label="Hapus halaman" title="Hapus halaman">${ic(I.trash)}</button></div></div>`).join('')}
   </section>`).join('');
   const np=S.docs.reduce((a,d)=>a+d.pages.length,0);
-  return head('Smart Translator',steps())+`<div class="split">
+  return steps()+`<div class="split">
    <div class="col" style="flex:1 1 340px;min-width:0;gap:14px">
     <section class="card pad col" aria-label="Jenis dokumen"><h2>Jenis dokumen</h2><div class="row">${jenis}</div>
       <label class="field">Arah bahasa<select class="inp"><option>Indonesia → Inggris</option></select></label></section>
@@ -358,22 +559,32 @@ function viewUnggah(){
 function docTabs(){return `<div role="group" aria-label="Pilih dokumen" class="row" style="padding:3px;border-radius:12px;background:#E9EBF3;gap:2px">${S.docs.map((d,i)=>`<button type="button" data-act="cur" data-d="${i}" aria-pressed="${i===S.cur}" style="min-height:44px;padding:0 14px;border:0;border-radius:10px;background:${i===S.cur?'var(--ink)':'transparent'};color:${i===S.cur?'#fff':'var(--mute)'};font-size:13px;font-weight:600">Dokumen ${i+1}</button>`).join('')}</div>`}
 function stCell(f){const s=statusOf(f);return s.t==='ok'?`<span class="okmark" aria-label="Beres">${ic(I.check,18,2.4)}</span>`:chip(s.x,s.t)+(s.tick?`<button type="button" class="tick" data-act="tick" data-k="${f.key}">Sudah dicek</button>`:'')}
 function countChips(d){const c={};for(const f of d.fields){const s=statusOf(f);if(s.t!=='ok'&&(s.block||s.t==='kosong'))c[s.t]=(c[s.t]||0)+1}const L={salah:'salah',cek:'perlu diperiksa',manual:'terjemahkan manual',kosong:'kosong'};const r=Object.keys(L).filter(k=>c[k]).map(k=>chip(c[k]+' '+L[k],k)).join('');return r||chip('Semua beres','ok')}
+function rowWarn(f){const s=statusOf(f);return s.t!=='ok'&&s.t!=='kosong'}
 function viewPeriksa(){
-  const d=curDoc();if(!d||!d.fields)return head('Smart Translator',steps())+`<section class="card pad">Belum ada data untuk diperiksa.</section>`;
+  const d=curDoc();if(!d||!d.fields)return steps()+`<section class="c20">Belum ada data untuk diperiksa.</section>`;
   const pg=d.pages.find(p=>p.id===d.fieldPage)||d.pages[0];
-  const rows=d.fields.map(f=>{const df=DEF[f.key];const tr=needsTr(f.key);return `<div class="g4 frow" data-row="${f.key}"><span class="lab">${df.label}${df.req?'':' <span class="small">(opsional)</span>'}</span>
-    <label><span class="mini">Sumber (Indonesia)</span><input class="inp" type="text" data-k="${f.key}" data-c="src" value="${esc(f.src)}" aria-label="${df.label} — sumber" autocomplete="off" spellcheck="false"></label>
-    <label class="${tr?'':'tetap'}"><span class="mini">Terjemahan (Inggris)</span><input class="inp" type="text" data-k="${f.key}" data-c="en" value="${esc(f.en)}" aria-label="${df.label} — terjemahan" autocomplete="off" spellcheck="false" ${tr?'':'style="background:#F7F8FB"'}></label>
+  const nWarn=d.fields.filter(rowWarn).length,nOk=d.fields.length-nWarn,eng=pg&&pg.engine==='vision'?'Google Vision':pg&&pg.viaText?'teks PDF':'Tesseract';
+  const kota=(d.fields.find(f=>f.key==='kabkota')||{}).src||'';
+  const rows=d.fields.map(f=>{const df=DEF[f.key];const tr=needsTr(f.key);return `<div class="fr ${rowWarn(f)?'warn':''}" data-row="${f.key}" id="row-${f.key}"><label class="lab" for="s-${f.key}">${df.label}${df.req?'':' <span class="small">(opsional)</span>'}</label>
+    <span><span class="mini">Sumber (Indonesia)</span><input class="inp" id="s-${f.key}" type="text" data-k="${f.key}" data-c="src" value="${esc(f.src)}" autocomplete="off" spellcheck="false"></span>
+    <span><span class="mini">Terjemahan (Inggris)</span><input class="inp" type="text" data-k="${f.key}" data-c="en" value="${esc(f.en)}" aria-label="${df.label} — terjemahan" autocomplete="off" spellcheck="false" ${tr?'':'readonly'}></span>
     <span class="st" id="st-${f.key}">${stCell(f)}</span></div>`}).join('');
-  const src=pg?`<div class="row" style="padding:6px 8px 6px 14px;border-bottom:1px solid var(--soft);gap:4px"><div role="tablist" class="row grow" style="gap:4px"><button type="button" role="tab" aria-selected="${S.srcTab==='gambar'}" data-act="srctab" data-t="gambar" class="btn sm" style="border:0;background:${S.srcTab==='gambar'?'var(--bg)':'transparent'}">Gambar</button><button type="button" role="tab" aria-selected="${S.srcTab==='teks'}" data-act="srctab" data-t="teks" class="btn sm" style="border:0;background:${S.srcTab==='teks'?'var(--bg)':'transparent'}">Teks OCR asli</button></div>
-     <button type="button" class="ib" data-act="zoom" aria-label="Perbesar" aria-pressed="${S.zoom}" title="Perbesar">${ic(I.zoom)}</button><button type="button" class="ib" data-act="putarcur" aria-label="Putar 90° lalu baca ulang" title="Putar 90° lalu baca ulang">${ic(I.rot)}</button><button type="button" class="ib" data-act="bacacur" aria-label="Baca ulang" title="Baca ulang">${ic(I.redo)}</button></div>
-     ${S.srcTab==='gambar'?`<div class="srcview"><div class="srcinner ${S.zoom?'zoom':''}" id="srcinner"><div class="hl" id="hl"></div></div></div>`:`<pre class="raw">${esc(pg.text||'(tidak ada teks)')}</pre>`}
-     <div class="row small" style="padding:10px 14px"><span>${d.pages.length} halaman</span><span class="grow"></span><span>${pg.viaText?'Teks diambil langsung dari PDF':'Kotak merah = kolom yang dipilih'}</span></div>`
-   :`<div class="pad small">Pekerjaan dibuka dari daftar. Gambar sumber tidak disimpan.</div>`;
-  return head('Smart Translator',steps())+`<div class="row">${S.docs.length>1?docTabs():''}<span id="chips" class="row">${countChips(d)}</span><span class="grow"></span><button type="button" class="btn" data-act="simpan">Simpan draf</button><button type="button" class="btn dark" data-act="step" data-s="3">Lanjut ke hasil</button></div>
-  <div class="split"><section class="card srcbox" aria-label="Dokumen sumber">${src}</section>
-  <section class="card tbl" aria-label="Data dan terjemahan"><div class="g4 thead"><span>Kolom</span><span>Sumber (Indonesia)</span><span>Terjemahan (Inggris)</span><span>Status</span></div>${rows}
-  <div class="row small" style="padding:10px 14px;border-top:1px solid var(--soft)"><span>Angka tidak pernah diperbaiki otomatis</span><span class="grow"></span><span>Koreksi manual tidak ditimpa saat baca ulang</span></div></section></div>`;
+  const left=pg?`<section class="c20" aria-label="Dokumen asli" style="flex:1 1 420px">
+    <div class="row" style="justify-content:space-between"><div class="col" style="gap:2px;flex:1 1 160px"><h2>Dokumen asli</h2><span class="small">${esc(d.name||pg.name)} · ${d.pages.length} halaman</span></div>
+     <div class="row" style="gap:8px"><div class="seg" role="tablist"><button type="button" role="tab" aria-pressed="${S.srcTab==='gambar'}" data-act="srctab" data-t="gambar">Gambar</button><button type="button" role="tab" aria-pressed="${S.srcTab==='teks'}" data-act="srctab" data-t="teks">Teks</button></div>
+     <button type="button" class="ib" style="border:1px solid #E3E6EF;border-radius:12px" data-act="zoom" aria-label="Perbesar" aria-pressed="${S.zoom}">${ic(I.zoom)}</button><button type="button" class="ib" style="border:1px solid #E3E6EF;border-radius:12px" data-act="putarcur" aria-label="Putar 90° lalu baca ulang">${ic(I.rot)}</button></div></div>
+    ${S.srcTab==='gambar'?`<div class="docview"><div class="srcinner ${S.zoom?'zoom':''}" id="srcinner"><div class="hl" id="hl"></div></div></div>`:`<pre class="raw" style="border-radius:16px">${esc(pg.text||'(tidak ada teks)')}</pre>`}
+    <div class="hint">${ic(I.warn||'M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z',20,2)}<span>Kotak <b>kuning</b> = bagian yang sedang dipilih. Baris kuning di kanan = huruf kurang jelas, cocokkan dengan foto.</span></div>
+    <div class="row" style="gap:10px"><button type="button" class="btn grow" data-act="step" data-s="1">Ganti foto</button><button type="button" class="btn grow" data-act="bacacur">Baca ulang</button></div></section>`:'';
+  return steps()+(S.docs.length>1?docTabs():'')+`<div class="two">${left}
+  <section class="c20" aria-label="Hasil baca" style="flex:1.45 1 560px">
+   <div class="row" style="justify-content:space-between;gap:12px"><div class="col" style="gap:4px;flex:1 1 220px"><h2>Hasil baca</h2><span class="small" style="font-size:14px">Dibaca ${eng} · ${d.fields.length} kolom · ${nOk} yakin, ${nWarn} perlu dicek</span></div>
+    <div class="row">${chip(d.jenis?d.jenis.nama:'KTP','biru')}${kota?chip('Kota: '+kota+' (otomatis)','kosong'):''}</div></div>
+   <div class="fhead"><span>Kolom</span><span>Sumber (Indonesia)</span><span>Terjemahan (Inggris)</span><span>Status</span></div>
+   <div class="frows">${rows}</div>
+   <div class="foot"><button type="button" class="ghost" data-act="step" data-s="1">${ic('M19 12H5M12 19l-7-7 7-7',18,2)}Kembali</button>
+    <div class="row" style="gap:10px"><button type="button" class="btn lg" data-act="simpan">Simpan draf</button><button type="button" class="btn dark lg" data-act="step" data-s="3">Lanjut ke terjemahan${ic('M5 12h14M12 5l7 7-7 7',18,2)}</button></div></div>
+  </section></div>`;
 }
 function afterPeriksa(){
   const d=curDoc();if(!d)return;const pg=d.pages.find(p=>p.id===d.fieldPage)||d.pages[0];const box=$('#srcinner');
@@ -426,36 +637,53 @@ async function saveFile(filename,blob){
   catch(e){const c=e&&e.code;if(c==='declined'){toast('Unduhan dibatalkan');return false}if(c==='rate_limited'){toast('Masih ada unduhan yang menunggu. Coba lagi sebentar.');return false}}
   try{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000);toast('Unduhan dimulai: '+filename);return true}catch(e){toast('Unduhan tidak tersedia di tampilan ini');return false}
 }
+/* ATLAS: dibuka dari tugas (?tugas=1) — dokumen sumber dikirim ATLAS, hasil FINAL langsung masuk ke "Hasil pekerjaan" project */
+const TUGAS=/[?&]tugas=1/.test(location.search)&&window.parent!==window;
+function keAtlas(m){try{window.parent.postMessage(m,location.origin)}catch(e){}}
+async function simpanHasil(filename,blob,draft){
+  if(!TUGAS||draft)return saveFile(filename,blob);
+  keAtlas({type:'st-hasil',filename,blob});toast('Dikirim ke ATLAS: '+filename);return true;
+}
+window.addEventListener('message',e=>{
+  if(e.origin!==location.origin||!e.data)return;
+  if(e.data.type==='st-file'&&e.data.blob){S.view='proses';S.step=1;addFiles([new File([e.data.blob],e.data.name||'dokumen',{type:e.data.blob.type||''})]);toast('Dokumen dari tugas dimuat: '+(e.data.name||''))}
+});
 function fileBase(d,draft){const n=(d.fields.find(f=>f.key==='nama')||{}).src||'Tanpa Nama';return (draft?'DRAF ':'')+'Personal Identity Card '+n.replace(/[^A-Za-z0-9 .,'-]/g,'').trim()}
 async function unduh(kind,draft){
   const d=curDoc();if(!d||!d.fields)return;const is=issues(d);
   if(!draft&&(is.length||!d.confirmed)){toast('Final belum bisa: bereskan catatan dan centang "sudah diperiksa".');return}
   const v=vals(d,draft);
   if(kind==='docx'){const r=fillDocx(tplBytes(d),v);if(r.leftovers.length){toast('Template masih punya placeholder tak dikenal: '+r.leftovers.join(', '));if(!draft)return}
-    if(await saveFile(fileBase(d,draft)+'.docx',r.blob))done(d,draft)}
-  else{if(d.tpl==='khusus'){toast('PDF hanya untuk template master.');return}if(await saveFile(fileBase(d,draft)+'.pdf',makePDF(v,d.tpl==='belakang')))done(d,draft)}
+    if(await simpanHasil(fileBase(d,draft)+'.docx',r.blob,draft))done(d,draft)}
+  else{if(d.tpl==='khusus'){toast('PDF hanya untuk template master.');return}if(await simpanHasil(fileBase(d,draft)+'.pdf',makePDF(v,d.tpl==='belakang'),draft))done(d,draft)}
 }
 function done(d,draft){if(!draft)d.finalDone=true;saveJob(d,true);if(S.view==='proses'&&S.step===3)render()}
 function viewHasil(){
-  const d=curDoc();if(!d||!d.fields)return head('Smart Translator',steps())+`<section class="card pad">Belum ada data.</section>`;
+  const d=curDoc();if(!d||!d.fields)return steps()+`<section class="c20">Belum ada data.</section>`;
   const is=issues(d),okFinal=!is.length&&d.confirmed,draft=!okFinal;const v=vals(d,draft);
   const tp=[['depan','KTP — depan saja','Inggris · A4 · '+TPL_VERSION],['belakang','KTP — depan + belakang','Inggris · A4 · '+TPL_VERSION]];if(S.customTpl)tp.push(['khusus','Template unggahan',S.customTpl.name]);
-  const ck=(ok,t,k='')=>`<div class="ck"><i style="background:${ok?'#E3F4E8':'#FFF1C7'};color:${ok?'#17693A':'#6B4E00'}">${ok?'✓':'!'}</i><span class="grow">${t}</span>${k?`<span class="small">${esc(k)}</span>`:''}</div>`;
+  const ck=(ok,t,k='')=>`<div class="ck"><i style="background:${ok?'#E3F5EC':'#FFF1C7'};color:${ok?'#136C3F':'#6B4600'}">${ok?'✓':'!'}</i><span class="grow">${t}</span>${k?`<span class="small">${esc(k)}</span>`:''}</div>`;
   const reqMiss=d.fields.filter(f=>DEF[f.key].req&&!String(f.src).trim()).length,man=d.fields.filter(f=>statusOf(f).t==='manual').length,cek=d.fields.filter(f=>statusOf(f).t==='cek').length,nik=statusOf(d.fields.find(f=>f.key==='nik'));
-  return head('Smart Translator',steps())+`<div class="split">
-  <div class="col" style="flex:1 1 340px;min-width:0;gap:14px">
-   ${S.docs.length>1?docTabs():''}
-   <section class="card pad col" aria-label="Template"><h2>Template</h2>${tp.map(([k,l,s])=>`<label class="radio ${d.tpl===k?'on':''}"><input type="radio" name="tpl" value="${k}" ${d.tpl===k?'checked':''}><span class="col" style="gap:1px"><b style="font-weight:600">${l}</b><span class="small">${esc(s)}</span></span></label>`).join('')}</section>
-   <section class="card pad col" aria-label="Pemeriksaan" style="gap:6px"><h2>Sebelum unduh final</h2>
+  const glos=d.fields.filter(f=>f.src&&f.en&&f.src.toUpperCase()!==f.en.toUpperCase()&&!f.enManual).slice(0,3).map(f=>chip(f.src+' → '+f.en,'biru')).join('');
+  return steps()+(S.docs.length>1?docTabs():'')+`<div class="two">
+  <section class="c20" aria-label="Pratinjau terjemahan" style="flex:999 1 640px">
+   <div class="row" style="justify-content:space-between;gap:12px"><div class="col" style="gap:4px;flex:1 1 220px"><h2>Pratinjau terjemahan</h2><span class="small" style="font-size:14px">Indonesia → Inggris · ${draft?'masih draf — bereskan catatan di kanan':'siap final'}</span></div>${draft?chip('DRAF','cek'):chip('FINAL','ok')}</div>
+   ${d.tpl==='khusus'?`<div class="small">Template unggahan tidak bisa dipratinjau di sini. Unduh DOCX untuk melihat hasilnya.</div>`:`<div class="sheetwrap" id="sheetwrap"><div id="sheetbox"><div class="sheet" id="sheet">${sheetHTML(v,d.tpl==='belakang')}</div></div></div>`}
+  </section>
+  <aside class="col" aria-label="Pengaturan dan unduh" style="flex:1 1 340px;min-width:0;gap:16px">
+   <section class="c20" aria-label="Atur hasil"><h2>Atur hasil</h2>
+    <div class="col" style="gap:8px"><span class="field">Template</span>${tp.map(([k,l,s])=>`<label class="radio ${d.tpl===k?'on':''}"><input type="radio" name="tpl" value="${k}" ${d.tpl===k?'checked':''}><span class="col" style="gap:1px"><b style="font-weight:600">${l}</b><span class="small">${esc(s)}</span></span></label>`).join('')}</div>
+    ${glos?`<div class="col" style="gap:8px;background:#F6F7FB;border-radius:14px;padding:14px"><b style="font-size:14px;font-weight:600">Dipakai dari Glosarium</b><div class="row" style="gap:6px">${glos}</div></div>`:''}
+   </section>
+   <section class="c20" aria-label="Pemeriksaan" style="gap:6px"><h2>Sebelum unduh final</h2>
     ${ck(!reqMiss,'Kolom wajib terisi',reqMiss?reqMiss+' kosong':'')}${ck(nik.t==='ok','NIK 16 digit',nik.t==='ok'?'':nik.x)}${ck(!man,'Semua terjemahan terisi',man?man+' belum':'')}${ck(!cek,'Data meragukan sudah dicek',cek?cek+' belum':'')}
     <label class="cekbox"><input type="checkbox" id="konf" ${d.confirmed?'checked':''}>Saya sudah memeriksa data ini</label></section>
-   <section class="card pad col" aria-label="Unduh"><h2>Unduh</h2>
-    <div class="row"><button type="button" class="btn dark grow" data-act="dl" data-k="docx" data-f="1" ${okFinal?'':'disabled'}>${ic(I.down,15)}DOCX final</button><button type="button" class="btn dark grow" data-act="dl" data-k="pdf" data-f="1" ${okFinal&&d.tpl!=='khusus'?'':'disabled'}>${ic(I.down,15)}PDF final</button></div>
-    <div class="row"><button type="button" class="btn grow" data-act="dl" data-k="docx">${ic(I.down,15)}DOCX draf</button><button type="button" class="btn grow" data-act="dl" data-k="pdf" ${d.tpl!=='khusus'?'':'disabled'}>${ic(I.down,15)}PDF draf</button></div>
-    <span class="small">Hasil ini draf untuk ditinjau penerjemah. Pernyataan, tanda tangan, dan cap tidak dibuat otomatis.</span></section>
-  </div>
-  <section class="card" aria-label="Pratinjau" style="flex:2 1 520px;min-width:0;overflow:hidden"><div class="row" style="padding:10px 14px;border-bottom:1px solid var(--soft)"><b class="grow" style="flex:1 1 120px">Pratinjau</b>${draft?chip('DRAF','cek'):chip('FINAL','ok')}</div>
-   ${d.tpl==='khusus'?`<div class="pad small">Template unggahan tidak bisa dipratinjau di sini. Unduh DOCX untuk melihat hasilnya.</div>`:`<div class="sheetwrap" id="sheetwrap"><div id="sheetbox"><div class="sheet" id="sheet">${sheetHTML(v,d.tpl==='belakang')}</div></div></div>`}</section></div>`;
+   <section class="c20" aria-label="Unduh" style="gap:10px"><h2>Unduh</h2>
+    <button type="button" class="btn dark lg" data-act="dl" data-k="docx" data-f="1" ${okFinal?'':'disabled'}>${ic(I.down,18)}${TUGAS?'Kirim Word (.docx) ke tugas':'Unduh Word (.docx)'}</button>
+    <button type="button" class="btn lg" data-act="dl" data-k="pdf" data-f="1" ${okFinal&&d.tpl!=='khusus'?'':'disabled'}>${TUGAS?'Kirim PDF ke tugas':'Unduh PDF'}</button>
+    <div class="row" style="gap:8px"><button type="button" class="btn sm grow" data-act="dl" data-k="docx">Draf .docx</button><button type="button" class="btn sm grow" data-act="dl" data-k="pdf" ${d.tpl!=='khusus'?'':'disabled'}>Draf PDF</button></div>
+    ${TUGAS?'<span class="small"><b>Final</b> langsung masuk ke “Hasil pekerjaan Anda” di ATLAS. Draf terunduh ke perangkat.</span>':''}<span class="small">Pernyataan, tanda tangan, dan cap tidak dibuat otomatis.</span></section>
+  </aside></div>`;
 }
 function fitSheet(){const w=$('#sheetwrap'),b=$('#sheetbox'),s=$('#sheet');if(!w||!s)return;const k=Math.min(1,(w.clientWidth-32)/794);s.style.transform='scale('+k+')';b.style.width=794*k+'px';b.style.height=s.offsetHeight*k+'px';b.style.boxShadow='0 2px 10px rgba(20,27,52,.15)';b.style.flexShrink='0'}
 
@@ -468,22 +696,31 @@ function saveJob(d,quiet){
   const i=JOBS.findIndex(x=>x.id===j.id);if(i>=0)JOBS[i]=j;else JOBS.unshift(j);const ok=store.set('st_jobs_v1',JOBS);if(!quiet)toast(ok?'Draf disimpan di browser ini':'Penyimpanan browser tidak tersedia');
 }
 function viewPekerjaan(){
-  const q=S.q.toLowerCase();const list=JOBS.filter(j=>!q||[j.nama,j.jenis,j.status,j.waktu.slice(0,10)].join(' ').toLowerCase().includes(q));
-  const tone={'Perlu diperiksa':'cek','Sudah diperiksa':'biru','Siap diunduh':'ok'};
-  return head('Daftar pekerjaan')+`<section class="card joblist" style="overflow:hidden"><div class="row" style="padding:12px 14px"><input class="inp" id="q" type="search" placeholder="Cari nama, jenis, tanggal, status" aria-label="Cari pekerjaan" value="${esc(S.q)}" style="flex:1 1 220px;max-width:340px">
-   <span class="grow"></span>${JOBS.length?`<button type="button" class="btn" data-act="hapussemua">Hapus semua</button>`:''}</div>
-   ${list.map(j=>`<div class="g5" style="padding:10px 14px;border-top:1px solid #F1F2F7"><b style="font-weight:600;overflow-wrap:anywhere">${esc(j.nama)}</b><span>${esc(j.jenis)}</span><span class="small">${new Date(j.waktu).toLocaleString('id-ID',{dateStyle:'medium',timeStyle:'short'})}<br>${esc(j.versi)}</span><span>${chip(j.status,tone[j.status]||'kosong')}</span><span class="row" style="gap:4px"><button type="button" class="btn sm blue" data-act="bukajob" data-id="${j.id}">Buka</button><button type="button" class="ib" data-act="hapusjob" data-id="${j.id}" aria-label="Hapus ${esc(j.nama)}" title="Hapus">${ic(I.trash)}</button></span></div>`).join('')||`<div style="padding:40px 14px;text-align:center;color:var(--mute);border-top:1px solid #F1F2F7">${JOBS.length?'Tidak ada yang cocok':'Belum ada pekerjaan tersimpan'}</div>`}
-   <div class="small" style="padding:10px 14px;border-top:1px solid var(--soft)">Hanya teks hasil periksa yang disimpan, dan hanya di browser ini. Gambar dokumen tidak disimpan.</div></section>`;
+  const q=S.q.toLowerCase(),f=S.jf||'semua';
+  const tone={'Perlu diperiksa':['#FFF1C7','#6B4600','Periksa'],'Sudah diperiksa':['#E8EEFF','#23358F','Lanjutkan'],'Siap diunduh':['#E3F5EC','#136C3F','Unduh']};
+  const cnt=k=>JOBS.filter(j=>j.status===k).length;const k=VISION.kuota;
+  const list=JOBS.filter(j=>(f==='semua'||j.status===f)&&(!q||[j.nama,j.jenis,j.status,j.waktu.slice(0,10)].join(' ').toLowerCase().includes(q)));
+  const pills=[['semua','Semua'],['Perlu diperiksa','Perlu dicek'],['Sudah diperiksa','Siap diterjemahkan'],['Siap diunduh','Selesai']].map(([v,l])=>`<button type="button" class="pill" data-act="jf" data-f="${v}" aria-pressed="${f===v}">${l}</button>`).join('');
+  return head('Daftar pekerjaan',`<button type="button" class="btn dark lg" data-act="view" data-v="proses">${ic(I.up,18)}Proses dokumen baru</button>`,'Semua dokumen yang sedang dan sudah diproses')+`
+  <div class="stats"><div class="stat"><span>Perlu dicek</span><b style="color:#8A5A00">${cnt('Perlu diperiksa')}</b></div><div class="stat"><span>Siap diterjemahkan</span><b style="color:#23358F">${cnt('Sudah diperiksa')}</b></div><div class="stat"><span>Selesai</span><b style="color:#136C3F">${cnt('Siap diunduh')}</b></div><div class="stat"><span>Kuota Google Vision</span><b>${k?Math.max(0,k.batas-k.halaman).toLocaleString('id-ID'):'—'} <span style="font-size:15px">halaman sisa</span></b></div></div>
+  <div class="row" style="gap:10px"><label class="search"><span class="small" style="position:absolute;width:1px;height:1px;overflow:hidden">Cari</span>${ic('M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16ZM21 21l-4.3-4.3',18,2)}<input id="q" type="search" placeholder="Cari nama, jenis, tanggal, status" value="${esc(S.q)}"></label>${pills}</div>
+  <div class="tblbox"><table><thead><tr><th>Dokumen</th><th>Jenis</th><th>Versi template</th><th>Status</th><th>Diperbarui</th><th>Aksi</th></tr></thead><tbody>
+  ${list.map(j=>{const t=tone[j.status]||['#EEF0F6','#2B3A5C','Buka'];return `<tr><td><div class="row" style="gap:12px;flex-wrap:nowrap"><span class="ficon">${ic('M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7ZM14 2v4a2 2 0 0 0 2 2h4',20,2)}</span><b style="font-weight:600;overflow-wrap:anywhere">${esc(j.nama)}</b></div></td><td>${esc(j.jenis)}</td><td class="small">${esc(j.versi)}</td><td><span class="chip" style="background:${t[0]};color:${t[1]}">${esc(j.status)}</span></td><td class="small">${new Date(j.waktu).toLocaleString('id-ID',{dateStyle:'medium',timeStyle:'short'})}</td><td><div class="row" style="gap:4px;justify-content:flex-end;flex-wrap:nowrap"><button type="button" class="btn sm" data-act="bukajob" data-id="${j.id}">${t[2]}</button><button type="button" class="ib" data-act="hapusjob" data-id="${j.id}" aria-label="Hapus ${esc(j.nama)}">${ic(I.trash)}</button></div></td></tr>`}).join('')||`<tr><td colspan="6" style="padding:40px 14px;text-align:center;color:#5B6178">${JOBS.length?'Tidak ada yang cocok':'Belum ada pekerjaan tersimpan'}</td></tr>`}
+  </tbody></table></div>
+  <div class="row small" style="justify-content:space-between"><span>Hanya teks hasil periksa yang disimpan, dan hanya di browser ini. Gambar dokumen tidak disimpan.</span>${JOBS.length?`<button type="button" class="btn sm" data-act="hapussemua">Hapus semua</button>`:''}</div>`;
 }
 
 /* ---------- Glosarium ---------- */
 function viewGlos(){
-  const opts=Object.entries(GROUPS).map(([k,l])=>`<option value="${k}">${l}</option>`).join('');
-  return head('Glosarium',`<button type="button" class="btn" data-act="glosreset">Kembalikan bawaan</button>`)+`<section class="card" style="overflow:hidden">
-   <div class="row pad" style="align-items:flex-end"><label class="field" style="flex:1 1 150px">Kelompok<select class="inp" id="gg">${opts}</select></label><label class="field" style="flex:2 1 180px">Sumber<input class="inp" id="gs" type="text" autocomplete="off"></label><label class="field" style="flex:2 1 180px">Terjemahan baku<input class="inp" id="ge" type="text" autocomplete="off"></label><button type="button" class="btn dark" data-act="glosadd">${ic(I.plus,15)}Tambah</button></div>
-   <div class="g3 thead"><span>Kelompok</span><span>Sumber</span><span>Terjemahan baku</span><span></span></div>
-   ${GLOS.map((x,i)=>`<div class="g3" style="padding:4px 14px;min-height:52px;border-top:1px solid #F1F2F7"><span class="gk">${chip(GROUPS[x.g]||x.g,'kosong')}</span><b class="gk" style="font-weight:600;overflow-wrap:anywhere">${esc(x.src)}</b><input class="inp" type="text" data-gi="${i}" value="${esc(x.en)}" aria-label="Terjemahan ${esc(x.src)}"><button type="button" class="ib" data-act="glosdel" data-i="${i}" aria-label="Hapus ${esc(x.src)}" title="Hapus">${ic(I.trash)}</button></div>`).join('')}
-   <div class="small" style="padding:10px 14px;border-top:1px solid var(--soft)">Bawaan diambil dari istilah yang paling sering dipakai di 140 terjemahan KTP. Label kolom mengikuti template.</div></section>`;
+  const g=S.gf||'semua',opts=Object.entries(GROUPS).map(([k,l])=>`<option value="${k}">${l}</option>`).join('');
+  const pills=[['semua','Semua'],...Object.entries(GROUPS)].map(([k,l])=>`<button type="button" class="pill" data-act="gf" data-g="${k}" aria-pressed="${g===k}">${l}</button>`).join('');
+  const items=GLOS.map((x,i)=>[x,i]).filter(([x])=>g==='semua'||x.g===g);
+  return head('Glosarium',`<button type="button" class="btn lg" data-act="glosreset">Kembalikan bawaan</button>`,'Istilah baku 247 — dipakai otomatis saat menerjemahkan')+`
+  <section class="c20" aria-label="Tambah istilah" style="flex-direction:row;flex-wrap:wrap;align-items:flex-end;gap:12px"><label class="field" style="flex:1 1 160px">Kategori<select class="inp" id="gg">${opts}</select></label><label class="field" style="flex:2 1 200px">Istilah Indonesia<input class="inp" id="gs" type="text" autocomplete="off"></label><label class="field" style="flex:2 1 200px">Terjemahan baku<input class="inp" id="ge" type="text" autocomplete="off"></label><button type="button" class="btn dark lg" data-act="glosadd">${ic(I.plus,18)}Tambah istilah</button></section>
+  <div class="row" style="gap:10px">${pills}</div>
+  <div class="cards3">${items.map(([x,i])=>`<article class="gcard"><div class="row" style="justify-content:space-between"><span class="chip c-kosong">${esc(GROUPS[x.g]||x.g)}</span><button type="button" class="ib" data-act="glosdel" data-i="${i}" aria-label="Hapus ${esc(x.src)}">${ic(I.trash)}</button></div>
+   <span class="src">${esc(x.src)}</span><span class="en">${ic('M5 12h14M12 5l7 7-7 7',16,2)}<input type="text" data-gi="${i}" value="${esc(x.en)}" aria-label="Terjemahan ${esc(x.src)}"></span></article>`).join('')||'<div class="small">Belum ada istilah di kategori ini.</div>'}</div>
+  <div class="small">Bawaan diambil dari istilah yang paling sering dipakai di 140 terjemahan KTP. Klik teks biru untuk mengubah terjemahan.</div>`;
 }
 
 /* ---------- Template ---------- */
@@ -495,19 +732,17 @@ function checkTpl(bytes){
 }
 function viewTpl(){
   const c=S.customTpl;
-  return head('Template')+`<div class="split"><div class="col" style="flex:1 1 380px;min-width:0;gap:14px">
-   <section class="card pad col"><h2>Template master KTP · ${TPL_VERSION}</h2><span class="small" style="font-size:13px">Dibuat ulang dari pola 140 terjemahan KTP: A4, Times New Roman 12pt, kotak TRANSLATION, kartu berbingkai. Halaman pernyataan penerjemah terpisah dan tidak termasuk.</span>
-    <div class="row"><button type="button" class="btn" data-act="dltpl" data-t="depan">${ic(I.down,15)}Depan saja (.docx)</button><button type="button" class="btn" data-act="dltpl" data-t="belakang">${ic(I.down,15)}Depan + belakang (.docx)</button></div></section>
-   <section class="card pad col"><h2>Placeholder yang dikenal</h2><div class="row" style="gap:6px">${KEYS.map(k=>`<code>{{${k}}}</code>`).join('')}</div></section></div>
-   <section class="card pad col" style="flex:1 1 380px;min-width:0"><h2>Unggah template sendiri</h2><span class="small" style="font-size:13px">File .docx dengan placeholder di atas. Tiap placeholder harus diketik sekali jalan, tanpa ganti format di tengahnya.</span>
-    <button type="button" class="btn dark" data-act="pilihtpl" style="align-self:flex-start">Pilih file .docx</button>
-    ${c?`<div class="col" style="gap:8px;border-top:1px solid var(--soft);padding-top:12px"><b>${esc(c.name)}</b>
+  const page=`<div class="tprev"><div class="tpage"><i style="height:6px;width:70%;margin:0 auto;background:#9FB2D1"></i><i style="width:50%;margin:0 auto 4px;background:#C8D3E6"></i><i style="width:90%"></i><i style="width:80%"></i><i style="width:86%"></i><i style="width:72%"></i><i style="width:90%"></i><i style="width:60%"></i><i style="height:14px;width:40%;margin-top:auto;align-self:flex-end;background:transparent;border:1px solid #C8D3E6;border-radius:3px"></i></div></div>`;
+  const card=(nama,sub,siap,aksi)=>`<article class="tcard">${page}<div class="col" style="gap:4px;padding:0 4px"><b style="font-size:16px;font-weight:600">${nama}</b><span class="small">${sub}</span></div><div class="row" style="justify-content:space-between;padding:0 4px 2px"><span class="chip ${siap?'c-ok':'c-cek'}">${siap?'Siap dipakai':'Menyusul'}</span>${aksi||''}</div></article>`;
+  const master=[['KTP — depan','A4 · Times New Roman 12 · '+TPL_VERSION,1,`<button type="button" class="btn sm" data-act="dltpl" data-t="depan">${ic(I.down,16)}Unduh</button>`],['KTP — depan + belakang','A4 · '+TPL_VERSION,1,`<button type="button" class="btn sm" data-act="dltpl" data-t="belakang">${ic(I.down,16)}Unduh</button>`],['Kartu Keluarga','Tabel anggota · TTE',0],['Akta Kelahiran','Dukcapil · QR',0],['Buku Nikah','KUA · 2 buku',0],['Akta Perkawinan','Dukcapil',0],['Ijazah','SMA / S1 · format tanggal',0],['Transkrip Nilai','Tabel mata kuliah',0]];
+  return head('Template',`<button type="button" class="btn lg" data-act="pilihtpl">Unggah template Word</button>`,'Format terjemahan per jenis dokumen — dipilih otomatis sesuai hasil baca')+`
+  <div class="cards4">${master.map(m=>card(...m)).join('')}</div>
+  ${c?`<section class="c20" style="gap:8px"><h2>${esc(c.name)}</h2>
       <div class="row">${chip(c.r.ok.length+' placeholder siap','ok')}${c.r.pecah.length?chip(c.r.pecah.length+' terpecah','salah'):''}${c.r.asing.length?chip(c.r.asing.length+' tidak dikenal','salah'):''}${c.r.belum.length?chip(c.r.belum.length+' belum dipakai','cek'):''}</div>
       ${c.r.pecah.length?`<span class="small">Terpecah (ketik ulang di Word tanpa mengubah format): ${c.r.pecah.map(k=>'<code>{{'+esc(k)+'}}</code>').join(' ')}</span>`:''}
       ${c.r.asing.length?`<span class="small">Tidak dikenal: ${c.r.asing.map(k=>'<code>{{'+esc(k)+'}}</code>').join(' ')}</span>`:''}
-      ${c.r.belum.length?`<span class="small">Belum dipakai: ${c.r.belum.map(k=>'<code>{{'+esc(k)+'}}</code>').join(' ')}</span>`:''}
-      <b style="color:${c.usable?'#17693A':'#9B2318'}">${c.usable?'Bisa dipakai di langkah Unduh (selama halaman ini terbuka).':'Belum bisa dipakai. Perbaiki dulu catatan merah.'}</b></div>`:''}
-   </section></div>`;
+      <b style="color:${c.usable?'#136C3F':'#9B2318'}">${c.usable?'Bisa dipakai di langkah Unduh (selama halaman ini terbuka).':'Belum bisa dipakai. Perbaiki dulu catatan merah.'}</b></section>`:''}
+  <section class="c20" style="gap:10px"><h2>Placeholder untuk template Word sendiri</h2><span class="small">Ketik tiap placeholder sekali jalan, tanpa ganti format di tengahnya.</span><div class="row" style="gap:6px">${KEYS.map(k=>`<code>{{${k}}}</code>`).join('')}</div></section>`;
 }
 
 /* ---------- Render & aksi ---------- */
@@ -521,7 +756,7 @@ function render(){
   else v.innerHTML=viewTpl();
   window.scrollTo(0,sy);
 }
-function refreshStatus(key){const d=curDoc();const f=d.fields.find(x=>x.key===key);const c=$('#st-'+key);if(c)c.innerHTML=stCell(f);const ch=$('#chips');if(ch)ch.innerHTML=countChips(d)}
+function refreshStatus(key){const d=curDoc();const f=d.fields.find(x=>x.key===key);const c=$('#st-'+key);if(c)c.innerHTML=stCell(f);const rw=$('#row-'+key);if(rw)rw.classList.toggle('warn',rowWarn(f));const ch=$('#chips');if(ch)ch.innerHTML=countChips(d)}
 document.addEventListener('click',async e=>{
   const b=e.target.closest('[data-act]');if(!b)return;const a=b.dataset.act,di=+b.dataset.d,pi=+b.dataset.p;
   if(a==='view'){S.view=b.dataset.v;render()}
@@ -549,6 +784,10 @@ document.addEventListener('click',async e=>{
   else if(a==='glosadd'){const g=$('#gg').value,s=norm($('#gs').value),en=$('#ge').value.trim().toUpperCase();if(!s||!en){toast('Isi sumber dan terjemahan');return}GLOS=GLOS.filter(x=>!(x.g===g&&norm(x.src)===s));GLOS.unshift({g,src:s,en});store.set('st_glos_v1',GLOS);render()}
   else if(a==='glosdel'){GLOS.splice(+b.dataset.i,1);store.set('st_glos_v1',GLOS);render()}
   else if(a==='glosreset'){GLOS=GLOS_DEFAULT.map(x=>({...x}));store.set('st_glos_v1',GLOS);render();toast('Glosarium dikembalikan ke bawaan')}
+  else if(a==='jf'){S.jf=b.dataset.f;render()}
+  else if(a==='gf'){S.gf=b.dataset.g;render()}
+  else if(a==='salinteks'){const d=S.docs[+b.dataset.d];navigator.clipboard.writeText(teksDok(d)).then(()=>toast('Teks disalin'),()=>toast('Tidak bisa menyalin di tampilan ini'))}
+  else if(a==='unduhteks'){const d=S.docs[+b.dataset.d];saveFile((d.jenis?d.jenis.nama:'Dokumen')+' - teks hasil baca.txt',new Blob([teksDok(d)],{type:'text/plain'}))}
   else if(a==='dltpl'){const t=b.dataset.t;saveFile('Template KTP '+(t==='belakang'?'depan-belakang':'depan')+' '+TPL_VERSION+'.docx',new Blob([b64bytes(TPL_B64[t])],{type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'}))}
   else if(a==='pilihtpl')$('#tplIn').click();
 });
@@ -583,6 +822,8 @@ function contohKTP(){
   x.fillStyle='#B9CCDB';x.fillRect(960,180,270,340);x.fillStyle='#111';x.textAlign='center';x.font='24px Arial';x.fillText('KOTA DENPASAR',1095,580);x.fillText('12-03-2021',1095,614);return c;
 }
 render();
+if(TUGAS)keAtlas({type:'st-siap'});
+if(sesiAtlas())visionPanggil({aksi:'kuota'}).then(j=>{if(j&&j.ok&&j.aktif)setKuota(j)}).catch(()=>{});
 </script>
 <script src="ref.js"></script>
 </body>

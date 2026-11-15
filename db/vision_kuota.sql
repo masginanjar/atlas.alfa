@@ -1,0 +1,5 @@
+-- Diterapkan ke Supabase 15 Nov 2026 (migrasi "vision_kuota").
+-- Tabel vision_kuota (kuota Google Vision per bulan, zona Pacific) + vision_pakai_log,
+-- RLS: baca kuota hanya dengan izin smart-translator.lihat; tulis hanya lewat service role.
+-- Fungsi app_vision_ambil(n) / app_vision_kembali(bulan, n) — SECURITY DEFINER, hanya service_role.
+-- Edge function: supabase/functions/vision-ocr (secret GOOGLE_VISION_KEY).
