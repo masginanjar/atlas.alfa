@@ -368,8 +368,27 @@ const demo = {
   async setUserPassword(email) {
     const u = load().users.find((x) => String(x.email).toLowerCase() === String(email).toLowerCase())
     if (!u) throw new Error('Email itu tidak terdaftar di ATLAS.')
+    const d = load(); const t = d.users.find((x) => x.id === u.id); t.wajib_ganti_sandi = true
+    for (const p of d.permintaan_sandi || []) if (p.user_id === u.id) p.status = 'selesai'
+    save(d)
     return { ok: true, demo: true, nama: u.name }
   },
+  // Demo: alur wajib ganti sandi & permintaan reset disimulasikan di penyimpanan lokal (tidak ada sandi sungguhan).
+  async selesaiGantiSandi(password, emailAsli) {
+    const d = load(); let id = null; try { id = sessionStorage.getItem(KEY + ':me') } catch { /* abaikan */ }
+    const u = d.users.find((x) => x.id === id); if (!u) throw new Error('Sesi habis. Masuk ulang.')
+    delete u.wajib_ganti_sandi; u.sandi_diganti_at = new Date().toISOString()
+    d.akun_kontak = [...(d.akun_kontak || []).filter((k) => k.user_id !== u.id), { user_id: u.id, email_asli: emailAsli, dicatat_at: new Date().toISOString() }]
+    save(d)
+  },
+  async mintaResetSandi(email) {
+    const d = load(); const u = d.users.find((x) => String(x.email).toLowerCase() === String(email).trim().toLowerCase() && x.active !== false)
+    if (u && !(d.permintaan_sandi || []).some((p) => p.user_id === u.id && p.status === 'baru')) { d.permintaan_sandi = [{ id: 'ps-' + Date.now(), user_id: u.id, email: u.email, nama: u.name, cabang: u.branch, role: u.role, dibuat_at: new Date().toISOString(), status: 'baru' }, ...(d.permintaan_sandi || [])]; save(d) }
+    return { ok: true, pesan: 'Bila email itu terdaftar, permintaan sudah diteruskan ke Superadmin. Kata sandi sementara akan diberikan langsung oleh Superadmin.' }
+  },
+  async permintaanSandi() { return (load().permintaan_sandi || []).filter((p) => p.status === 'baru') },
+  async tutupPermintaanSandi(id) { const d = load(); for (const p of d.permintaan_sandi || []) if (p.id === id) p.status = 'selesai'; save(d) },
+  async kontakAkun() { return load().akun_kontak || [] },
   async signIn(email) {
     const u = load().users.find((x) => x.email.toLowerCase() === email.toLowerCase() && x.active !== false)
     if (!u) throw new Error('User tidak ditemukan')

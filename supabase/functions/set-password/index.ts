@@ -74,15 +74,24 @@ Deno.serve(async (req) => {
       if ((data?.users || []).length < 200) break
     }
 
+    // Sandi yang ditetapkan Superadmin bersifat SEMENTARA: pemiliknya wajib menggantinya saat login berikutnya
+    // (kecuali Superadmin mengganti sandinya sendiri). Permintaan "lupa sandi" akun itu ikut ditutup.
+    const tandai = async () => {
+      if (target !== email) await admin.from("users").update({ doc: { ...(targetRow.doc || {}), wajib_ganti_sandi: true } }).eq("id", targetRow.id)
+      await admin.from("permintaan_sandi").update({ status: "selesai", selesai_at: new Date().toISOString(), selesai_oleh: akun.id }).eq("user_id", targetRow.id).eq("status", "baru")
+    }
+
     if (authUser) {
       const { error } = await admin.auth.admin.updateUserById(authUser.id, { password: sandi })
       if (error) return json({ error: error.message }, 500)
+      await tandai()
       return json({ ok: true, dibuat: false, nama: targetRow.doc?.name || target })
     }
 
     // Belum punya akun login → sekalian dibuatkan dan langsung dikonfirmasi.
     const { error } = await admin.auth.admin.createUser({ email: target, password: sandi, email_confirm: true })
     if (error) return json({ error: error.message }, 500)
+    await tandai()
     return json({ ok: true, dibuat: true, nama: targetRow.doc?.name || target })
   } catch (e) {
     return json({ error: (e as Error).message || "Gagal memproses" }, 500)

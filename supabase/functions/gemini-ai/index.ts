@@ -111,6 +111,21 @@ const TUGAS: Record<string, { prompt: string; skema: unknown; maksKeluar: number
       ragu: { type: "ARRAY", items: { type: "STRING" } } }, required: ["jenis", "nama", "orientasi", "atas", "kolom", "baris", "bawah", "ragu"] },
     maksKeluar: 16000, batasMs: 100000,
   },
+  nonreg: {
+    prompt: "Gambar ini satu halaman dokumen yang BELUM punya template (surat keterangan, surat pernyataan, akta, sertifikat, kontrak, putusan, dan sejenisnya). Tugas: salin SEMUA teks halaman ini PERSIS seperti tercetak (huruf demi huruf, termasuk tanda baca, nomor, dan huruf besar/kecil; tanpa memperbaiki ejaan, tanpa melengkapi, tanpa menebak, tanpa meringkas) dan beri terjemahan bahasa Inggris yang setia, formal, dan lengkap dengan gaya penerjemah tersumpah (tanpa parafrasa bebas, tanpa menambah atau mengurangi informasi). " +
+      "blok = isi halaman dari atas ke bawah. SATU paragraf = SATU blok (jangan memecah paragraf per baris cetak, jangan menggabungkan paragraf yang berbeda). Baris identitas berbentuk label dan isi (mis. Nama : ...) = satu blok per baris. Butir bernomor/berhuruf = satu blok per butir, nomornya ikut disalin. " +
+      "jenis blok: judul (kop, nama lembaga, judul dokumen yang dicetak di tengah/menonjol), sub (subjudul/judul bagian rata kiri yang tebal), paragraf (teks biasa), tabel_kepala (baris judul kolom tabel), tabel (baris isi tabel), ttd (baris di blok tanda tangan: tempat dan tanggal, jabatan, tanda tangan/cap, nama, NIP). " +
+      "sel = untuk tabel_kepala dan tabel: isi tiap sel dari kiri ke kanan; untuk jenis lain: SATU elemen berisi teks blok. en = terjemahan dengan jumlah elemen yang SAMA dengan sel. Pertahankan tanda baca sedekat mungkin dengan sumber (titik dua, titik koma, tanda kurung, tanda kutip, garis miring). " +
+      "rata = perataan teks blok di sumber: kiri, tengah, kanan, atau rata (rata kiri-kanan). kolom = hanya untuk ttd: letak blok tanda tangan, 1 kiri, 2 tengah, 3 kanan; selain itu 0. " +
+      "TIDAK diterjemahkan (disalin apa adanya di en): nama orang, nama jalan/alamat, nomor dokumen, NIK, NIP, nomor apa pun, dan gelar di belakang nama. Tanggal diterjemahkan tanpa mengubah angkanya. Nominal uang dan angka tidak boleh berubah. " +
+      "Elemen bukan teks ditulis sebagai blok tersendiri dengan sel dan en yang sama: (Logo), (Emblem), (Photograph), (Signature), (Stamp), (Signature and stamp), (Duty stamp), (QR Code). Teks pada cap yang terbaca disalin sebagai blok setelahnya. " +
+      "Bagian yang tidak terbaca dengan yakin: salin yang terlihat saja, tulis [illegible] untuk bagian yang hilang, dan masukkan nomor urut bloknya (mulai 1, sebagai teks) ke ragu. Jangan mengarang. " +
+      "jenis (di luar blok) = nama jenis dokumen dalam bahasa Indonesia seperti tertulis (mis. SURAT KETERANGAN DOMISILI). judul_en = nama jenis dokumen itu dalam bahasa Inggris, singkat (mis. Certificate of Domicile). nama = nama orang/pihak utama yang diterangkan dokumen (kosong bila tidak ada). orientasi = MENDATAR atau TEGAK sesuai bentuk kertas.",
+    skema: { type: "OBJECT", properties: { jenis: S("nama jenis dokumen (Indonesia)"), judul_en: S("nama jenis dokumen (Inggris), singkat"), nama: S("nama orang/pihak utama, boleh kosong"), orientasi: S("MENDATAR atau TEGAK"),
+      blok: { type: "ARRAY", items: { type: "OBJECT", properties: { jenis: S("judul | sub | paragraf | tabel_kepala | tabel | ttd"), rata: S("kiri | tengah | kanan | rata"), sel: { type: "ARRAY", items: { type: "STRING" } }, en: { type: "ARRAY", items: { type: "STRING" } }, kolom: S("0, 1, 2, atau 3") }, required: ["jenis", "rata", "sel", "en", "kolom"] } },
+      ragu: { type: "ARRAY", items: { type: "STRING" } } }, required: ["jenis", "judul_en", "nama", "orientasi", "blok", "ragu"] },
+    maksKeluar: 16000, batasMs: 100000,
+  },
   bukti: {
     prompt: "Gambar ini tangkapan layar daftar transaksi transfer dari internet banking (tabel dengan baris judul kolom). Untuk SETIAP baris transaksi, dari atas ke bawah, salin isi selnya PERSIS seperti tertulis (tanpa mengubah angka, tanpa menebak). Baris judul kolom tidak dihitung. " +
       "jumlah = nominal transfer persis seperti tertulis; dari = rekening sumber (nomor dan nama); ke = rekening tujuan (nomor dan nama); status = status transaksi; tgl = tanggal transfer; berita = berita/keterangan; ref = nomor referensi. Sel yang tidak ada atau tidak terbaca: string kosong.",
@@ -124,8 +139,11 @@ async function panggilGemini(kunci: string, model: string, tugas: string, b64: s
   const T = TUGAS[tugas];
   // deno-lint-ignore no-explicit-any
   const cfg: any = { temperature: 0, responseMimeType: "application/json", responseSchema: T.skema, maxOutputTokens: T.maksKeluar };
-  if (!/flash-lite/.test(model)) cfg.maxOutputTokens = T.maksKeluar + 6000; // model yang "berpikir": sisakan ruang untuk token berpikir
-  const body = JSON.stringify({ contents: [{ role: "user", parts: [{ inlineData: { mimeType: mime, data: b64 } }, { text: T.prompt }] }], generationConfig: cfg });
+  // Model yang "berpikir" (bukan Flash-Lite): sisakan ruang token berpikir, dan batasi berpikir ke "low" — menyalin dokumen tidak butuh penalaran panjang;
+  // bawaan Gemini 3 Flash adalah "high" (jawaban 20–30 detik, sering putus di HP, dan lebih mahal).
+  if (!/flash-lite/.test(model)) { cfg.maxOutputTokens = T.maksKeluar + 6000; cfg.thinkingConfig = { thinkingLevel: "low" }; }
+  const buat = () => JSON.stringify({ contents: [{ role: "user", parts: [{ inlineData: { mimeType: mime, data: b64 } }, { text: T.prompt }] }], generationConfig: cfg });
+  let body = buat();
   let terakhir = "";
   for (let i = 0; i < 2; i++) {
     let r: Response;
@@ -144,6 +162,7 @@ async function panggilGemini(kunci: string, model: string, tugas: string, b64: s
     const g = (alasan: string) => ({ ok: false, alasan, sementara: false, pakai, rinci });
     if (st === 404 || kode === "NOT_FOUND") return g(`Model ${model} tidak tersedia untuk kunci ini — pilih model lain di Pengaturan → AI`);
     if (st === 403 || kode === "PERMISSION_DENIED") return g("Google menolak permintaan (kunci dibatasi / Gemini API belum aktif)");
+    if (st === 400 && cfg.thinkingConfig && /thinking/i.test(rinci)) { delete cfg.thinkingConfig; body = buat(); continue; } // model tidak mengenal tingkat berpikir → ulang tanpa
     if (st === 400 && /API key/i.test(rinci)) return g("Kunci Gemini tidak valid");
     if (st === 400 || kode === "INVALID_ARGUMENT") return g("Permintaan ditolak Gemini (gambar/format tidak valid)");
     if (st === 401) return g("Kunci Gemini tidak valid");
@@ -250,8 +269,8 @@ Deno.serve(async (req: Request) => {
     const m = String(b.gambar ?? "").match(/^data:(image\/(?:jpeg|png|webp));base64,(.+)$/s);
     if (!m) return json({ ok: false, alasan: "gambar harus JPG/PNG/WebP" }, 400);
     if (m[2].length * 0.75 > MAKS_BYTE) return json({ ok: false, alasan: "gambar terlalu besar (maks 8 MB)" }, 400);
-    // Smart Translator: jenis dokumen boleh dipilih pemanggil (akta kelahiran / kartu keluarga / ijazah); selain itu tugas bawaan fitur.
-    const tugasJalan = fitur === "penerjemah" && ["akta", "kk", "ijazah", "transkrip"].includes(String(b.tugas ?? "")) ? String(b.tugas) : F.tugas;
+    // Smart Translator: jenis dokumen boleh dipilih pemanggil (akta kelahiran / kartu keluarga / ijazah / transkrip / non-reguler); selain itu tugas bawaan fitur.
+    const tugasJalan = fitur === "penerjemah" && ["akta", "kk", "ijazah", "transkrip", "nonreg"].includes(String(b.tugas ?? "")) ? String(b.tugas) : F.tugas;
     return json(await satu(fitur, model, tugasJalan, m[2], m[1]));
   }
 
@@ -278,7 +297,7 @@ Deno.serve(async (req: Request) => {
     }
     const model = String(b.model ?? ""); if (!/^gemini-[\w.\-]+$/.test(model)) return json({ ok: false, alasan: "model tidak dikenal" }, 400);
     let url = "";
-    if (["ktp", "akta", "kk", "ijazah", "transkrip"].includes(tugas) && /^[a-z0-9_\-]+\.jpg$/i.test(String(b.berkas ?? ""))) url = "https://raw.githubusercontent.com/masginanjar/atlas.alfa/uji-ocr/uji/ocr/img/" + b.berkas;
+    if (["ktp", "akta", "kk", "ijazah", "transkrip", "nonreg"].includes(tugas) && /^[a-z0-9_\-]+\.jpg$/i.test(String(b.berkas ?? ""))) url = "https://raw.githubusercontent.com/masginanjar/atlas.alfa/uji-ocr/uji/ocr/img/" + b.berkas;
     else if (tugas === "bukti") url = "https://raw.githubusercontent.com/masginanjar/atlas.alfa/main/public/contoh/contoh-klikbca-transfer.png";
     else return json({ ok: false, alasan: "tugas uji tidak dikenal" }, 400);
     const ib = await fetch(url); if (!ib.ok) return json({ ok: false, alasan: "data uji tidak ditemukan" }, 404);

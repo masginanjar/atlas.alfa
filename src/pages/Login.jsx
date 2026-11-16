@@ -60,7 +60,7 @@ export default function Login() {
     if (r?.pending) { setInfo('Cek email Anda dan klik tautan konfirmasi, lalu masuk.'); setView('masuk') }
   }) }
   const lupa = (e) => { e.preventDefault(); return jalan(async () => {
-    await db.resetPassword(email); setInfo('Tautan pengaturan ulang kata sandi sudah dikirim ke email Anda.'); setView('masuk')
+    const r = await db.mintaResetSandi(email); setInfo(r?.pesan || 'Permintaan sudah diteruskan ke Superadmin.'); setView('masuk')
   }) }
   const sandiBaru = (e) => { e.preventDefault(); return jalan(async () => {
     if (password.length < 8) throw new Error('Kata sandi minimal 8 karakter')
@@ -77,7 +77,7 @@ export default function Login() {
 
   const judul = view === 'daftar' ? 'Buat kata sandi' : view === 'lupa' ? 'Lupa kata sandi' : view === 'sandi-baru' ? 'Kata sandi baru' : tema.judul
   const sub = view === 'daftar' ? 'Untuk email yang sudah didaftarkan Superadmin di ATLAS.'
-    : view === 'lupa' ? 'Kami kirimkan tautan pengaturan ulang ke email Anda.'
+    : view === 'lupa' ? 'Isi email login Anda. Permintaan diteruskan ke Superadmin, yang akan memberi kata sandi sementara.'
     : view === 'sandi-baru' ? 'Tentukan kata sandi baru untuk akun Anda.'
     : MODE === 'demo' ? 'Pilih akun untuk mencoba tiap peran & cabang.' : tema.sub
 
@@ -177,7 +177,7 @@ export default function Login() {
                   <button type="submit" disabled={busy}
                     className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#141B34] text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-70">
                     {busy && <Loader2 className="h-4 w-4 animate-spin" />}
-                    {busy ? 'Memproses…' : view === 'masuk' ? 'Masuk' : view === 'daftar' ? 'Buat & Masuk' : view === 'lupa' ? 'Kirim tautan' : 'Simpan'}
+                    {busy ? 'Memproses…' : view === 'masuk' ? 'Masuk' : view === 'daftar' ? 'Buat & Masuk' : view === 'lupa' ? 'Minta reset ke Superadmin' : 'Simpan'}
                   </button>
 
                   {view === 'masuk' && METODE_LAIN.length > 0 && (
@@ -194,7 +194,7 @@ export default function Login() {
                     </>
                   )}
 
-                  {view === 'masuk' ? (
+                  {view === 'masuk' ? MODE !== 'supabase' && (
                     <p className="pt-1 text-center text-[12px] text-ink-mute">
                       Pertama kali masuk?{' '}
                       <button type="button" onClick={() => { setInfo(''); setSalah(''); setView('daftar') }} className="font-semibold text-brand hover:underline">Buat kata sandi</button>
