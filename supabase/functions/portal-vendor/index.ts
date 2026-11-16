@@ -73,6 +73,27 @@ const sumberOf = (s: Baris) => (Array.isArray(s.data?.dokumen_sumber_list) && s.
 const hasilOf = (s: Baris) => (Array.isArray(s.data?.hasil_vendor_list) && s.data.hasil_vendor_list.length ? s.data.hasil_vendor_list : s.data?.hasil_vendor ? [s.data.hasil_vendor] : []);
 const aman = (s: unknown) => String(s ?? "").replace(/[^\w.\-()\[\] ]+/g, "_").trim();
 
+const DARI_PORTAL = /\(portal vendor\)$/;
+const bayarOf = (s: Baris) => {
+  const total = Number(s.data?.total_pengajuan) || (Number(s.data?.vendor_cost) || 0) + (Number(s.data?.ongkir_cost) || 0);
+  return Array.isArray(s.data?.payments) && s.data.payments.length ? s.data.payments
+    : s.data?.paid_at ? [{ amount: total, date: s.data.paid_date || String(s.data.paid_at).slice(0, 10), bukti: s.data.bukti_transfer }] : [];
+};
+// Bukti transfer ke vendor: satu baris per transfer (satu bukti bisa untuk beberapa invoice). Tanpa harga jual / data lain.
+function transferOf(vendor: Baris, projects: Baris[]) {
+  const peta = new Map();
+  for (const p of projects) for (const s of p.sub_projects || []) {
+    if (s.data?.vendor !== vendor.id) continue;
+    bayarOf(s).forEach((x: Baris, i: number) => {
+      const k = x.bukti ? (x.bukti.path || x.bukti.drive_id || x.bukti.id || `${x.bukti.name}|${x.bukti.size}`) : `tanpa:${s.id}:${i}`;
+      const e = peta.get(k) || { date: x.date || "", amount: 0, ref: x.bukti ? `pay:${s.id}:${i}` : null, name: x.bukti?.name || "", untuk: [] };
+      e.amount += Number(x.amount) || 0; e.untuk.push({ ref: p.invoice_no, amount: Number(x.amount) || 0 }); if (!e.date) e.date = x.date || "";
+      peta.set(k, e);
+    });
+  }
+  return [...peta.values()].sort((a, b) => String(b.date).localeCompare(String(a.date)));
+}
+
 function todoOf(vendor: Baris, projects: Baris[]) {
   const todo = [];
   for (const p of projects) {
@@ -87,9 +108,11 @@ function todoOf(vendor: Baris, projects: Baris[]) {
     });
     const sh = p.customer?.ship || {};
     const kirimVendor = p.about?.metode_kirim === "vendor";
-    const hasil = subs.flatMap((s: Baris) => hasilOf(s).map((f: Baris) => ({ name: f.name, at: f.uploaded_at || "" })));
+    const selesai = subs.every((s: Baris) => s.stage === DONE);
+    const hasil = subs.flatMap((s: Baris) => hasilOf(s).map((f: Baris, i: number) => ({ id: f.id || "", ref: `hsl:${s.id}:${i}`, name: f.name, at: f.uploaded_at || "", milik: DARI_PORTAL.test(f.by || "") && !selesai })));
+    const masuk = subs.map((s: Baris) => s.data?.ordered_at || s.data?.assigned_at || s.stage_at).filter(Boolean).sort()[0] || p.created_at || null;
     todo.push({
-      id: p.id, ref: p.invoice_no, nama: p.customer?.name || "", deadline: p.about?.deadline || null, jam: p.about?.deadline_time || "",
+      id: p.id, masuk, ref: p.invoice_no, nama: p.customer?.name || "", deadline: p.about?.deadline || null, jam: p.about?.deadline_time || "",
       dok: docs.length, hal: subs.reduce((a: number, s: Baris) => a + (Number(s.pages) || 0), 0),
       alamat: kirimVendor ? [sh.attention, sh.street1, sh.street2, sh.city, sh.state, sh.zip, sh.phone].filter(Boolean).join(", ") : "", kirim_vendor: kirimVendor,
       docs, sumber: subs.flatMap((s: Baris) => sumberOf(s).map((f: Baris, i: number) => ({ ref: `src:${s.id}:${i}`, name: f.name }))), hasil,
@@ -141,17 +164,43 @@ Deno.serve(async (req) => {
     if (st !== "active") return json({ error: st }, 403);
     const projects = await pekerjaan(vendor.id);
 
-    if (action === "view") return json({ kind: "vendor", name: vendor.name, expires_at: link.expires_at, todo: todoOf(vendor, projects), jobs: null });
+    if (action === "view") return json({ kind: "vendor", name: vendor.name, sapaan: vendor.sapaan || "", expires_at: link.expires_at, todo: todoOf(vendor, projects), transfer: transferOf(vendor, projects), jobs: null });
 
     if (action === "file") {
       const [jenis, subId, i] = String(body.ref || "").split(":");
       let f: Baris = null;
-      if (jenis === "src") for (const p of projects) for (const s of p.sub_projects || []) if (s.id === subId && s.data?.vendor === vendor.id) f = sumberOf(s)[Number(i)] ?? null;
+      for (const p of projects) for (const s of p.sub_projects || []) {
+        if (s.id !== subId || s.data?.vendor !== vendor.id) continue;
+        if (jenis === "src") f = sumberOf(s)[Number(i)] ?? null;
+        else if (jenis === "pay") f = bayarOf(s)[Number(i)]?.bukti ?? null; // bukti transfer untuk pekerjaan vendor ini saja
+        else if (jenis === "hsl") f = hasilOf(s)[Number(i)] ?? null; // arsip: file hasil yang sudah diunggah
+      }
       if (!f) return json({ error: "not_found" }, 404);
       if (!f.path) return f.url ? json({ url: f.url, name: f.name }) : json({ error: "not_found" }, 404);
       const { data, error } = await db.storage.from(f.bucket || BUCKET).createSignedUrl(f.path, FILE_TTL, { download: f.name });
       if (error || !data?.signedUrl) return json({ error: "not_found" }, 404);
       return json({ url: data.signedUrl, name: f.name });
+    }
+
+    if (action === "hasil_hapus") {
+      // Vendor hanya boleh menghapus file hasil yang ia unggah sendiri lewat portal, selama pekerjaan belum selesai.
+      const pid = String(body.project_id || ""); const fid = String(body.file_id || "");
+      if (!fid || !projects.some((p: Baris) => p.id === pid)) return json({ error: "forbidden" }, 403);
+      const { data: segar } = await db.from("projects").select("id,doc").eq("id", pid).limit(1);
+      const kini = segar?.[0]?.doc; if (!kini) return json({ error: "missing" }, 404);
+      const now = new Date().toISOString(); const oleh = `${vendor.name} (portal vendor)`; let buang: Baris = null;
+      const sub_projects = (kini.sub_projects || []).map((s: Baris) => {
+        if (s.data?.vendor !== vendor.id || s.stage === DONE) return s;
+        const list = hasilOf(s); const sisa = list.filter((f: Baris) => !(f.id === fid && DARI_PORTAL.test(f.by || "")));
+        if (sisa.length === list.length) return s;
+        buang = list.find((f: Baris) => f.id === fid);
+        return { ...s, data: { ...s.data, hasil_vendor: sisa[0] || "", hasil_vendor_list: sisa }, history: [...(s.history || []), { at: now, by: oleh, action: "File hasil dihapus vendor lewat portal" }] };
+      });
+      if (!buang) return json({ error: "not_found" }, 404);
+      const up = await db.from("projects").update({ doc: { ...kini, sub_projects, files: (kini.files || []).filter((f: Baris) => f.id !== fid) } }).eq("id", pid);
+      if (up.error) return json({ error: "failed" }, 500);
+      if (buang.path && String(buang.path).includes("/hasil-vendor/")) await db.storage.from(buang.bucket || BUCKET).remove([buang.path]).then(() => {}, () => {});
+      return json({ ok: true });
     }
 
     if (action === "upload_url" || action === "upload_done") {

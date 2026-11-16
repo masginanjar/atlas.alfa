@@ -99,12 +99,20 @@ export default function FileManager({ project, readOnly }) {
   const subLabel = (id) => { if (id === SUB_AL) return LABEL_AL; const i = subs.findIndex((s) => s.id === id); return i < 0 ? 'Umum' : `Sub ${i + 1} · ${subs[i].title}` }
   // Dokumen Apostille & Legalisasi: satu folder sendiri per project (hanya untuk yang berizin)
   const isAL = (f) => fileAL(project, f)
-  const diFolder = (f, id) => (id === SUB_AL ? isAL(f) : !isAL(f) && (id === 'umum' ? !f.subId : f.subId === id))
-  const shown = all.filter((f) => folder === 'all' || diFolder(f, folder))
+  // Susunan baru (17 Nov 2026): file LANGSUNG tampil di akar — tidak dipecah per sub project.
+  // Folder hanya: "Hasil Scan" (otomatis untuk scan hasil; bisa juga diisi manual), folder buatan sendiri,
+  // dan folder Apostille & Legalisasi (tertutup, seperti sebelumnya). Letak file = f.fdr (nama folder).
+  const SCAN = 'Hasil Scan'
+  const folderBuatan = (project.file_folders || []).filter((x) => x && x !== SCAN)
+  const idFolder = (nama) => `c:${nama}`
+  const namaDariId = (id) => (String(id).startsWith('c:') ? String(id).slice(2) : '')
+  const letak = (f) => (f.fdr === '__akar' ? '' : f.fdr ? f.fdr : ['scan_pdf', 'scan_hasil'].includes(f.fieldKey) || /scan/i.test([f.kind === 'stage' ? f.source : '', ...(f.usedIn || [])].join(' ')) ? SCAN : '')
+  const diFolder = (f, id) => (id === SUB_AL ? isAL(f) : !isAL(f) && letak(f) === namaDariId(id))
+  const shown = all.filter((f) => (folder === 'all' ? !isAL(f) && !letak(f) : diFolder(f, folder)))
   // Upload selalu masuk ke folder yang sedang terlihat. Di tampilan "semua
   // file" belum ada folder yang dituju, jadi diarahkan ke Umum.
-  const uploadSub = folder === 'all' || folder === 'umum' || folder === SUB_AL ? '' : folder
-  const folderLabel = folder === 'all' ? 'Semua file' : folder === 'umum' ? 'Umum' : subLabel(folder)
+  const uploadSub = ''
+  const folderLabel = folder === 'all' ? 'File Project' : folder === SUB_AL ? LABEL_AL : namaDariId(folder)
   const toggle = (k) => setSelected((s) => { const n = new Set(s); n.has(k) ? n.delete(k) : n.add(k); return n })
 
   // ---- simpan perubahan ke project ----
@@ -121,7 +129,8 @@ export default function FileManager({ project, readOnly }) {
     try {
       const added = await uploadProjectFiles(files.map(({ file, name }) => ({ file, name, sub_id: uploadSub, folder: folder === SUB_AL ? FOLDER_AL : '' })), { branch: project.branch, invoice: project.invoice_no, by: user.name, subs: project.sub_projects },
         (i, n) => setBusy(`Mengunggah ${i}/${n}…`))
-      await applyChanges((n) => { n.files.push(...added) })
+      const fdr = namaDariId(folder)
+      await applyChanges((n) => { n.files.push(...added.map((f) => (fdr ? { ...f, fdr } : f))) })
       notify(`${added.length} file diunggah`)
     } catch (e) { notify(e.message, 'err') } finally { setBusy(null); if (inputRef.current) inputRef.current.value = '' }
   }
@@ -164,9 +173,10 @@ export default function FileManager({ project, readOnly }) {
       for (let i = 0; i < files.length; i++) {
         const f = files[i]; setBusy(`Mengemas ZIP ${i + 1}/${files.length}…`)
         let blob; try { blob = await drive.blob(f) } catch { skipped++; continue }
-        const namaFolder = subLabel(isAL(f) ? SUB_AL : f.subId).replace(/[\\/:*?"<>|]/g, '-').slice(0, 60)
-        let path = `${namaFolder}/${f.name}`; let k = 1
-        while (used.has(path)) path = `${namaFolder}/${f.name.replace(/(\.[^.]+)?$/, ` (${k++})$1`)}`
+        const namaFolder = (isAL(f) ? LABEL_AL : letak(f)).replace(/[\\/:*?"<>|]/g, '-').slice(0, 60)
+        const awal = namaFolder ? `${namaFolder}/` : '' // file di akar tidak dibungkus folder
+        let path = `${awal}${f.name}`; let k = 1
+        while (used.has(path)) path = `${awal}${f.name.replace(/(\.[^.]+)?$/, ` (${k++})$1`)}`
         used.add(path); zip.file(path, blob)
       }
       if (!used.size) throw new Error('Tidak ada file yang bisa dikemas')
@@ -180,15 +190,33 @@ export default function FileManager({ project, readOnly }) {
   const satu = selList.length === 1 ? selList[0] : null
 
   // ---- Tampilan ala File Explorer (sama dengan halaman Dokumen) ----
-  const [tampil, setTampil] = useState(() => { try { return localStorage.getItem('atlas-dok-tampil') || 'detail' } catch { return 'detail' } })
-  const gantiTampil = (v) => { setTampil(v); try { localStorage.setItem('atlas-dok-tampil', v) } catch { /* abaikan */ } }
+  // Hanya satu tampilan di sini: Detail. (Tampilan List / Ikon tetap ada di menu Dokumen yang lebih lengkap.)
+  const tampil = 'detail'
   const diAkar = folder === 'all'
   const isiFolder = (id) => all.filter((f) => diFolder(f, id))
-  const daftarFolder = diAkar ? [{ id: 'umum', nama: 'Umum' },
-    ...subs.map((sb, i) => ({ id: sb.id, nama: `Sub ${i + 1} · ${sb.title}`, al: subAL(sb) })).filter((x) => !x.al),
-    ...(bolehAL(user) && (subs.some(subAL) || all.some(isAL)) ? [{ id: SUB_AL, nama: LABEL_AL }] : []),
-  ].map((x) => ({ ...x, n: isiFolder(x.id).length })) : []
-  const berkas = diAkar ? [] : shown
+  const daftarFolder = diAkar ? [
+    { id: idFolder(SCAN), nama: SCAN, tetap: true },
+    ...folderBuatan.map((nama) => ({ id: idFolder(nama), nama })),
+    ...(bolehAL(user) && (subs.some(subAL) || all.some(isAL)) ? [{ id: SUB_AL, nama: LABEL_AL, tetap: true }] : []),
+  ].map((x) => ({ ...x, n: isiFolder(x.id).length })).filter((x) => !x.tetap || x.n > 0 || x.id === idFolder(SCAN)) : []
+  const berkas = shown
+  // ---- folder buatan sendiri ----
+  const [folderBaru, setFolderBaru] = useState(null)
+  const buatFolder = async () => {
+    const nama = String(folderBaru || '').replace(/[\\/:*?"<>|]+/g, '-').replace(/\s+/g, ' ').trim().slice(0, 60)
+    if (!nama) return setFolderBaru(null)
+    if ([SCAN, LABEL_AL, ...folderBuatan].some((x) => x.toLowerCase() === nama.toLowerCase())) return notify(`Folder "${nama}" sudah ada`, 'err')
+    try { await save('projects', { ...project, file_folders: [...folderBuatan, nama] }); notify(`Folder "${nama}" dibuat`); setFolderBaru(null) } catch (e) { notify(e.message, 'err') }
+  }
+  const hapusFolder = async (nama) => {
+    if (isiFolder(idFolder(nama)).length) return notify('Folder masih berisi file — pindahkan atau hapus filenya dulu', 'err')
+    try { await save('projects', { ...project, file_folders: folderBuatan.filter((x) => x !== nama) }); buka('all'); notify(`Folder "${nama}" dihapus`) } catch (e) { notify(e.message, 'err') }
+  }
+  const pindahkan = async (list, tujuan) => {
+    const bisa = list.filter((f) => !isAL(f)); if (!bisa.length) return
+    try { setBusy('Memindahkan…'); await applyChanges((n) => bisa.forEach((f) => patchEntry(n, f, { fdr: tujuan || '__akar' }))); setSelected(new Set()); notify(`${bisa.length} file dipindahkan ke ${tujuan || 'File Project'}`) } catch (e) { notify(e.message, 'err') } finally { setBusy(null) }
+  }
+  const labelSub = (f) => { if (subs.length < 2 || !f.subId) return ''; const i = subs.findIndex((x) => x.id === f.subId); return i < 0 ? '' : `Sub ${i + 1}` }
   const buka = (id) => { setFolder(id); setSelected(new Set()) }
   const klik = (f, e) => { if (e.ctrlKey || e.metaKey || e.shiftKey) toggle(f.key); else setSelected(new Set([f.key])) }
   const JENIS = { pdf: ['PDF', 'Dokumen PDF', 'bg-rose-600'], image: ['IMG', 'Gambar', 'bg-sky-500'], docx: ['DOC', 'Dokumen Word', 'bg-blue-600'], sheet: ['XLS', 'Lembar kerja', 'bg-emerald-600'], text: ['TXT', 'Teks', 'bg-slate-500'], other: ['FILE', 'Berkas', 'bg-slate-400'] }
@@ -239,11 +267,13 @@ export default function FileManager({ project, readOnly }) {
         <Alat icon={Eye} label="Pratinjau" disabled={!satu || !canPreview(satu)} onClick={() => setPreview(satu)} />
         {!readOnly && <Alat icon={Pencil} label="Ganti nama" disabled={!satu} onClick={() => startRename(satu)} />}
         {!readOnly && <Alat icon={Trash2} label={selList.length > 1 ? `Hapus ${selList.length}` : 'Hapus'} bahaya disabled={!selList.length || !!busy} onClick={() => remove(selList)} />}
-        <div className="ml-auto flex items-center gap-0.5 rounded-md bg-white p-0.5 ring-1 ring-slate-200 dark:bg-white/5 dark:ring-white/10" role="group" aria-label="Tampilan">
-          {[['detail', '☰ Detail'], ['list', '≡ List'], ['ikon', '▦ Ikon']].map(([k, l]) => (
-            <button key={k} type="button" onClick={() => gantiTampil(k)} aria-pressed={tampil === k} className={cx('h-8 rounded px-2.5 text-[12px] font-semibold', tampil === k ? 'bg-[#cce4f7] text-ink' : 'text-ink-soft hover:bg-slate-50')}>{l}</button>
-          ))}
-        </div>
+        {!readOnly && <Alat icon={FolderOpen} label="Folder baru" disabled={!!busy || !diAkar} onClick={() => setFolderBaru('')} />}
+        {!readOnly && selList.some((f) => !isAL(f)) && (
+          <select value="" onChange={(e) => { const v = e.target.value; if (v) pindahkan(selList, v === '__akar' ? '' : v) }} aria-label="Pindahkan file terpilih ke folder" data-pindah-folder
+            className="ml-1 h-9 max-w-[180px] rounded-md border-0 bg-white px-2 text-[12.5px] ring-1 ring-slate-300 focus:ring-2 focus:ring-brand max-md:h-11">
+            <option value="">Pindahkan ke…</option><option value="__akar">File Project (luar folder)</option>{[SCAN, ...folderBuatan].map((x) => <option key={x} value={x}>{x}</option>)}
+          </select>
+        )}
         <input ref={inputRef} type="file" multiple className="hidden" onChange={(e) => onUpload(e.target.files)} aria-label="Pilih satu atau beberapa file" />
       </div>
 
@@ -260,6 +290,15 @@ export default function FileManager({ project, readOnly }) {
         {busy && <span className="flex shrink-0 items-center gap-1.5 px-2 text-xs text-brand" aria-live="polite"><Loader2 className="h-3.5 w-3.5 animate-spin" />{busy}</span>}
       </div>
 
+      {folderBaru !== null && (
+        <form onSubmit={(e) => { e.preventDefault(); buatFolder() }} className="flex flex-wrap items-center gap-2 border-t border-slate-100 bg-[#fff8e1] px-3 py-2" data-form-folder>
+          <IkonFolder />
+          <input autoFocus value={folderBaru} onChange={(e) => setFolderBaru(e.target.value)} placeholder="Nama folder baru" aria-label="Nama folder baru" maxLength={60}
+            className="h-9 min-w-0 flex-1 rounded-md border-0 bg-white px-2.5 text-[13px] ring-1 ring-slate-300 focus:outline-none focus:ring-2 focus:ring-brand max-md:h-11 max-md:text-base" />
+          <button className="h-9 rounded-md bg-ink px-3 text-[12.5px] font-semibold text-white max-md:h-11">Buat</button>
+          <button type="button" onClick={() => setFolderBaru(null)} className="h-9 rounded-md px-3 text-[12.5px] font-semibold text-ink-soft hover:bg-white max-md:h-11">Batal</button>
+        </form>
+      )}
       {/* Isi */}
       <div className="min-h-[140px] border-t border-slate-100 dark:border-white/10" data-isi-explorer onDragOver={(e) => { if (!readOnly) e.preventDefault() }} onDrop={(e) => { if (readOnly) return; e.preventDefault(); onUpload(e.dataTransfer.files) }}>
         {!daftarFolder.length && !berkas.length ? (
@@ -320,7 +359,7 @@ export default function FileManager({ project, readOnly }) {
                 <tr key={f.key} onClick={(e) => { if (e.target.closest('input,button,form')) return; klik(f, e) }} onDoubleClick={() => bukaPratinjau(f)}
                   className={cx('cursor-default', selected.has(f.key) ? 'bg-[#cce4f7]' : 'hover:bg-[#e5f1fb]')} data-berkas>
                   <td className="px-3 py-1.5"><input type="checkbox" checked={selected.has(f.key)} onChange={() => toggle(f.key)} aria-label={`Pilih ${f.name}`} className="h-4 w-4 rounded" /></td>
-                  <td className="overflow-hidden py-1.5 pr-3"><span className="flex min-h-[28px] min-w-0 items-center gap-2"><IkonBerkas f={f} /><NamaAtauUbah f={f} /></span>
+                  <td className="overflow-hidden py-1.5 pr-3"><span className="flex min-h-[28px] min-w-0 items-center gap-2"><IkonBerkas f={f} /><NamaAtauUbah f={f} />{labelSub(f) && <span className="shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-[10.5px] font-semibold text-ink-mute" title={subLabel(f.subId)}>{labelSub(f)}</span>}</span>
                     <span className="block truncate pl-[23px] text-[11px] text-ink-mute md:hidden">{kb(f.size || 0)}{f.uploaded_at ? ` · ${jam(f.uploaded_at)}` : ''}</span></td>
                   <td className="hidden truncate text-ink-mute md:table-cell">{f.uploaded_at ? jam(f.uploaded_at) : '—'}</td>
                   <td className="hidden truncate text-ink-mute md:table-cell" title={f.source}>{(JENIS[kindOf(f)] || JENIS.other)[1]}</td>
@@ -334,9 +373,10 @@ export default function FileManager({ project, readOnly }) {
 
       {/* Bilah status */}
       <div className="flex items-center gap-3 border-t border-slate-200 bg-[#f3f3f3] px-3 py-1 text-[11.5px] text-ink-soft dark:border-white/10 dark:bg-white/5">
-        <span>{diAkar ? `${daftarFolder.length} folder` : `${berkas.length} item`}</span>
+        <span>{diAkar ? `${berkas.length} file · ${daftarFolder.length} folder` : `${berkas.length} file`}</span>
+        {!readOnly && !diAkar && folderBuatan.includes(namaDariId(folder)) && !berkas.length && <button type="button" onClick={() => hapusFolder(namaDariId(folder))} className="font-semibold text-rose-600 hover:underline" data-hapus-folder>Hapus folder kosong ini</button>}
         {selList.length > 0 && <span>{selList.length} dipilih · {kb(selList.reduce((a, f) => a + (Number(f.size) || 0), 0))}</span>}
-        {!readOnly && <span className="ml-auto hidden sm:inline">Unggah tersimpan ke <b>{diAkar ? 'Umum' : folderLabel}</b></span>}
+        {!readOnly && <span className="ml-auto hidden sm:inline">Unggah tersimpan ke <b>{folderLabel}</b></span>}
       </div>
       {preview && <FilePreview file={preview} onClose={() => setPreview(null)} />}
       {namerDialog}

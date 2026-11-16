@@ -38,6 +38,7 @@ import SalinInvoice from '../components/SalinInvoice.jsx'
 import { KeAtas, TombolTambah } from '../components/SlotAtas.jsx'
 import { ArrowUpDown, Check } from 'lucide-react'
 import { usePanel } from '../components/WorkspacePanel.jsx'
+import { ArsipSampah } from '../components/KelolaProject.jsx'
 
 /** Order bahasa Mandarin (direkap Akunting — tanpa koordinator, tiap orang order sendiri). */
 const adaMandarin = (p) => (p.sub_projects || []).some((x) => foreignLang(x) === 'Mandarin')
@@ -336,6 +337,7 @@ export default function Projects({ tabAwal }) {
                 {adaToolbar && <button type="button" onClick={() => setPref({ ...pref, toolbar: pref.toolbar === false })} aria-expanded={pref.toolbar !== false} aria-label={pref.toolbar === false ? 'Tampilkan baris jenis & pintasan' : 'Ciutkan toolbar'} title={pref.toolbar === false ? 'Tampilkan baris jenis & pintasan' : 'Ciutkan toolbar'} data-aksi="ciut-toolbar"
                   className={cx(KONTROL, 'hidden w-11 justify-center px-0 sm:inline-flex md:w-8')}><ChevronDown className={cx('h-4 w-4 transition-transform duration-300', pref.toolbar !== false && 'rotate-180')} aria-hidden="true" /></button>}
               </div></KeAtas>
+              <ArsipSampah />
               {!worker && can.editProject(user) && <KeAtas slot="tambah"><TombolTambah label="Project" data="project-baru" onClick={() => go('projects/new')} /></KeAtas>}
             </div>
             {worker && <KapasitasSaya />}

@@ -172,7 +172,7 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
   const inv0 = normInvoice(invoice)
   const errs = {
     customer: !customer && 'Pilih pelanggan dari Zoho',
-    invoice: !inv0 ? 'Isi nomor invoice' : data.projects.some((p) => p.invoice_no === inv0 && p.id !== project?.id) && `Project ${inv0} sudah ada`,
+    invoice: !inv0 ? 'Isi nomor invoice' : data.projects.some((p) => p.invoice_no === inv0 && p.id !== project?.id) ? `Project ${inv0} sudah ada` : (data.projects_arsip || []).some((p) => p.invoice_no === inv0) && `Project ${inv0} ada di Arsip / Sampah — pulihkan atau hapus paksa dulu`,
     deadline: !about.deadline ? 'Isi deadline' : about.received_at && about.deadline.slice(0, 10) < about.received_at.slice(0, 10) && 'Deadline tidak boleh sebelum tanggal masuk',
     metode: !editing && !metodeKirim && 'Pilih metode pengiriman',
     subs: subs.map((x, i) => validateSub(x, i)),
@@ -189,6 +189,7 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
     if (!about.deadline) return notify('Isi deadline', 'err')
     if (about.received_at && about.deadline.slice(0, 10) < about.received_at.slice(0, 10)) return notify('Deadline tidak boleh sebelum tanggal masuk', 'err')
     if (data.projects.some((p) => p.invoice_no === inv && p.id !== project?.id)) return notify(`Project ${inv} sudah ada`, 'err')
+    if (errs.invoice) return notify(errs.invoice, 'err')
     if (!subs.length) return notify('Tambahkan minimal 1 sub project', 'err')
     for (let i = 0; i < subs.length; i++) { const err = validateSub(subs[i], i); if (err) return notify(err, 'err') }
     setBusy(true)

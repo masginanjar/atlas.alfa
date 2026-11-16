@@ -10,7 +10,7 @@ import { drive } from '../lib/integrations.js'
 import { saveBlob, dataUrlToBlob } from '../lib/download.js'
 import { printBlob } from '../lib/printing.js'
 import { renderPdf } from '../lib/pdfRender.js'
-import { buatPdf, suratBaru, rangkaiAlamat, cekNik, kekurangan, namaFile, tglIndo, LAYANAN, STATUS_SK, REDAKSI_BAWAAN, TPL_VERSI, KOLOM_BAWAAN, KOLOM_MIN, KOLOM_NAMA, kolomDari } from '../lib/suratKuasa.js'
+import { buatPdf, suratBaru, rangkaiAlamat, cekNik, cekIdPemberi, pakaiPaspor, kekurangan, namaFile, tglIndo, LAYANAN, STATUS_SK, REDAKSI_BAWAAN, TPL_VERSI, KOLOM_BAWAAN, KOLOM_MIN, KOLOM_NAMA, kolomDari } from '../lib/suratKuasa.js'
 import { bacaKtp } from '../lib/ktpOcr.js'
 import { Button, Card, Empty, Input, Textarea, Select, Sheet, cx } from '../components/ui.jsx'
 
@@ -127,6 +127,11 @@ function Editor({ id, projectId }) {
       // Nomor ID dari form Apostille/Legalisasi (bila berbentuk NIK 16 angka) → NIK pemberi kuasa; tetap dicocokkan dengan KTP.
       const idForm = subs.map((x) => String(x.applicant_id || '').replace(/\s/g, '')).find((t) => /^\d{16}$/.test(t))
       if (idForm) b.pemberi.nik = idForm
+      else {
+        // ID pemohon berupa paspor (klien asing) → surat kuasa versi paspor; nomor dari form apa adanya.
+        const psp = subs.find((x) => x.applicant_id_type === 'paspor' && String(x.applicant_id || '').trim())
+        if (psp) { b.pemberi.jenis_id = 'paspor'; b.pemberi.nik = String(psp.applicant_id).trim(); b.alamat_manual = true }
+      }
     }
     return b
   })
@@ -175,6 +180,7 @@ function Editor({ id, projectId }) {
     if ((project.sub_projects || []).some((x) => ['apostille', 'legalisasi'].includes(x.type))) ambilDok()
     const f = (project.sub_projects || []).map((x) => ['apostille', 'legalisasi'].includes(x.type) && x.data?.dokumen_id).find(Boolean)
     if (!f) return
+    if (pakaiPaspor(s.pemberi)) { notify('ID pemohon berupa paspor — isi nama, kewarganegaraan & alamat sesuai paspor'); return }
     if (!/\.(jpe?g|png|webp|pdf)$/i.test(f.name || '')) { notify('Scan ID pemohon bukan gambar/PDF — unggah KTP manual di bawah'); return }
     ;(async () => { setSibuk('ktp'); try { await tarikKtp(f.url?.startsWith('data:') ? dataUrlToBlob(f.url) : await drive.blob(f), f.name) } catch { notify('Scan ID pemohon tidak bisa dibuka otomatis — pilih dari lampiran atau unggah KTP', 'err') } finally { setSibuk('') } })()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
@@ -200,7 +206,9 @@ function Editor({ id, projectId }) {
   }
 
   const kurang = kekurangan(s)
-  const nik = cekNik(s.pemberi.nik)
+  const nik = cekIdPemberi(s.pemberi)
+  const paspor = pakaiPaspor(s.pemberi)
+  const kolomId = paspor ? [['nama', 'Nama lengkap (sesuai paspor)'], ['nik', 'Nomor paspor'], ['kewarganegaraan', 'Kewarganegaraan'], ['pekerjaan', 'Pekerjaan']] : KOLOM_KTP
   const n = s.jumlah_penerima === 1 ? 1 : 2
   const setPenerima = (i, mid) => ubah((v) => { const m = master.find((x) => x.id === mid); const arr = [...(v.penerima || [])]; arr[i] = m ? { master_id: m.id, nama: m.nama, nik: m.nik, pekerjaan: m.pekerjaan, alamat: m.alamat } : { nama: '', nik: '', pekerjaan: '', alamat: '' }; return { penerima: arr } })
   const setDok = (i, k, val) => ubah((v) => ({ dokumen: v.dokumen.map((d, j) => (j === i ? { ...d, [k]: val, ...(k === 'pemilik' ? { pemilik_manual: true, pemilik_auto: false } : {}) } : d)) }))
@@ -255,11 +263,21 @@ function Editor({ id, projectId }) {
             <div className={cx('grid gap-3', ktp?.gambar && 'md:grid-cols-[minmax(0,0.8fr)_minmax(0,1fr)]')}>
               {ktp?.gambar && <div className="md:sticky md:top-24 md:self-start"><img src={ktp.gambar} alt="KTP yang dibaca" className="w-full rounded-xl ring-1 ring-slate-200" /><p className="mt-1 text-[11px] text-ink-mute">Cocokkan setiap kolom dengan KTP. Koreksi Anda tidak ditimpa bila KTP dibaca ulang.</p></div>}
               <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-                {KOLOM_KTP.map(([k, l]) => { const al = k === 'nik' && s.pemberi.nik && !nik.ok ? nik.x : ktp?.cek?.[k] && !(s.pemberi_diedit || []).includes(k) ? ktp.cek[k] : ''; return (
+                <div className="sm:col-span-2" role="radiogroup" aria-label="Jenis ID pemberi kuasa" data-jenis-id>
+                  <Lbl>Jenis ID pemberi kuasa</Lbl>
+                  <div className="flex gap-1.5">
+                    {[['ktp', 'KTP'], ['paspor', 'Paspor (klien asing)']].map(([k, l]) => { const on = (paspor ? 'paspor' : 'ktp') === k; return (
+                      <button key={k} type="button" role="radio" aria-checked={on} disabled={!bolehUbah} data-id={k}
+                        onClick={() => ubah((v) => ({ pemberi: { ...v.pemberi, jenis_id: k }, ...(k === 'paspor' ? { alamat_manual: true } : {}) }))}
+                        className={cx('min-h-10 rounded-xl px-3 text-sm font-semibold ring-1 max-md:min-h-11', on ? 'bg-ink text-white ring-ink' : 'bg-white text-ink-soft ring-slate-300 hover:ring-ink')}>{l}</button>) })}
+                  </div>
+                  {paspor && <p className="mt-1 text-[11px] text-ink-mute">Nomor paspor menggantikan NIK di surat, ditambah baris Kewarganegaraan. Paspor belum dibaca otomatis — isi sesuai paspor.</p>}
+                </div>
+                {kolomId.map(([k, l]) => { const al = k === 'nik' && s.pemberi.nik && !nik.ok ? nik.x : ktp?.cek?.[k] && !(s.pemberi_diedit || []).includes(k) ? ktp.cek[k] : ''; return (
                   <div key={k} className={cx(['nama', 'alamat'].includes(k) && 'sm:col-span-2')}><Lbl htmlFor={`pk-${k}`}>{l}{(s.pemberi_diedit || []).includes(k) && <span className="ml-1 font-normal text-ink-mute">· dikoreksi</span>}</Lbl>
-                    <Input id={`pk-${k}`} value={s.pemberi[k] || ''} inputMode={['nik', 'kodepos'].includes(k) ? 'numeric' : undefined} autoComplete="off" spellCheck={false} disabled={!bolehUbah} onChange={(e) => ubahPemberi(k, e.target.value)} className={cx('max-md:text-base', al && '!ring-amber-400')} />
+                    <Input id={`pk-${k}`} value={s.pemberi[k] || ''} inputMode={!paspor && ['nik', 'kodepos'].includes(k) ? 'numeric' : undefined} autoComplete="off" spellCheck={false} disabled={!bolehUbah} onChange={(e) => ubahPemberi(k, e.target.value)} className={cx('max-md:text-base', al && '!ring-amber-400')} />
                     {al ? <p className="mt-1 text-[11px] font-semibold text-amber-700">{al}</p> : k === 'nik' && s.pemberi.nik ? <p className="mt-1 text-[11px] text-ink-mute">{nik.x}</p> : null}</div>) })}
-                <div className="sm:col-span-2"><div className="flex items-center justify-between"><Lbl htmlFor="pk-as">Alamat di surat</Lbl>{s.alamat_manual && <button type="button" className="mb-1 text-[11px] font-semibold text-brand" onClick={() => ubah((v) => ({ alamat_manual: false, pemberi: { ...v.pemberi, alamat_surat: rangkaiAlamat(v.pemberi) } }))}>Rangkai ulang dari kolom</button>}</div>
+                <div className="sm:col-span-2"><div className="flex items-center justify-between"><Lbl htmlFor="pk-as">{paspor ? 'Alamat di surat (tulis lengkap)' : 'Alamat di surat'}</Lbl>{s.alamat_manual && !paspor && <button type="button" className="mb-1 text-[11px] font-semibold text-brand" onClick={() => ubah((v) => ({ alamat_manual: false, pemberi: { ...v.pemberi, alamat_surat: rangkaiAlamat(v.pemberi) } }))}>Rangkai ulang dari kolom</button>}</div>
                   <Textarea id="pk-as" rows={2} value={s.pemberi.alamat_surat || ''} disabled={!bolehUbah} onChange={(e) => ubahPemberi('alamat_surat', e.target.value)} className="max-md:text-base" /></div>
               </div>
             </div>

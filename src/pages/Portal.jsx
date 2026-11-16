@@ -248,17 +248,51 @@ function VendorView({ token, v, onExpired }) {
   return (
     <div className="space-y-4 text-lg">
       <section className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:p-6">
-        <p className="text-lg text-ink-mute">Halo,</p>
+        <p className="text-lg text-ink-mute">Halo {v.sapaan || 'Bapak/Ibu'},</p>
         <h1 className="text-3xl font-extrabold">{v.name}</h1>
         <p className="mt-1 text-lg text-ink-soft">Daftar pekerjaan Anda. Unduh sumber (ZIP), lalu unggah hasilnya di sini.</p>
         <ExpiryNote at={v.expires_at} />
       </section>
       <div className="flex gap-2" role="tablist" aria-label="Bagian portal">
-        {[['todo', `To-do (${(v.todo || []).filter((x) => x.status !== 'Selesai').length})`], ...(adaBayar ? [['bayar', 'Pembayaran']] : [])].map(([k, l]) => (
+        {[['todo', `To-do (${(v.todo || []).filter((x) => x.status !== 'Selesai').length})`], ['transfer', `Bukti Transfer (${(v.transfer || []).length})`], ['arsip', 'Arsip File']].map(([k, l]) => (
           <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)} data-tab-portal={k} className={cx('h-12 flex-1 rounded-xl text-lg font-bold ring-2', tab === k ? 'bg-ink text-white ring-ink' : 'bg-white text-ink ring-slate-300')}>{l}</button>
         ))}
       </div>
       {tab === 'todo' && <PortalVendorTodo token={token} todo={v.todo} onUbah={onExpired} onExpired={onExpired} />}
+      {tab === 'arsip' && (
+        <div className="space-y-2" data-arsip-vendor>
+          {!(v.todo || []).length && <p className="rounded-2xl bg-white px-4 py-8 text-center text-base text-ink-mute ring-1 ring-slate-200">Belum ada file.</p>}
+          {(v.todo || []).map((r) => { const bukti = (v.transfer || []).filter((t) => t.ref && t.untuk.some((u) => u.ref === r.ref)); const n = r.sumber.length + r.hasil.length + bukti.length; const Baris = ({ f }) => (
+            <li className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 text-sm"><FileText className="h-4 w-4 flex-none text-ink-mute" /><span className="min-w-0 flex-1 basis-40 break-all">{f.name || 'file'}</span>{f.at && <span className="flex-none text-xs text-ink-mute">{tgl(f.at)}</span>}
+              <button type="button" onClick={() => dl.download(f.ref, f.name)} disabled={dl.busy === f.ref} className="inline-flex min-h-9 flex-none items-center gap-1 rounded-lg bg-white px-2.5 text-xs font-bold ring-1 ring-slate-300 hover:ring-ink disabled:opacity-50 max-md:min-h-11">{dl.busy === f.ref ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}Unduh</button></li>)
+            return (
+              <details key={r.id} className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200" data-folder-arsip={r.ref}>
+                <summary className="flex min-h-12 cursor-pointer items-center gap-2 px-3.5 py-2 text-base font-extrabold"><span className="inline-block h-4 w-5 flex-none rounded-[3px] bg-gradient-to-b from-[#ffd666] to-[#f5b942]" aria-hidden="true" />{String(r.ref || '').replace(/^INV-/i, '')}<span className="min-w-0 flex-1 truncate text-sm font-normal text-ink-soft">{r.nama}</span><span className="flex-none text-xs font-semibold text-ink-mute">{n} file</span></summary>
+                {[['Dokumen sumber', r.sumber], ['Hasil terjemahan', r.hasil.filter((h) => h.ref)], ['Bukti transfer', bukti.map((t) => ({ ref: t.ref, name: t.name || 'Bukti transfer', at: t.date }))]].filter(([, list]) => list.length).map(([judul, list]) => (
+                  <div key={judul} className="border-t border-slate-200"><p className="bg-slate-50 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide text-ink-mute">{judul} ({list.length})</p><ul className="divide-y divide-slate-100">{list.map((f, i) => <Baris key={i} f={f} />)}</ul></div>
+                ))}
+                {!n && <p className="border-t border-slate-200 px-3 py-3 text-sm text-ink-mute">Belum ada file.</p>}
+              </details>) })}
+        </div>
+      )}
+      {tab === 'transfer' && (
+        <div className="overflow-x-auto rounded-2xl bg-white shadow-sm ring-1 ring-slate-200" data-tabel-transfer>
+          {!(v.transfer || []).length ? <p className="px-4 py-8 text-center text-base text-ink-mute">Belum ada bukti transfer.</p> : (
+            <table className="w-full text-sm">
+              <thead className="bg-slate-100 text-left text-xs font-bold uppercase tracking-wide text-ink"><tr><th className="px-3 py-3">Tanggal</th><th className="px-3 py-3 text-right">Jumlah</th><th className="px-3 py-3">Untuk invoice</th><th className="px-3 py-3">Bukti transfer</th></tr></thead>
+              <tbody className="divide-y divide-slate-200">{v.transfer.map((t, i) => (
+                <tr key={i} className="align-top">
+                  <td className="whitespace-nowrap px-3 py-3">{t.date ? tgl(t.date) : '—'}</td>
+                  <td className="whitespace-nowrap px-3 py-3 text-right font-bold tabular-nums">{rupiah(t.amount)}</td>
+                  <td className="px-3 py-3 text-xs text-ink-soft">{t.untuk.map((u) => `${String(u.ref || '').replace(/^INV-/i, '')}${t.untuk.length > 1 ? ` (${rupiah(u.amount)})` : ''}`).join(' · ')}</td>
+                  <td className="px-3 py-3">{t.ref ? <span className="flex flex-wrap gap-2">
+                    <button type="button" onClick={() => dl.view(t.ref, t.name)} className="inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-white px-3 text-sm font-bold ring-2 ring-slate-300"><Eye className="h-4 w-4" />Lihat</button>
+                    <button type="button" onClick={() => dl.download(t.ref, t.name)} disabled={dl.busy === t.ref} className="inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-emerald-600 px-3 text-sm font-bold text-white disabled:opacity-60">{dl.busy === t.ref ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}Unduh</button>
+                  </span> : <span className="text-xs text-ink-mute">Belum ada bukti</span>}</td>
+                </tr>))}</tbody>
+            </table>)}
+        </div>
+      )}
       {tab === 'bayar' && <>
       <div className="flex gap-2" role="tablist">
         {[['semua', 'Semua'], ['berjalan', 'Berjalan'], ['selesai', 'Selesai']].map(([k, l]) => (

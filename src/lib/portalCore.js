@@ -163,6 +163,21 @@ export function paymentOf(sub) {
 export const sumberOf = (s) => (Array.isArray(s.data?.dokumen_sumber_list) && s.data.dokumen_sumber_list.length ? s.data.dokumen_sumber_list : s.data?.dokumen_sumber ? [s.data.dokumen_sumber] : [])
 export const hasilVendorOf = (s) => (Array.isArray(s.data?.hasil_vendor_list) && s.data.hasil_vendor_list.length ? s.data.hasil_vendor_list : s.data?.hasil_vendor ? [s.data.hasil_vendor] : [])
 const fileKey = (f) => (f ? f.drive_id || `${f.name}|${f.size}` : '')
+/** Daftar bukti transfer ke vendor: satu baris per transfer (satu bukti bisa untuk beberapa invoice). */
+export function transferVendor(vendor, projects) {
+  const peta = new Map()
+  for (const p of projects) for (const s of p.sub_projects || []) {
+    if (s.data?.vendor !== vendor.id) continue
+    paymentOf(s).payments.forEach((x, i) => {
+      const k = x.bukti ? (x.bukti.path || x.bukti.drive_id || x.bukti.id || `${x.bukti.name}|${x.bukti.size}`) : `tanpa:${s.id}:${i}`
+      const e = peta.get(k) || { date: x.date || '', amount: 0, ref: x.bukti ? `pay:${s.id}:${i}` : null, name: x.bukti?.name || '', untuk: [] }
+      e.amount += Number(x.amount) || 0; e.untuk.push({ ref: p.invoice_no, amount: Number(x.amount) || 0 }); if (!e.date) e.date = x.date || ''
+      peta.set(k, e)
+    })
+  }
+  return [...peta.values()].sort((a, b) => String(b.date).localeCompare(String(a.date)))
+}
+
 /** Data yang boleh dilihat vendor — hanya pekerjaan & pembayaran miliknya. Tanpa data pelanggan / harga jual. */
 export function vendorView(link, vendor, projects) {
   const jobs = []
@@ -193,14 +208,16 @@ export function vendorView(link, vendor, projects) {
     const hal = subs.reduce((a, s) => a + (Number(s.pages) || 0), 0)
     const sh = p.customer?.ship || {}
     const kirimVendor = p.about?.metode_kirim === 'vendor'
-    const hasil = subs.flatMap((s) => hasilVendorOf(s).map((f) => ({ name: f.name, at: f.uploaded_at || '' })))
-    todo.push({ id: p.id, ref: p.invoice_no, nama: p.customer?.name || '', deadline: p.about?.deadline || null, jam: p.about?.deadline_time || '', dok: docs.length, hal,
+    const selesai = subs.every((s) => s.stage === DONE)
+    const hasil = subs.flatMap((s) => hasilVendorOf(s).map((f, i) => ({ id: f.id || '', ref: `hsl:${s.id}:${i}`, name: f.name, at: f.uploaded_at || '', milik: /\(portal vendor\)$/.test(f.by || '') && !selesai })))
+    const masuk = subs.map((s) => s.data?.ordered_at || s.data?.assigned_at || s.stage_at).filter(Boolean).sort()[0] || p.created_at || null
+    todo.push({ id: p.id, masuk, ref: p.invoice_no, nama: p.customer?.name || '', deadline: p.about?.deadline || null, jam: p.about?.deadline_time || '', dok: docs.length, hal,
       alamat: kirimVendor ? [sh.attention, sh.street1, sh.street2, sh.city, sh.state, sh.zip, sh.phone].filter(Boolean).join(', ') : '', kirim_vendor: kirimVendor,
       docs, sumber: subs.flatMap((s) => sumberOf(s).map((f, i) => ({ ref: `src:${s.id}:${i}`, name: f.name }))), hasil,
       status: subs.every((s) => s.stage === DONE) ? 'Selesai' : hasil.length ? 'Hasil diunggah' : 'Dikerjakan' })
   }
   todo.sort((a, b) => (a.status === 'Selesai') - (b.status === 'Selesai') || String(a.deadline || '9').localeCompare(String(b.deadline || '9')))
-  return { kind: 'vendor', name: vendor.name, expires_at: link.expires_at, todo, jobs: jobs.sort((a, b) => String(a.deadline || '').localeCompare(String(b.deadline || ''))) }
+  return { kind: 'vendor', name: vendor.name, sapaan: vendor.sapaan || '', expires_at: link.expires_at, todo, transfer: transferVendor(vendor, projects), jobs: jobs.sort((a, b) => String(a.deadline || '').localeCompare(String(b.deadline || ''))) }
 }
 
 /** Cari file berdasar ref + pastikan ref memang diizinkan untuk tautan ini (dipakai juga untuk unduhan langsung). */
@@ -213,6 +230,7 @@ export function resolveFile(link, ref, { project, vendor, projects, requests = [
   for (const p of projects) for (const s of p.sub_projects || []) {
     if (s.id !== subId || s.data?.vendor !== vendor.id) continue
     if (jenis === 'src') return sumberOf(s)[Number(i)] ?? null // dokumen sumber — hanya milik pekerjaan vendor ini
+    if (jenis === 'hsl') return hasilVendorOf(s)[Number(i)] ?? null // arsip: file hasil yang sudah diunggah
     return paymentOf(s).payments[Number(i)]?.bukti ?? null
   }
   return null

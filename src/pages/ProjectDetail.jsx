@@ -27,6 +27,7 @@ import { SUB_TYPES, points } from '../config/subtypes.js'
 import { Button, Card, SectionCard, Empty, Field, Input, Pill, Progress, Select, Sheet, Textarea, cx } from '../components/ui.jsx'
 import { jam, kb, rupiah, tgl, daysLeft } from '../lib/format.js'
 import ProjectForm from './ProjectForm.jsx'
+import { KelolaProject } from '../components/KelolaProject.jsx'
 import { ProjectPayBadge } from '../components/PayBadge.jsx'
 import ProjectItems from '../components/ProjectItems.jsx'
 import { useUploadNamer } from '../components/UploadNamer.jsx'
@@ -123,7 +124,7 @@ export default function ProjectDetail({ id, embedded, focusSub }) {
             )}
             {SHARE_PORTAL_READY && (can.editProject(user) || user.role === 'akunting') && <Button size="sm" onClick={() => setSharing(true)}><Share2 className="h-3.5 w-3.5" />Bagikan</Button>}
             {can.editProject(user) && <Button size="sm" variant="outline" onClick={() => setEditing(true)} title="Ubah data project, tenggat, prioritas"><Pencil className="h-3.5 w-3.5" /><span className="hidden sm:inline">Edit</span></Button>}
-            {can.deleteProject(user) && <Button size="sm" variant="danger" onClick={del} aria-label="Hapus project"><Trash2 className="h-3.5 w-3.5" /></Button>}
+            <KelolaProject project={project} />
           </div>
         </div>
         {/* Baris 2: pelanggan + telepon (WA) + kota · masuk · progres */}
@@ -242,7 +243,7 @@ function DetailCanvas({ project, focusSub, tab, setTab, del, setEditing, setShar
           <div className="flex flex-wrap items-center gap-2">
             {can.editProject(user) && <button type="button" onClick={() => setEditing(true)} className="inline-flex min-h-11 items-center gap-1.5 rounded-xl border border-[#D9DBE7] bg-white px-3.5 text-sm font-semibold text-[#141B34] hover:bg-[#F6F7FB]"><Pencil className="h-4 w-4" aria-hidden="true" />Edit</button>}
             {SHARE_PORTAL_READY && (can.editProject(user) || user.role === 'akunting') && <button type="button" onClick={() => setSharing(true)} className="inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-[#141B34] px-3.5 text-sm font-semibold text-white"><Share2 className="h-4 w-4" aria-hidden="true" />Bagikan</button>}
-            {can.deleteProject(user) && <button type="button" onClick={del} aria-label="Hapus project" title="Hapus project" className="grid h-11 w-11 place-items-center rounded-xl border border-[#F2C4AE] bg-white text-[#B43D0E] hover:bg-[#FFF5F0]"><Trash2 className="h-[18px] w-[18px]" aria-hidden="true" /></button>}
+            <KelolaProject project={project} ringkas />
           </div>
         </div>
         <div className="grid gap-x-4 gap-y-3 border-t border-[#EEF0F5] pt-3 [grid-template-columns:repeat(auto-fit,minmax(150px,1fr))]">

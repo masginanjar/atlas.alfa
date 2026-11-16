@@ -47,6 +47,17 @@ export function cekNik(v) {
   if (s.length !== 16) return { ok: false, x: `${s.length} digit (NIK berbentuk 16 digit)` }
   return { ok: true, x: '16 digit — bentuk sesuai, tetap cocokkan dengan KTP' }
 }
+/**
+ * Pemberi kuasa ber-ID PASPOR (klien asing): nomor paspor menggantikan NIK. Hanya bentuknya yang diperiksa
+ * (huruf/angka, 5–15 karakter) — nomor tidak dirapikan / ditebak; tetap dicocokkan dengan paspor.
+ */
+export const pakaiPaspor = (p) => p?.jenis_id === 'paspor'
+export function cekIdPemberi(p) {
+  if (!pakaiPaspor(p)) return cekNik(p?.nik)
+  const s = String(p?.nik || '').trim(); if (!s) return { ok: false, kosong: true, x: 'Nomor paspor kosong' }
+  if (!/^[A-Za-z0-9]{5,15}$/.test(s)) return { ok: false, x: 'Nomor paspor berisi huruf/angka tanpa spasi (5–15 karakter) — cocokkan dengan paspor' }
+  return { ok: true, x: 'Bentuk sesuai — tetap cocokkan dengan paspor' }
+}
 export const suratBaru = () => ({ pemberi: { nama: '', nik: '', pekerjaan: '', alamat: '', rtrw: '', kel: '', kec: '', kabkota: '', provinsi: '', kodepos: '', alamat_surat: '' }, pemberi_diedit: [], alamat_manual: false,
   penerima: [], jumlah_penerima: 2, layanan: 'apostille', dokumen: [{ jenis: '', nama: '', pemilik: '', tanggal: '', nomor: '' }], tempat: '', tanggal: '', meterai: true, status: 'draf', tpl_versi: TPL_VERSI, versi: 0 })
 
@@ -54,7 +65,8 @@ export const suratBaru = () => ({ pemberi: { nama: '', nik: '', pekerjaan: '', a
 export function kekurangan(s) {
   const k = []
   if (!s.pemberi?.nama?.trim()) k.push('Nama pemberi kuasa')
-  if (!s.pemberi?.nik?.trim()) k.push('NIK pemberi kuasa')
+  if (!s.pemberi?.nik?.trim()) k.push(pakaiPaspor(s.pemberi) ? 'Nomor paspor pemberi kuasa' : 'NIK pemberi kuasa')
+  if (pakaiPaspor(s.pemberi) && !String(s.pemberi?.kewarganegaraan || '').trim()) k.push('Kewarganegaraan pemberi kuasa')
   if (!(s.pemberi?.alamat_surat || '').trim()) k.push('Alamat pemberi kuasa')
   const n = s.jumlah_penerima === 1 ? 1 : 2
   for (let i = 0; i < n; i++) if (!s.penerima?.[i]?.nama?.trim()) k.push(`Penerima kuasa ${i + 1}`)
@@ -92,7 +104,7 @@ function gambar(s, P, red) {
   const lh = (fs) => fs * P.lh
   const set = (fs, bold) => { doc.setFont('helvetica', bold ? 'bold' : 'normal'); doc.setFontSize(fs) }
   const para = (t, { bold, align = 'justify', indent = 0, no } = {}) => { set(P.fs, bold); if (no) doc.text(no, L + indent - 18, y + P.fs * 0.8); const w = W - indent; const ls = doc.splitTextToSize(String(t), w); ls.forEach((l, i) => { const akhir = i === ls.length - 1; doc.text(l, L + indent, y + P.fs * 0.8, align === 'justify' && !akhir ? { align: 'justify', maxWidth: w } : {}); y += lh(P.fs) }) }
-  const identitas = (o) => { const lab = 78, xv = L + lab + 8; for (const [k, v] of [['Nama', o.nama], ['Pekerjaan', o.pekerjaan], ['Alamat', o.alamat_surat ?? o.alamat], ['NIK', o.nik]]) { set(P.fs); doc.text(k, L, y + P.fs * 0.8); doc.text(':', L + lab, y + P.fs * 0.8); const ls = doc.splitTextToSize(String(v || '-'), R - xv); ls.forEach((l) => { doc.text(l, xv, y + P.fs * 0.8); y += lh(P.fs) }) } }
+  const identitas = (o) => { const lab = pakaiPaspor(o) ? 96 : 78, xv = L + lab + 8; for (const [k, v] of (pakaiPaspor(o) ? [['Nama', o.nama], ['Kewarganegaraan', o.kewarganegaraan], ['Pekerjaan', o.pekerjaan], ['Alamat', o.alamat_surat ?? o.alamat], ['Nomor Paspor', o.nik]] : [['Nama', o.nama], ['Pekerjaan', o.pekerjaan], ['Alamat', o.alamat_surat ?? o.alamat], ['NIK', o.nik]])) { set(P.fs); doc.text(k, L, y + P.fs * 0.8); doc.text(':', L + lab, y + P.fs * 0.8); const ls = doc.splitTextToSize(String(v || '-'), R - xv); ls.forEach((l) => { doc.text(l, xv, y + P.fs * 0.8); y += lh(P.fs) }) } }
   const mulai = (k) => { tinggi[k] = -y }; const selesai = (k) => { tinggi[k] += y }
 
   // 1. Judul

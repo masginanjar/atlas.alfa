@@ -82,6 +82,27 @@ const demo = {
     await db.insert('notifications', { ...(project.created_by ? { to_user: project.created_by } : { to_role: 'cs' }), kind: 'task', text: `${project.invoice_no}: ${c.vendor.name} mengunggah ${added.length} file hasil lewat portal — periksa lalu lanjutkan`, project_id: project.id, sub_id: milik[0].id, by: oleh, read_by: [] }).catch(() => {})
     return { ok: true, n: added.length }
   },
+  /** Vendor menghapus file hasil yang ia unggah sendiri (selama pekerjaan belum selesai). */
+  async hapusHasil(token, projectId, fileId) {
+    if (!getSess(token)) throw new Error('Sesi berakhir — masukkan kode akses lagi')
+    const { link, st } = await active(token)
+    if (!link || st !== 'active' || link.kind !== 'vendor') throw new Error('Tautan ini sudah tidak aktif')
+    const c = await ctxFor(link)
+    const project = c.projects.find((p) => p.id === projectId)
+    if (!project) throw new Error('Pekerjaan ini tidak tersedia untuk tautan ini')
+    let kena = false; const oleh = `${c.vendor.name} (portal vendor)`
+    const sub_projects = project.sub_projects.map((s) => {
+      if (s.data?.vendor !== c.vendor.id || s.stage === 'selesai') return s
+      const list = Array.isArray(s.data?.hasil_vendor_list) ? s.data.hasil_vendor_list : s.data?.hasil_vendor ? [s.data.hasil_vendor] : []
+      const sisa = list.filter((f) => !(f.id === fileId && /\(portal vendor\)$/.test(f.by || '')))
+      if (sisa.length === list.length) return s
+      kena = true
+      return { ...s, data: { ...s.data, hasil_vendor: sisa[0] || '', hasil_vendor_list: sisa }, history: [...(s.history || []), { at: new Date().toISOString(), by: oleh, action: 'File hasil dihapus vendor lewat portal' }] }
+    })
+    if (!kena) throw new Error('File ini tidak bisa dihapus dari portal')
+    await db.update('projects', project.id, { sub_projects, files: (project.files || []).filter((f) => f.id !== fileId) })
+    return { ok: true }
+  },
   async email(token, { email } = {}) {
     if (!getSess(token)) return { error: 'session' }
     const { link, st } = await active(token)
@@ -116,6 +137,7 @@ const live = {
   email: (token, body = {}) => { const s = getSess(token); return s ? post('email', { token, session: s.sess, ...body }) : Promise.resolve({ error: 'session' }) },
   // Unggah hasil dari portal vendor butuh fungsi server tersendiri — belum dipasang di live.
   upload: () => Promise.reject(new Error('Unggah lewat portal belum aktif di server — kirim hasil ke CS dulu')),
+  hapusHasil: () => Promise.reject(new Error('Belum aktif di server')),
 }
 
 // ---------- SUPABASE (live sekarang) ----------
@@ -156,6 +178,12 @@ const supa = {
     }
     const r = await fnVendor('upload_done', { token, session: s.sess, project_id: projectId, files: jadi })
     if (!r.ok) throw new Error(r.error === 'offline' ? 'File terunggah tetapi belum tercatat — koneksi terputus, coba unggah lagi' : 'File belum tercatat di pekerjaan — coba lagi')
+    return r
+  },
+  async hapusHasil(token, projectId, fileId) {
+    const s = getSess(token); if (!s) throw new Error('Sesi berakhir — masukkan kode akses lagi')
+    const r = await fnVendor('hasil_hapus', { token, session: s.sess, project_id: projectId, file_id: fileId })
+    if (!r.ok) throw new Error(r.error === 'session' ? 'Sesi berakhir — masukkan kode akses lagi' : r.error === 'offline' ? 'Koneksi terputus — coba lagi' : 'File ini tidak bisa dihapus dari portal')
     return r
   },
   email: () => Promise.resolve({ error: 'not_configured' }),

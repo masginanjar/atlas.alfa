@@ -910,14 +910,22 @@ export function AppProvider({ children }) {
     return data.people.find((p) => p.id === id)?.name
   }, [data.users, data.people, user])
 
+  // Project yang DIARSIPKAN / di SAMPAH disembunyikan dari seluruh aplikasi (daftar, dasbor, laporan).
+  // Hanya halaman Arsip & Sampah yang memakainya lewat data.projects_arsip.
+  const dataTampil = useMemo(() => {
+    const ps = data.projects || []
+    if (!ps.some((p) => p.archived || p.deleted_at)) return { ...data, projects_arsip: [] }
+    return { ...data, projects: ps.filter((p) => !p.archived && !p.deleted_at), projects_arsip: ps.filter((p) => p.archived || p.deleted_at) }
+  }, [data])
+
   const value = useMemo(() => ({
-    user, setActiveRole, personaList, hantu, setHantu, bolehHantu, booting, data, refresh, signIn, signUp, signOut, MODE, save, remove, processStage, pettyBalance, claimSub, myNotifications, markRead, nameOf, patchSubData, saveBiaya, assignTranslator, returnPengajuan, kembalikanKePenerjemah, gantiPenerjemah, tolakTugas, myPings, sendPing, markPingRead, lastPingTo, setAvatar, updateProfile, PING_COOLDOWN_MS, PING_DAILY_MAX,
+    user, setActiveRole, personaList, hantu, setHantu, bolehHantu, booting, data: dataTampil, refresh, signIn, signUp, signOut, MODE, save, remove, processStage, pettyBalance, claimSub, myNotifications, markRead, nameOf, patchSubData, saveBiaya, assignTranslator, returnPengajuan, kembalikanKePenerjemah, gantiPenerjemah, tolakTugas, myPings, sendPing, markPingRead, lastPingTo, setAvatar, updateProfile, PING_COOLDOWN_MS, PING_DAILY_MAX,
     notify, toast, dismissToast, branchFilter, setBranchFilter, ask, confirmState, setConfirmState, liveStatus,
     invoices, invoiceErr, refreshInvoices, unlinkedInvoices, invoiceRange, setInvoiceRange,
     chatMessages, chatUnread, chatTotals, sendMessage, sendChatPing, markChatRead, sendTyping, typing, PING_MAX_24H, PING_GAP_MS,
     setStokAffidavit, pakaiAffidavit, catatPengiriman, terimaPengiriman, refreshTables,
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [user, booting, data, toast, branchFilter, pettyBalance, confirmState, myNotifications, nameOf, myPings, lastPingTo, liveStatus, invoices, invoiceErr, unlinkedInvoices, invoiceRange, refreshInvoices, chatMessages, chatUnread, chatTotals, typing, sendTyping])
+  }), [user, booting, dataTampil, toast, branchFilter, pettyBalance, confirmState, myNotifications, nameOf, myPings, lastPingTo, liveStatus, invoices, invoiceErr, unlinkedInvoices, invoiceRange, refreshInvoices, chatMessages, chatUnread, chatTotals, typing, sendTyping])
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }

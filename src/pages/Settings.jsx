@@ -870,9 +870,12 @@ export function Vendors({ keAtas } = {}) {
                 <span><b className="font-semibold">Biro rekanan</b> (mis. Indotrans)<span className="block text-xs text-ink-mute">Order dilakukan di luar ATLAS (grup). CS mengunggah hasilnya, lalu dokumen langsung ke Admin Pusat untuk nomor register — tanpa proofreader & otorisasi. Biaya masuk Tagihan Vendor.</span></span>
               </label>
               <>
+              <Field label="Sapaan di portal & pesan order" hint="Dipakai di portal vendor dan teks Fix Order: “Halo Bapak …” / “Halo Ibu …”.">
+                <Select value={e.sapaan || ''} onChange={(x) => set({ ...e, sapaan: x.target.value })} data-sapaan><option value="">Bapak/Ibu</option><option value="Bapak">Bapak</option><option value="Ibu">Ibu</option></Select>
+              </Field>
               <Field label="Kode akses portal vendor" hint="Vendor membuka tautan portalnya dengan kode ini (to-do, unduh sumber ZIP, unggah hasil). Kosong = memakai nomor HP vendor. Salah 5 kali terkunci 15 menit. Pakai kode yang tidak mudah ditebak.">
                 <Input value={e.kode_portal || ''} onChange={(x) => set({ ...e, kode_portal: x.target.value })} placeholder="mis. kode 6 karakter" autoComplete="off" data-kode-portal />
-                {(() => { const l = (data.share_links || []).find((x) => x.kind === 'vendor' && x.vendor_id === e.id && !x.revoked_at); return l ? <a href={`#/p/${l.token}`} data-buka-portal className="mt-1.5 inline-flex min-h-9 items-center text-xs font-semibold text-brand hover:underline max-md:min-h-11">Buka portal vendor ini →</a> : <p className="mt-1.5 text-xs text-ink-mute">Tautan portal dibuat lewat tombol Bagikan pada vendor ini.</p> })()}
+                {(() => { const l = (data.share_links || []).find((x) => x.kind === 'vendor' && x.vendor_id === e.id && !x.revoked_at); return l ? <a href={`#/p/${l.token}`} data-buka-portal className="mt-1.5 inline-flex min-h-9 items-center text-xs font-semibold text-brand hover:underline max-md:min-h-11">Buka portal vendor ini →</a> : <p className="mt-1.5 text-xs text-ink-mute">Belum ada tautan portal — buat dari detail project yang dikerjakan vendor ini (Bagikan → pilih vendor).</p> })()}
               </Field>
               </>
               <Field label="HPP (biaya vendor) untuk tim" hint="Superadmin, Direktur, dan Akunting selalu melihat HPP. Bila disembunyikan, tim hanya melihat nama paket layanannya.">
