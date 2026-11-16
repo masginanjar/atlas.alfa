@@ -122,7 +122,7 @@ export default function CentangApostille({ p, sb, label, bulat, onPanel }) {
                 <li key={it} className={cx('flex items-center gap-2 rounded-lg px-2 py-1.5 text-[13px] font-semibold', tip.it === it ? 'bg-white text-[#141B34]' : on ? 'text-white/60' : 'text-white')}>
                   <span className={cx('grid h-5 w-5 shrink-0 place-items-center rounded-full text-[11px] font-bold', on ? 'bg-emerald-400 text-[#0B2A1B]' : tip.it === it ? 'ring-2 ring-[#141B34]' : 'ring-2 ring-white/60')}>{on ? '✓' : it[0]}</span>
                   <span className={cx('min-w-0 flex-1', on && tip.it !== it && 'line-through')}>{namaLangkah(f, it)}</span>
-                  {(f.opsional || []).includes(it) && <span className="shrink-0 text-[10px] font-semibold opacity-70">opsional</span>}
+                  {(f.opsional || []).includes(it) && <span className="shrink-0 text-[10px] font-semibold opacity-70">{(f.susulan || []).includes(it) ? 'bisa menyusul' : 'opsional'}</span>}
                 </li>) })}
             </ul>
             <p className="mt-2 text-[11px] text-white/70">{!boleh ? 'Hanya melihat — bukan tugas Anda.' : tip.it && f.itemForm?.[tip.it]?.length && !cur.includes(tip.it) ? 'Langkah ini butuh isian/berkas — klik untuk membuka panel kerja.' : tip.it && cur.includes(tip.it) ? 'Klik untuk membatalkan centang.' : 'Klik untuk mencentang.'}</p>

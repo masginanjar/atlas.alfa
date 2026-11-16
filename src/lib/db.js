@@ -61,6 +61,34 @@ function migrate(m) {
   set('u-ot-made', { otorisator_level: 'master' })
   if (isiJadwalDemo(m)) changed = true
   if (isiKirimDemo(m)) changed = true
+  // Biro rekanan (16 Nov 2026): Indotrans — order lewat grup, CS unggah hasil, langsung nomor register, biaya masuk tagihan. Tarif diisi pemilik.
+  if (!m.biro_indotrans_v1) {
+    if (!(m.people || []).some((x) => x.type === 'vendor' && /indotrans/i.test(x.name))) {
+      m.people = [...(m.people || []), { id: 'p-vendor-indotrans', name: 'Indotrans', type: 'vendor', branch: 'Semua', phone: '', biro: true, payment_term: 'invoice',
+        services: [{ name: 'Terjemahan tersumpah (tarif belum diisi)', price: 0 }], accounts: [], notes: 'Biro rekanan. Order lewat grup; hasil diunggah CS lalu langsung ke Admin Pusat untuk nomor register.', created_at: new Date().toISOString() }]
+    }
+    m.biro_indotrans_v1 = true; changed = true
+  }
+  // Portal to-do vendor (16 Nov 2026): contoh vendor Bahasa Korea + tautan portal + 2 pekerjaan SINTETIS (bukan data pelanggan).
+  if (!m.portal_todo_v1) {
+    const vid = 'p-vendor-anisa'; const at = new Date().toISOString(); const hari = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return d.toISOString() }
+    if (!(m.people || []).some((x) => x.id === vid)) m.people = [...(m.people || []), { id: vid, name: 'Anisa', type: 'vendor', branch: 'Semua', phone: '', languages: ['Korea'], kode_portal: '247', payment_term: 'invoice',
+      services: [{ name: 'Terjemahan Korea (tarif belum diisi)', price: 0 }], accounts: [], notes: 'Vendor Bahasa Korea. Bekerja lewat portal vendor: unduh sumber, unggah hasil.', created_at: at }]
+    if (!(m.share_links || []).some((l) => l.token === 'demo-portal-anisa')) m.share_links = [...(m.share_links || []), { id: 'sl-anisa', token: 'demo-portal-anisa', kind: 'vendor', project_id: null, vendor_id: vid, activated_at: at, expires_at: hari(30), revoked_at: null, shared: [], shared_regs: [], fails: [], opens: 0, email_sends: [], created_by: null, created_at: at, history: [{ at, by: 'Sistem', action: 'Tautan contoh (demo)' }] }]
+    const berkas = (nama) => ({ id: `f-${nama}`, name: `${nama}.txt`, size: 40, url: `data:text/plain;base64,${btoa(`Contoh dokumen sumber (data sintetis): ${nama}`)}`, drive_id: null, uploaded_at: at })
+    const buat = (id, no, nama, dok, n, metode) => {
+      const list = dok.map(([d]) => berkas(d)); const sid = `${id}-s1`
+      return { id, invoice_no: no, branch: 'Bali', created_at: at, files: [], customer: { zoho_id: null, name: nama, email: '', phone: '', ship: { attention: nama, street1: '[ALAMAT CONTOH]', city: '[KOTA]' }, manual: true },
+        about: { print_location: 'Bali', priority: 'Normal', received_at: at.slice(0, 10), deadline: hari(n), deadline_time: '17:00', cs_name: 'Demo', metode_kirim: metode, courier: '' },
+        sub_projects: [{ id: sid, type: 'terjemahan', title: `Terjemahan Tersumpah: ${dok[0][0]}${dok.length > 1 ? ` +${dok.length - 1}` : ''}`, description: dok.map(([d], i) => `${i + 1}. ${d}`).join('\n'), file_count: dok.length, pages: dok.reduce((a, x) => a + x[1], 0),
+          docs: dok.map(([desc, pages]) => ({ desc, pages, kind: 'normal' })), lang_from: 'Indonesia', lang_to: 'Korea', translator_kind: 'vendor', translator: vid, flow: 'tr_ext', stage: 'pengajuan', stage_at: at,
+          data: { vendor: vid, dokumen_sumber: list[0], dokumen_sumber_list: list }, history: [{ at, by: 'Sistem', action: 'Contoh (demo)' }] }] }
+    }
+    if (!(m.projects || []).some((p) => p.id === 'pj-anisa-1')) m.projects = [...(m.projects || []),
+      buat('pj-anisa-1', 'INV-990201', '[Contoh Pelanggan A]', [['Akta Kelahiran (contoh)', 1], ['Kartu Keluarga (contoh)', 2], ['Ijazah (contoh)', 1]], 3, 'softcopy'),
+      buat('pj-anisa-2', 'INV-990202', '[Contoh Pelanggan B]', [['Surat Keterangan (contoh)', 2]], 5, 'vendor')]
+    m.portal_todo_v1 = true; changed = true
+  }
   // Koordinator vendor (10 Nov 2026): Emma → Pak Zenzia, Debby → Pak Dedi (Jerman)
   if (!m.koordinator_v1) {
     let dedi = (m.people || []).find((x) => x.type === 'vendor' && /dedi/i.test(x.name))

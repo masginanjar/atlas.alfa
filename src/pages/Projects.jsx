@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import SalinChatOrder from '../components/SalinChatOrder.jsx'
 import { OfficialInvoice } from '../components/NoReg.jsx'
 import { go } from '../lib/router.js'
 import { Plus, Minus, Search, FolderOpen, Banknote, CalendarClock, Layers, LayoutGrid, List, ChevronRight, ChevronDown, Sparkles, StickyNote, Printer, AlertTriangle, Eye, X, Save, Rows2, Rows3, Rows4, Maximize2, Minimize2, Table2, MoreHorizontal, Columns3, Bookmark } from 'lucide-react'
@@ -10,7 +11,7 @@ import { scopeByBranch, can, branchesOf, invoiceLabel, BRANCHES, diKoordinasi, v
 import ProjectSpreadsheet from '../components/ProjectSpreadsheet.jsx'
 import UnduhData from '../components/UnduhData.jsx'
 import { KapasitasSaya } from '../components/Kapasitas.jsx'
-import { DONE, isDone, progressOf, stageLabel, flowOf, totalPengajuan, stageIndex, stagesOf, VENDOR_PAID_STAGES } from '../config/workflows.js'
+import { DONE, isDone, progressOf, stageLabel, flowOf, totalPengajuan, stageIndex, stagesOf, VENDOR_PAID_STAGES, belumCatatBayar } from '../config/workflows.js'
 import { PengajuanStatus, DownloadBukti } from '../components/Pengajuan.jsx'
 import { SUB_TYPES } from '../config/subtypes.js'
 import { ProjectTypes, TypeBadge, PrintBadge, DemoBadge, InvoiceNo, DeadlineCell, NoteIcon, isCepat } from '../components/badges.jsx'
@@ -31,7 +32,7 @@ import CentangApostille from '../components/CentangApostille.jsx'
 import { WaktuDibuat, PrioPill, DeadlinePill, CabangPrint, eksekutorOf, dibuatBaru, warnaKategori, infoDeadline, BG_SELESAI } from '../components/BarisCanvas.jsx'
 import LayarKerja from './LayarKerja.jsx'
 import TugaskanPenerjemah from '../components/TugaskanPenerjemah.jsx'
-import { coordinatorFor } from '../config/access.js'
+import { coordinatorFor, bolehPajakApostille } from '../config/access.js'
 import { PingButton } from '../components/Ping.jsx'
 import SalinInvoice from '../components/SalinInvoice.jsx'
 import { KeAtas, TombolTambah } from '../components/SlotAtas.jsx'
@@ -114,11 +115,12 @@ export default function Projects({ tabAwal }) {
     const s = q.trim().toLowerCase()
     return scoped
       .filter((p) => tab === 'all' || (tab === 'vendor' ? adaVendor(p) : tab === 'koordinator' ? (p.sub_projects || []).some((x) => diKoordinasi(user, x)) : tab === 'mandarin' ? adaMandarin(p) : (p.sub_projects || []).some((x) => (x.type || 'jasa_lain') === tab)))
-      .filter((p) => status === 'semua' || (status === 'aktif' ? !isDone(p) : isDone(p)))
+      .filter((p) => cepat === 'belumbayar' || status === 'semua' || (status === 'aktif' ? !isDone(p) : isDone(p))) // "Belum catat bayar" melihat yang sudah selesai juga
       .filter((p) => !s || [p.invoice_no, p.customer?.name, p.about?.description, ...(p.sub_projects || []).map((x) => x.title)].join(' ').toLowerCase().includes(s))
       .filter((p) => !dlFilter || (p.about?.deadline && String(p.about.deadline).slice(0, 10) >= dlFilter.from && String(p.about.deadline).slice(0, 10) <= dlFilter.to))
       .filter((p) => (!bpFilter.branch || p.branch === bpFilter.branch) && (!bpFilter.print || (p.about?.print_location || p.branch) === bpFilter.print))
       .filter((p) => !prFilter || (p.about?.priority || 'Normal') === prFilter)
+      .filter((p) => cepat !== 'belumbayar' || (p.sub_projects || []).some((x) => belumCatatBayar(x, p)))
       .filter((p) => cepat !== 'hambatan' || (!isDone(p) && daysLeft(p.about?.deadline) !== null && daysLeft(p.about?.deadline) <= 0))
       .filter((p) => cepat !== 'saya' || p.created_by === user.id || (p.about?.cs_id && p.about.cs_id === user.id))
       .filter((p) => cepat !== 'pilih' || (p.sub_projects || []).some((x) => x.stage === 'pilih_penerjemah'))
@@ -173,6 +175,7 @@ export default function Projects({ tabAwal }) {
   }, [full])
 
   const nHambatan = scoped.filter((p) => !isDone(p) && daysLeft(p.about?.deadline) !== null && daysLeft(p.about?.deadline) <= 0).length
+  const nBelumBayar = scoped.reduce((a, p) => a + (p.sub_projects || []).filter((x) => belumCatatBayar(x, p)).length, 0) // jumlah DOKUMEN, untuk menghitung sisa yang harus dicatat
   const nSaya = scoped.filter((p) => !isDone(p) && (p.created_by === user.id || (p.about?.cs_id && p.about.cs_id === user.id))).length
   const dasarStatus = status === 'aktif' ? scoped.filter((p) => !isDone(p)) : status === 'selesai' ? scoped.filter((p) => isDone(p)) : scoped
   const tabs = [
@@ -185,7 +188,7 @@ export default function Projects({ tabAwal }) {
   // Filter yang sedang aktif (tampil di ujung kanan baris chip, atau di bawah toolbar bila chip disembunyikan)
   const filterAktif = [
             tab !== 'all' && { label: `Jenis: ${tabs.find((t) => t.value === tab)?.label || tab}`, clear: () => setTab('all') },
-            cepat && { label: cepat === 'hambatan' ? 'Hanya hambatan' : cepat === 'pilih' ? 'Perlu pilih penerjemah' : 'Hanya project saya', clear: () => setCepat('') },
+            cepat && { label: cepat === 'belumbayar' ? 'Belum catat bayar apostille' : cepat === 'hambatan' ? 'Hanya hambatan' : cepat === 'pilih' ? 'Perlu pilih penerjemah' : 'Hanya project saya', clear: () => setCepat('') },
             sort !== 'deadline' && { label: 'Urut: terbaru', clear: () => setSort('deadline') },
             q.trim() && { label: `Cari: "${q.trim()}"`, clear: () => setQ('') },
             status !== 'aktif' && { label: `Status: ${status === 'selesai' ? 'Selesai' : 'Semua'}`, clear: () => setStatus('aktif') },
@@ -269,6 +272,7 @@ export default function Projects({ tabAwal }) {
           { key: 'hari-ini', label: 'Hari ini', nilai: nHariIni, on: dlFilter?.kind === 'today', klik: () => setDlFilter(dlFilter?.kind === 'today' ? null : { kind: 'today', from: dayKey(), to: dayKey() }) },
           { key: 'hambatan', label: 'Hambatan', nilai: nHambatan, warn: true, on: cepat === 'hambatan', klik: () => setCepat(cepat === 'hambatan' ? '' : 'hambatan') },
           ['direktur', 'supervisor', 'superadmin'].includes(user.role) && { key: 'pilih', label: 'Pilih penerjemah', nilai: nPilih, on: cepat === 'pilih', klik: () => setCepat(cepat === 'pilih' ? '' : 'pilih') },
+          bolehPajakApostille(user) && nBelumBayar > 0 && { key: 'belumbayar', label: 'Belum catat bayar apostille', nilai: nBelumBayar, warn: true, on: cepat === 'belumbayar', klik: () => setCepat(cepat === 'belumbayar' ? '' : 'belumbayar') },
           !can.seeAllBranches(user) && { key: 'saya', label: 'Project saya', nilai: nSaya, on: cepat === 'saya', klik: () => setCepat(cepat === 'saya' ? '' : 'saya') },
         ].filter(Boolean).slice(0, 4)
         // Chip filter yang TIDAK sudah terlihat di Jenis ▾ / pintasan / Urutan (tidak diulang)
@@ -332,7 +336,7 @@ export default function Projects({ tabAwal }) {
                 {adaToolbar && <button type="button" onClick={() => setPref({ ...pref, toolbar: pref.toolbar === false })} aria-expanded={pref.toolbar !== false} aria-label={pref.toolbar === false ? 'Tampilkan baris jenis & pintasan' : 'Ciutkan toolbar'} title={pref.toolbar === false ? 'Tampilkan baris jenis & pintasan' : 'Ciutkan toolbar'} data-aksi="ciut-toolbar"
                   className={cx(KONTROL, 'hidden w-11 justify-center px-0 sm:inline-flex md:w-8')}><ChevronDown className={cx('h-4 w-4 transition-transform duration-300', pref.toolbar !== false && 'rotate-180')} aria-hidden="true" /></button>}
               </div></KeAtas>
-              {!worker && can.editProject(user) && <KeAtas slot="tambah"><TombolTambah label="Project" data="project-baru" onClick={() => bukaPanel('project')} /></KeAtas>}
+              {!worker && can.editProject(user) && <KeAtas slot="tambah"><TombolTambah label="Project" data="project-baru" onClick={() => go('projects/new')} /></KeAtas>}
             </div>
             {worker && <KapasitasSaya />}
 
@@ -375,7 +379,7 @@ export default function Projects({ tabAwal }) {
             tools={full ? <TampilanMenu compact pref={pref} setPref={setPref} zoom={zoom} setZoom={setZoom} density={density} setDensity={setDensity} setFull={setFull} view={view}
               current={{ name: namaView, tab, q, status, sort, cepat, dlFilter, prFilter, bpFilter, cols: colsAktif, view }} apply={terapkanView} /> : null}>
           {list.length === 0 && !(view === 'list' && (dlFilter || bpFilter.branch || bpFilter.print || q || tab !== 'all')) ? (
-            <Card><Empty icon={FolderOpen} title={worker ? 'Belum ada project untuk Anda' : 'Belum ada project'} text={worker ? 'Project akan muncul di sini begitu ada yang ditugaskan kepada Anda.' : 'Buat project baru dari invoice Zoho.'} action={worker || !can.editProject(user) ? null : <Button onClick={() => bukaPanel('project')}><Plus className="h-4 w-4" />Project Baru</Button>} /></Card>
+            <Card><Empty icon={FolderOpen} title={worker ? 'Belum ada project untuk Anda' : 'Belum ada project'} text={worker ? 'Project akan muncul di sini begitu ada yang ditugaskan kepada Anda.' : 'Buat project baru dari invoice Zoho.'} action={worker || !can.editProject(user) ? null : <Button onClick={() => go('projects/new')}><Plus className="h-4 w-4" />Project Baru</Button>} /></Card>
           ) : view === 'list' ? <ProjectList status={status} setStatus={setStatus} statusOpsi={[['aktif', `Aktif ${scoped.filter((p) => !isDone(p)).length}`], ['selesai', 'Selesai'], ['semua', 'Semua']].map(([key, label]) => ({ key, label }))} pref={{ ...pref, grup: pref.grup && sort === 'deadline' }} list={rest.slice(0, shownN)} nLate={late.length} dlFilter={dlFilter} setDlFilter={setDlFilter} prFilter={prFilter} setPrFilter={setPrFilter} cols={colsAktif} detailFor={detailFor} setDetailFor={setDetailFor} filesFor={filesFor} setFilesFor={setFilesFor} onLangkah={bukaLangkah} bpFilter={bpFilter} setBpFilter={setBpFilter} options={{ branches: [...new Set(scoped.map((p) => p.branch))].sort(), prints: [...new Set(scoped.map((p) => p.about?.print_location || p.branch))].sort() }} /> : (
             <ProjectSpreadsheet pref={pref} list={list} detailFor={detailFor} state={tableState} setState={setTableState} hideCols={worker ? SEMBUNYI_TABEL : []} tanpaCari renderIsi={worker ? undefined : (p) => <ProjectExpand p={p} onLangkah={bukaLangkah} />}
               kepalaAksi={worker ? 'Aksi' : <span className="inline-flex items-center gap-2">Aksi<select value={status} onChange={(e) => setStatus(e.target.value)} aria-label="Status project" data-status-tabel className="h-7 rounded-lg border-0 bg-[#141B34] py-0 pl-2 pr-7 text-xs font-bold text-white focus:ring-2 focus:ring-[#4169E1]">{[['aktif', `Aktif ${scoped.filter((p) => !isDone(p)).length}`], ['selesai', 'Selesai'], ['semua', 'Semua']].map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></span>}
@@ -1167,6 +1171,7 @@ function ProjectExpand({ p: p0, onLangkah, awal }) {
           </div>
         )
       })}
+      <SalinChatOrder project={p} className="border-t border-[rgba(20,27,52,0.08)] px-4 py-2" />
       {p.about?.notes && <p className="flex items-start gap-2 whitespace-pre-line border-t border-[rgba(20,27,52,0.08)] px-4 py-2 text-[13px]"><StickyNote className="mt-0.5 h-4 w-4 shrink-0" style={{ color: w.fg }} aria-hidden="true" /><span><strong>Catatan:</strong> {p.about.notes}</span></p>}
     </div>
   )

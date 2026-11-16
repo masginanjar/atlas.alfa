@@ -11,7 +11,7 @@ import { cx } from './ui.jsx'
  *          options:Array<string|{value:string,label:string,note?:string}>,
  *          placeholder?:string, label:string, kosong?:string, invalid?:boolean}} p
  */
-export default function PilihCari({ value, onChange, options = [], placeholder = 'Pilih…', label, kosong = 'Tidak ditemukan', invalid, disabled }) {
+export default function PilihCari({ value, onChange, options = [], placeholder = 'Pilih…', label, kosong = 'Tidak ditemukan', invalid, disabled, ringkas }) {
   const [open, setOpen] = useState(false)
   const [q, setQ] = useState('')
   const ref = useRef(null)
@@ -47,12 +47,12 @@ export default function PilihCari({ value, onChange, options = [], placeholder =
         aria-invalid={invalid || undefined} aria-label={label} data-pilihcari={label}
         className={cx('flex min-h-[44px] w-full items-center gap-2 rounded-xl bg-white px-3 py-2.5 text-left text-sm ring-1 transition',
           invalid ? 'ring-rose-400' : 'ring-slate-300 hover:ring-brand/50', 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand',
-          disabled && 'cursor-not-allowed bg-slate-50 opacity-60')}>
+          disabled && 'cursor-not-allowed bg-slate-50 opacity-60', ringkas && 'md:!min-h-9 md:h-9 md:rounded-[10px] md:px-2.5 md:py-0')}>
         <span className={cx('min-w-0 flex-1 truncate', !cur && 'text-ink-mute')}>{cur?.label ?? placeholder}</span>
         <ChevronDown className={cx('h-4 w-4 shrink-0 text-ink-mute transition', open && 'rotate-180')} />
       </button>
       {open && !disabled && (
-        <div className="absolute z-30 mt-1 w-full max-w-full rounded-xl bg-white shadow-xl ring-1 ring-slate-200">
+        <div className={cx('absolute z-30 mt-1 w-full rounded-xl bg-white shadow-xl ring-1 ring-slate-200', ringkas ? 'md:w-max md:min-w-full md:max-w-[320px]' : 'max-w-full')}>
           <div className="border-b border-slate-100 p-2">
             <label className="relative block min-w-0">
               <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-mute" aria-hidden="true" />

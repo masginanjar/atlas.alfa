@@ -6,7 +6,7 @@
 // ============================================================
 import { MODE, db } from './db.js'
 import { dataUrlToBlob } from './download.js'
-import { linkState, verifyPhone, customerView, vendorView, resolveFile, SESSION_HOURS, MAX_EMAILS_PER_DAY, isEmail, maskEmail } from './portalCore.js'
+import { linkState, verifyPhone, customerView, vendorView, resolveFile, kodePortal, SESSION_HOURS, MAX_EMAILS_PER_DAY, isEmail, maskEmail } from './portalCore.js'
 
 const SKEY = 'atlas-portal-session'
 const getSess = (token) => { try { const s = JSON.parse(sessionStorage.getItem(SKEY)); return s?.token === token && new Date(s.until) > new Date() ? s : null } catch { return null } }
@@ -34,7 +34,8 @@ const demo = {
   async open(token) {
     const link = await linkBy(token)
     const st = linkState(link)
-    return { state: st, kind: link?.kind, expires_at: link?.expires_at, verified: !!getSess(token) && st === 'active' }
+    const gate = link && kodePortal(link, await ctxFor(link)) ? 'kode' : 'hp'
+    return { state: st, kind: link?.kind, gate, expires_at: link?.expires_at, verified: !!getSess(token) && st === 'active' }
   },
   async verify(token, phone) {
     const link = await linkBy(token)
@@ -60,6 +61,25 @@ const demo = {
     if (!f) throw new Error('File tidak tersedia untuk tautan ini')
     if (f.url?.startsWith('data:')) return { blob: dataUrlToBlob(f.url), name: f.name }
     throw new Error('File demo tidak tersimpan (lebih dari 1,5 MB)')
+  },
+  /** Vendor mengunggah hasil (massal) untuk satu invoice. Tahap alur TIDAK dimajukan otomatis — CS memeriksa dulu. */
+  async upload(token, projectId, files) {
+    if (!getSess(token)) throw new Error('Sesi berakhir — masukkan kode akses lagi')
+    const { link, st } = await active(token)
+    if (!link || st !== 'active' || link.kind !== 'vendor') throw new Error('Tautan ini sudah tidak aktif')
+    const c = await ctxFor(link)
+    const project = c.projects.find((p) => p.id === projectId)
+    const milik = (project?.sub_projects || []).filter((s) => s.data?.vendor === c.vendor?.id)
+    if (!project || !milik.length) throw new Error('Pekerjaan ini tidak tersedia untuk tautan ini')
+    const { drive } = await import('./integrations.js')
+    const oleh = `${c.vendor.name} (portal vendor)`; const now = new Date().toISOString(); const added = []
+    for (const f of files) added.push({ id: crypto.randomUUID?.() ?? String(Math.random()), ...(await drive.upload(f, { branch: project.branch, invoice: project.invoice_no })), sub_id: milik[0].id, by: oleh })
+    const sub_projects = project.sub_projects.map((s) => (s.id !== milik[0].id ? s : { ...s,
+      data: { ...s.data, hasil_vendor: s.data?.hasil_vendor || added[0], hasil_vendor_list: [...(Array.isArray(s.data?.hasil_vendor_list) ? s.data.hasil_vendor_list : s.data?.hasil_vendor ? [s.data.hasil_vendor] : []), ...added] },
+      history: [...(s.history || []), { at: now, by: oleh, action: `Hasil diunggah vendor lewat portal · ${added.length} file` }] }))
+    await db.update('projects', project.id, { sub_projects, files: [...(project.files || []), ...added] })
+    await db.insert('notifications', { ...(project.created_by ? { to_user: project.created_by } : { to_role: 'cs' }), kind: 'task', text: `${project.invoice_no}: ${c.vendor.name} mengunggah ${added.length} file hasil lewat portal — periksa lalu lanjutkan`, project_id: project.id, sub_id: milik[0].id, by: oleh, read_by: [] }).catch(() => {})
+    return { ok: true, n: added.length }
   },
   async email(token, { email } = {}) {
     if (!getSess(token)) return { error: 'session' }
@@ -93,6 +113,8 @@ const live = {
     throw new Error(r.error === 'expired' || r.error === 'revoked' ? 'Tautan ini sudah tidak aktif' : 'File tidak tersedia')
   },
   email: (token, body = {}) => { const s = getSess(token); return s ? post('email', { token, session: s.sess, ...body }) : Promise.resolve({ error: 'session' }) },
+  // Unggah hasil dari portal vendor butuh fungsi server tersendiri — belum dipasang di live.
+  upload: () => Promise.reject(new Error('Unggah lewat portal belum aktif di server — kirim hasil ke CS dulu')),
 }
 
 export const portal = MODE === 'live' ? live : demo

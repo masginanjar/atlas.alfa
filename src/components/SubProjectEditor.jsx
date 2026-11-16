@@ -6,6 +6,8 @@ import { useApp } from '../lib/store.jsx'
 import { SUB_TYPES, COUNTRIES, OBJEK_APOSTILLE, points, renumber } from '../config/subtypes.js'
 import { Field, FieldError, Input, Select, cx } from './ui.jsx'
 import { placeOf } from '../config/access.js'
+import { DONE, VENDOR_PAID_STAGES } from '../config/workflows.js'
+import { boleh } from '../lib/izin.js'
 import PilihCari from './PilihCari.jsx'
 
 const LANGS = ['Indonesia', 'Inggris', 'Mandarin', 'Jepang', 'Korea', 'Arab', 'Belanda', 'Jerman', 'Prancis', 'Spanyol', 'Rusia', 'Lainnya']
@@ -45,7 +47,9 @@ function NumberedTextarea({ value, onChange, placeholder, invalid }) {
 }
 
 /** Jenis sub project yang detail dokumennya per baris (deskripsi + upload file per dokumen). */
-export const usesDocs = (type) => type === 'terjemahan' || type === 'apostille' || type === 'legalisasi'
+/** Terjemahan tersumpah & non tersumpah: banyak dokumen dalam satu sub project (jenis + halaman per dokumen). */
+export const isTerjemahan = (type) => type === 'terjemahan' || type === 'terjemahan_nt'
+export const usesDocs = (type) => isTerjemahan(type) || type === 'apostille' || type === 'legalisasi'
 /** Baris dokumen. Data lama tanpa `docs` diturunkan dari deskripsi. */
 export function docsOf(sub) {
   if (Array.isArray(sub.docs) && sub.docs.length) return sub.docs
@@ -70,7 +74,38 @@ export const safeName = (n = '') => n.replace(/[\\/:*?"<>|]+/g, '-').replace(/\s
 /** Nama file otomatis dari deskripsi dokumen (ekstensi file asli dipertahankan). */
 export const docFileName = (d) => d.file_name?.trim() || `${safeName(d.desc) || (d.file?.name || 'dokumen').replace(/\.[^.]+$/, '')}${extOf(d.file?.name)}`
 
-function DocTable({ docs, onChange, invalid, simple = false, uploadLabel = 'Upload file (opsional)', maks = 0 }) {
+const namaDasar = (n = '') => n.replace(/\.[^.]+$/, '')
+/** Perkiraan jumlah halaman PDF (dibaca di perangkat, tidak dikirim ke mana pun). Gagal / bukan PDF → 0 (pakai bawaan 1). */
+export async function hitungHalaman(file) {
+  try {
+    if (!/pdf$/i.test(file.type) && !/\.pdf$/i.test(file.name)) return 0
+    if (file.size > 40 * 1024 * 1024) return 0
+    const teks = new TextDecoder('latin1').decode(await file.arrayBuffer())
+    return (teks.match(/\/Type\s*\/Page(?![s\w])/g) || []).length
+  } catch { return 0 }
+}
+
+function DocTable({ docs, onChange, invalid, simple = false, uploadLabel = 'Upload file (opsional)', maks = 0, onLebih }) {
+  const [seret, setSeret] = useState(false)
+  /**
+   * Pasang 1–banyak file sekaligus: tiap file = 1 baris dokumen (nama file jadi nama dokumen, bisa diganti).
+   * Baris kosong dipakai dulu; sisanya jadi baris baru. Bila sudah mencapai batas (apostille/legalisasi = 1),
+   * file berikutnya diteruskan ke onLebih → jadi sub project sendiri.
+   */
+  const pasang = async (fileList, mulai = null) => {
+    const list = [...(fileList || [])]; if (!list.length) return
+    const hal = await Promise.all(list.map(hitungHalaman))
+    const next = [...docs]; const sisa = []; let at = mulai
+    list.forEach((f, n) => {
+      let i = at != null && next[at] && !next[at].file && !next[at].existing ? at : next.findIndex((d) => !d.file && !d.existing && !d.desc.trim())
+      at = null
+      if (i < 0) { if (maks && next.length >= maks) { sisa.push(f); return } next.push({ desc: '', pages: 1, kind: next[next.length - 1]?.kind || 'reguler' }); i = next.length - 1 }
+      const d = next[i]; const desc = d.desc.trim() || namaDasar(f.name)
+      next[i] = { ...d, desc, file: f, file_name: `${safeName(desc) || 'dokumen'}${extOf(f.name)}`, name_edited: false, ...(hal[n] > 0 ? { pages: hal[n] } : {}) }
+    })
+    onChange(next)
+    if (sisa.length) onLebih?.(sisa)
+  }
   const [focus, setFocus] = useState(null)
   const refs = useRef([])
   useEffect(() => { if (focus !== null) { refs.current[focus]?.focus(); setFocus(null) } }, [focus, docs.length])
@@ -83,23 +118,25 @@ function DocTable({ docs, onChange, invalid, simple = false, uploadLabel = 'Uplo
   const nonReg = docs.filter((d) => d.desc.trim() && d.kind === 'non_reguler').reduce((a, d) => a + (Number(d.pages) || 0), 0)
 
   return (
-    <div className={cx('overflow-hidden rounded-xl bg-white ring-1', invalid ? 'ring-2 ring-rose-500' : 'ring-slate-300')}>
+    <div className={cx('overflow-hidden rounded-xl bg-white ring-1', seret ? 'ring-2 ring-brand' : invalid ? 'ring-2 ring-rose-500' : 'ring-slate-300')} data-tabel-dokumen
+      onDragOver={(e) => { if ([...(e.dataTransfer?.types || [])].includes('Files')) { e.preventDefault(); setSeret(true) } }} onDragLeave={() => setSeret(false)}
+      onDrop={(e) => { if (e.dataTransfer?.files?.length) { e.preventDefault(); setSeret(false); pasang(e.dataTransfer.files) } }}>
       <div className={cx('grid items-center gap-1.5 bg-emerald-50 px-1.5 py-2 text-[11px] font-semibold uppercase tracking-wide text-emerald-900 sm:gap-2 sm:px-2', simple ? 'grid-cols-[26px_1fr_30px] sm:grid-cols-[32px_1fr_32px]' : 'grid-cols-[26px_1fr_64px_48px_30px] sm:grid-cols-[32px_1fr_116px_72px_32px]')}>
         <span className="text-center">No</span><span>Deskripsi<span className="hidden sm:inline"> Dokumen</span> & File</span>{!simple && <span className="text-center">Jenis</span>}{!simple && <span className="text-center">Hlm</span>}<span />
       </div>
       {docs.map((d, i) => (
         <div key={i} className={cx('grid items-center gap-1.5 border-t border-slate-100 px-1.5 py-1.5 transition hover:bg-slate-50/60 sm:gap-2 sm:px-2', simple ? 'grid-cols-[26px_1fr_30px] sm:grid-cols-[32px_1fr_32px]' : 'grid-cols-[26px_1fr_64px_48px_30px] sm:grid-cols-[32px_1fr_116px_72px_32px]')}>
           <span className="grid h-6 w-6 place-items-center justify-self-center rounded-md bg-slate-100 text-xs font-semibold text-ink-soft">{i + 1}</span>
-          <div className="min-w-0 space-y-1">
-            <input ref={(el) => (refs.current[i] = el)} value={d.desc} placeholder="mis. KTP a.n. …" aria-label={`Deskripsi dokumen ${i + 1}`}
+          <div className={cx('min-w-0 space-y-1', !simple && 'max-sm:col-span-4')}>
+            {!d.file && <input ref={(el) => (refs.current[i] = el)} value={d.desc} placeholder="mis. KTP a.n. …" aria-label={`Deskripsi dokumen ${i + 1}`}
               onChange={(e) => upd(i, { desc: e.target.value, ...(d.file && !d.name_edited ? { file_name: `${safeName(e.target.value) || 'dokumen'}${extOf(d.file.name)}` } : {}) })}
               onKeyDown={(e) => { if (e.key === 'Enter' && !e.nativeEvent.isComposing && !penuh) { e.preventDefault(); add(i + 1) } }}
-              className="h-9 w-full min-w-0 rounded-lg border-0 bg-white px-2.5 text-sm text-ink ring-1 ring-slate-200 placeholder:text-slate-400 hover:ring-slate-300 focus:outline-none focus:ring-2 focus:ring-brand" />
+              className="h-9 w-full min-w-0 rounded-lg border-0 bg-white px-2.5 text-sm text-ink ring-1 ring-slate-200 placeholder:text-slate-400 hover:ring-slate-300 focus:outline-none focus:ring-2 focus:ring-brand max-md:h-11 max-md:text-base" />}
             {d.file ? (
               <div className="flex items-center gap-1.5 rounded-lg bg-emerald-50 px-2 py-1 ring-1 ring-emerald-200">
                 <Paperclip className="h-3.5 w-3.5 shrink-0 text-emerald-700" />
-                <input value={d.file_name ?? docFileName(d)} onChange={(e) => upd(i, { file_name: e.target.value, name_edited: true })} aria-label={`Nama file dokumen ${i + 1}`} title="Nama file saat diunggah — bisa diedit"
-                  className="h-7 min-w-0 flex-1 rounded-md border-0 bg-white px-2 text-xs font-semibold text-emerald-900 ring-1 ring-emerald-200 focus:outline-none focus:ring-2 focus:ring-brand" />
+                <input value={d.file_name ?? docFileName(d)} onChange={(e) => upd(i, { file_name: e.target.value, name_edited: true, desc: namaDasar(e.target.value) })} aria-label={`Nama dokumen / file ${i + 1}`} title="Nama dokumen sekaligus nama file — bisa diganti" data-nama-file
+                  className="h-8 min-w-0 flex-1 rounded-md border-0 bg-white px-2 text-sm font-semibold text-emerald-900 ring-1 ring-emerald-200 focus:outline-none focus:ring-2 focus:ring-brand max-md:h-10 max-md:text-base" />
                 <span className="hidden shrink-0 text-[10px] text-emerald-700 sm:inline">{Math.max(1, Math.round((d.file.size || 0) / 1024))} KB</span>
                 <button type="button" onClick={() => upd(i, { file: null, file_name: '', name_edited: false })} aria-label={`Hapus file dokumen ${i + 1}`} className="grid h-6 w-6 place-items-center rounded-md text-emerald-700 hover:bg-white hover:text-rose-600"><X className="h-3.5 w-3.5" /></button>
               </div>
@@ -108,13 +145,13 @@ function DocTable({ docs, onChange, invalid, simple = false, uploadLabel = 'Uplo
             ) : (
               <label className={cx('inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1 text-[11px] font-semibold ring-1', invalid && !d.file ? 'bg-rose-50 text-rose-700 ring-rose-300' : 'bg-white text-brand ring-brand/30 hover:bg-brand-soft')}>
                 <Upload className="h-3.5 w-3.5" />{uploadLabel}
-                <input type="file" className="hidden" accept="application/pdf,image/*,.doc,.docx" aria-label={`File dokumen ${i + 1}`}
-                  onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) upd(i, { file: f, file_name: `${safeName(d.desc) || f.name.replace(/\.[^.]+$/, '')}${extOf(f.name)}`, name_edited: false }) }} />
+                <input type="file" multiple className="hidden" accept="application/pdf,image/*,.doc,.docx" aria-label={`File dokumen ${i + 1}`}
+                  onChange={(e) => { const fs = [...(e.target.files || [])]; e.target.value = ''; if (fs.length) pasang(fs, i) }} />
               </label>
             )}
           </div>
           {!simple && <select value={d.kind || 'reguler'} onChange={(e) => upd(i, { kind: e.target.value })} aria-label={`Jenis dokumen ${i + 1}`} title="Reguler / Non Reguler"
-            className={cx('h-9 w-full min-w-0 rounded-lg border-0 px-1 text-xs font-semibold ring-1 focus:outline-none focus:ring-2 focus:ring-brand', d.kind === 'non_reguler' ? 'bg-violet-50 text-violet-800 ring-violet-200' : 'bg-white text-ink ring-slate-200')}>
+            className={cx('max-sm:col-span-2 max-sm:col-start-2 max-sm:h-11 max-sm:text-sm h-9 w-full min-w-0 rounded-lg border-0 px-1 text-xs font-semibold ring-1 focus:outline-none focus:ring-2 focus:ring-brand', d.kind === 'non_reguler' ? 'bg-violet-50 text-violet-800 ring-violet-200' : 'bg-white text-ink ring-slate-200')}>
             <option value="reguler">Reguler</option><option value="non_reguler">Non Reguler</option>
           </select>}
           {!simple && <input type="number" min="1" inputMode="numeric" value={d.pages} aria-label={`Jumlah halaman dokumen ${i + 1}`}
@@ -134,6 +171,10 @@ function DocTable({ docs, onChange, invalid, simple = false, uploadLabel = 'Uplo
             <Plus className="h-4 w-4" />Tambah Dokumen
           </button>
         )}
+        <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-brand px-3 py-1.5 text-[13px] font-semibold text-white hover:opacity-90 max-md:min-h-11" data-unggah-banyak title={maks ? 'File ke-2 dan seterusnya otomatis jadi sub project sendiri' : 'Tiap file otomatis jadi 1 baris dokumen'}>
+          <Upload className="h-4 w-4" />{seret ? 'Lepas file di sini' : 'Upload / tarik file (bisa banyak)'}
+          <input type="file" multiple className="hidden" accept="application/pdf,image/*,.doc,.docx" aria-label="Unggah beberapa file sekaligus" onChange={(e) => { const fs = [...(e.target.files || [])]; e.target.value = ''; if (fs.length) pasang(fs) }} />
+        </label>
         <span className="flex items-center gap-2 text-[13px] text-ink-soft">
           <span className="inline-flex items-center gap-1 rounded-lg bg-white px-2.5 py-1 ring-1 ring-slate-200" title="Jumlah file/dokumen"><Files className="h-3.5 w-3.5 text-emerald-600" /><b className="font-bold text-ink">{count}</b> dokumen</span>
           {!simple && <span className="inline-flex items-center gap-1 rounded-lg bg-white px-2.5 py-1 ring-1 ring-slate-200" title="Total halaman"><BookOpen className="h-3.5 w-3.5 text-emerald-600" /><b className="font-bold text-ink">{total}</b> halaman{nonReg > 0 && <span className="text-violet-700"> · {nonReg} non reguler</span>}</span>}
@@ -143,8 +184,27 @@ function DocTable({ docs, onChange, invalid, simple = false, uploadLabel = 'Uplo
   )
 }
 
-export default function SubProjectEditor({ n, sub, onChange, onRemove, branch, locked, error, ringkas }) {
-  const { data } = useApp()
+export default function SubProjectEditor({ n, sub, onChange, onRemove, branch, locked, error, ringkas, onPecah }) {
+  const { data, user } = useApp()
+  // Salah bahasa / harus ganti vendor padahal alur sudah berjalan: yang berizin boleh membuka kunci (alur diulang saat disimpan). Tidak untuk dokumen yang sudah dibayar / selesai.
+  const sudahBayar = [DONE, ...VENDOR_PAID_STAGES].includes(sub.stage) || !!sub.data?.paid_date
+  const bisaUlang = locked && !!sub.id && boleh(user, 'penugasan-ulang.ubah')
+  const BukaKunci = () => (!bisaUlang ? null : sudahBayar
+    ? <p className="mt-1 text-[11px] text-ink-mute" data-ulang-tolak>Sudah dibayar / selesai — tidak bisa diganti dari sini.</p>
+    : <button type="button" data-ulang-buka onClick={() => onChange({ ...sub, _ulang: true })} className="mt-1.5 inline-flex min-h-9 items-center gap-1.5 rounded-lg bg-amber-50 px-3 text-xs font-semibold text-amber-900 ring-1 ring-amber-200 hover:bg-amber-100 max-md:min-h-11"><Lock className="h-3.5 w-3.5" />Buka kunci: ganti bahasa / penerjemah / vendor</button>)
+  // KTP pemohon diunggah → nomornya dibaca otomatis (AI di live). Nomor TIDAK dirapikan/ditebak: hanya dipakai bila tepat 16 angka, dan tetap bisa dikoreksi.
+  const [bacaId, setBacaId] = useState(null)
+  const unggahId = async (f) => {
+    onChange({ ...sub, applicant_file: f })
+    if (String(sub.applicant_id || '').trim()) return // sudah diketik → jangan ditimpa
+    setBacaId('baca')
+    try {
+      const { bacaKtp } = await import('../lib/ktpOcr.js')
+      const r = await bacaKtp(f, f.name)
+      const nik = String(r?.nilai?.nik?.v || '').replace(/\s/g, '')
+      if (/^\d{16}$/.test(nik)) { onChange({ ...sub, applicant_file: f, applicant_id: nik }); setBacaId({ ok: true, mesin: r.mesinLabel || 'pembaca otomatis' }) } else setBacaId({ gagal: true })
+    } catch { setBacaId({ gagal: true }) }
+  }
   const of = (type) => data.people.filter((p) => p.type === type && (p.branch === branch || p.branch === 'Semua'))
   const set = (patch) => onChange({ ...sub, ...patch })
   const extra = (SUB_TYPES[sub.type] ?? SUB_TYPES.jasa_lain).extra
@@ -182,10 +242,11 @@ export default function SubProjectEditor({ n, sub, onChange, onRemove, branch, l
       <div className="space-y-5">
         {usesDocs(sub.type) ? (
           <div>
-            <span className="mb-1.5 block text-[13px] font-semibold text-ink-soft">{sub.type === 'terjemahan' ? 'Detail Dokumen' : `Dokumen yang akan di-${sub.type === 'apostille' ? 'apostille' : 'legalisasi'}`} <span className="text-rose-500" aria-hidden>*</span></span>
+            <span className="mb-1.5 block text-[13px] font-semibold text-ink-soft">{isTerjemahan(sub.type) ? 'Detail Dokumen' : `Dokumen yang akan di-${sub.type === 'apostille' ? 'apostille' : 'legalisasi'}`} <span className="text-rose-500" aria-hidden>*</span></span>
             {/* Apostille & legalisasi: satu sub project = satu dokumen yang diproses. */}
-            <DocTable docs={docsOf(sub)} invalid={errOn('dokumen')} simple={sub.type !== 'terjemahan'} maks={MAKS_DOK[sub.type] || 0}
-              uploadLabel={sub.type === 'terjemahan' ? 'Upload file (opsional)' : 'Upload scan (opsional)'} onChange={(docs) => set(fromDocs(docs))} />
+            <DocTable docs={docsOf(sub)} invalid={errOn('dokumen')} simple={!isTerjemahan(sub.type)} maks={MAKS_DOK[sub.type] || 0}
+              uploadLabel={isTerjemahan(sub.type) ? 'Upload file (opsional)' : 'Upload scan (opsional)'} onChange={(docs) => set(fromDocs(docs))}
+              onLebih={onPecah ? (files) => onPecah(files) : undefined} />
           </div>
         ) : (
           <>
@@ -238,6 +299,17 @@ export default function SubProjectEditor({ n, sub, onChange, onRemove, branch, l
                     ...of('vendor').map((p) => ({ value: `vendor:${p.id}`, label: p.name, note: 'Vendor eksternal' })),
                   ]}
                   kosong="Penerjemah / vendor tidak ditemukan" />
+                <BukaKunci />
+                {sub._ulang && (
+                  <div className="mt-2 space-y-1.5 rounded-lg bg-amber-50 p-2.5 ring-1 ring-amber-200" data-ulang-alasan>
+                    <label className="block text-[11px] font-semibold text-amber-900">Alasan ganti (wajib)
+                      <input type="text" value={sub._ulang_alasan || ''} onChange={(x) => set({ _ulang_alasan: x.target.value })} placeholder="mis. salah bahasa, vendor harus diganti"
+                        className="mt-1 block w-full rounded-lg border-0 bg-white px-2.5 py-2 text-sm text-ink ring-1 ring-amber-300 focus:ring-2 focus:ring-amber-500 max-md:min-h-11 max-md:text-base" />
+                    </label>
+                    <p className="text-[11px] text-amber-900">Kunci dibuka. Saat disimpan, alur dokumen ini diulang dari awal dan pengajuan vendor yang lama dibatalkan.</p>
+                    <button type="button" onClick={() => onChange({ ...sub, _ulang: false, _ulang_alasan: '' })} className="text-[11px] font-semibold text-amber-900 underline max-md:min-h-11">Batal buka kunci</button>
+                  </div>
+                )}
               </Field>
             )}
           </div>
@@ -245,7 +317,7 @@ export default function SubProjectEditor({ n, sub, onChange, onRemove, branch, l
 
         {['apostille', 'legalisasi'].includes(sub.type) && (
           <Field label="Nomor ID Pemohon / No. NIB / SK Kemenkumham Perusahaan" icon={IdCard} required
-            hint="NIK/paspor, NIB, atau nomor SK Kemenkumham · scan/file ID wajib diunggah (bebas jenis file)">
+            hint={bacaId === 'baca' ? 'Membaca nomor dari KTP…' : bacaId?.ok ? `Nomor terbaca otomatis (${bacaId.mesin}) — cocokkan dengan KTP sebelum disimpan.` : bacaId?.gagal ? 'Nomor tidak terbaca otomatis — ketik manual.' : 'Unggah KTP: nomornya dibaca otomatis (tanpa mengetik) dan dipakai untuk Surat Kuasa. NIB / SK Kemenkumham diketik manual.'}>
             <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
               <Input value={sub.applicant_id || ''} onChange={(e) => set({ applicant_id: e.target.value })} placeholder="mis. 5171xxxxxxxxxxxx / NIB 1234567890123 / AHU-0012345.AH.01.01.2024" />
               {sub.applicant_file ? (
@@ -259,8 +331,8 @@ export default function SubProjectEditor({ n, sub, onChange, onRemove, branch, l
               ) : (
                 <label className={cx('inline-flex min-h-[44px] cursor-pointer items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold ring-1 md:min-h-0',
                   errOn('id / dokumen pemohon') ? 'bg-rose-50 text-rose-700 ring-rose-300' : 'bg-white text-brand ring-brand/30 hover:bg-brand-soft')} data-upload-id>
-                  <Upload className="h-3.5 w-3.5 shrink-0" />Upload scan ID / dokumen pemohon *
-                  <input type="file" className="hidden" aria-label="File ID pemohon" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) set({ applicant_file: f }) }} />
+                  <Upload className="h-3.5 w-3.5 shrink-0" />Upload KTP / ID pemohon * <span className="font-normal">· nomor dibaca otomatis</span>
+                  <input type="file" className="hidden" accept="image/*,application/pdf" aria-label="File ID pemohon" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) unggahId(f) }} />
                 </label>
               )}
             </div>
@@ -324,6 +396,7 @@ export function validateSub(s, i) {
   const label = `Sub ${i + 1}`
   if (!points(s.description).length) return usesDocs(s.type) ? `${label}: isi minimal 1 dokumen` : `${label}: isi deskripsi minimal 1 poin`
   const extra = (SUB_TYPES[s.type] ?? SUB_TYPES.jasa_lain).extra
+  if (extra.includes('lang') && !s.lang_to) return `${label}: pilih bahasa tujuan`
   if (extra.includes('translator_nt') && !s.translator) return `${label}: pilih penerjemah`
   if (extra.includes('country') && !s.country.trim()) return `${label}: pilih tujuan negara`
   if (extra.includes('institution') && !s.institution) return `${label}: pilih lembaga`

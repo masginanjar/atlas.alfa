@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import SalinChatOrder from '../components/SalinChatOrder.jsx'
 import { subTerlihat } from '../lib/dokumenAL.js'
 import { Share2, ArrowLeft, Pencil, Trash2, Upload, FileText, Download, Check, Lock, History, CalendarClock, Loader2, UserRound, Truck, Printer, Hand, Unlock, Eye, FolderOpen, FastForward, StickyNote, FileSignature, IdCard } from 'lucide-react'
 import { useApp } from '../lib/store.jsx'
 import { boleh } from '../lib/izin.js'
 import { go } from '../lib/router.js'
 import { drive } from '../lib/integrations.js'
-import { can, PERSON_TYPES, ROLES, scopeByBranch, activeClaim, placeOf, branchesOf, printBranchOf, displayNameFor, seeProofreaderIdentity, proofreaderTeamName, pickProofreader, invoiceLabel, coordinatorFor, foreignLang, bolehItemCeklis, lewatIzinApostille } from '../config/access.js'
+import { can, biayaVendorTersembunyi, bolehPajakApostille, PERSON_TYPES, ROLES, scopeByBranch, activeClaim, placeOf, branchesOf, printBranchOf, displayNameFor, seeProofreaderIdentity, proofreaderTeamName, pickProofreader, invoiceLabel, coordinatorFor, foreignLang, bolehItemCeklis, lewatIzinApostille } from '../config/access.js'
 import TugaskanPenerjemah from '../components/TugaskanPenerjemah.jsx'
 import { saveBlob, dataUrlToBlob } from '../lib/download.js'
 import ResiFields from '../components/ResiFields.jsx'
@@ -19,7 +20,7 @@ import { printBlob } from '../lib/printing.js'
 import AffidavitCetak from '../components/AffidavitCetak.jsx'
 import { perluAffidavit } from '../lib/affidavit.js'
 import { ambilNomor, kodeArah } from '../lib/registrasi.js'
-import { CATEGORIES, DONE, stageIndex, stagesOf, progressOf, flowOf, sumberLabel, isVendorFlow, recommendFund, docListOf, VENDOR_PAID_STAGES, namaLangkah } from '../config/workflows.js'
+import { CATEGORIES, DONE, stageIndex, stagesOf, progressOf, flowOf, sumberLabel, isVendorFlow, recommendFund, docListOf, VENDOR_PAID_STAGES, namaLangkah, belumCatatBayar, totalBiaya } from '../config/workflows.js'
 import { SumberDanaPicker } from '../components/Pengajuan.jsx'
 import { ProjectTypes, PrintBadge } from '../components/badges.jsx'
 import { SUB_TYPES, points } from '../config/subtypes.js'
@@ -294,6 +295,8 @@ function DetailCanvas({ project, focusSub, tab, setTab, del, setEditing, setShar
         </div>
       </section>
 
+      <SalinChatOrder project={project} />
+
       <section aria-label="Bagian lain project" className="flex flex-col gap-3.5 rounded-2xl border border-[#DADDE8] bg-white px-4 pb-4 pt-3.5 dark:border-white/10 dark:bg-white/5" data-tab-canvas>
         <TabDetailProject project={project} tab={tab} setTab={setTab} />
       </section>
@@ -325,6 +328,65 @@ function posisiTahapSeg(project) {
   return { label: i >= st.length ? 'Semua tahap selesai' : `Tahap ${i + 1} dari ${st.length}`, seg: st.map((_, k) => (k < i ? '#141B34' : k === i ? '#4169E1' : '#D9DBE7')) }
 }
 
+/**
+ * Order ke biro rekanan (mis. Indotrans) — muncul saat dokumen terjemahan tersumpah masih di tahap Pilih Penerjemah.
+ * Pimpinan & CS (izin biro-order.tambah). Setelah dipilih: CS unggah hasil → langsung nomor register.
+ */
+function OrderBiro({ project, sub }) {
+  const { user, data, assignTranslator, notify } = useApp()
+  const [id, setId] = useState('')
+  const [sibuk, setSibuk] = useState(false)
+  const biro = (data.people || []).filter((x) => x.type === 'vendor' && x.biro && x.active !== false && (x.branch === project.branch || x.branch === 'Semua' || !x.branch))
+  if (sub.type !== 'terjemahan' || sub.stage !== 'pilih_penerjemah' || !biro.length || !boleh(user, 'biro-order.tambah')) return null
+  const kirim = async () => {
+    if (!id || sibuk) return
+    setSibuk(true)
+    try { await assignTranslator(project, sub.id, { kind: 'vendor', id }); notify(`${sub.title}: diorder ke ${biro.find((x) => x.id === id)?.name}`) } catch (e) { notify(e.message, 'err') } finally { setSibuk(false) }
+  }
+  return (
+    <div className="mx-4 mb-3 flex flex-wrap items-end gap-2 rounded-xl bg-violet-50 p-3 ring-1 ring-violet-200" data-order-biro onClick={(e) => e.stopPropagation()}>
+      <label className="min-w-0 flex-1 basis-56 text-xs font-semibold text-violet-900">Dikerjakan biro rekanan?
+        <select value={id} onChange={(e) => setId(e.target.value)} className="mt-1 block w-full rounded-lg border-0 bg-white px-2.5 py-2 text-sm text-ink ring-1 ring-violet-300 max-md:min-h-11 max-md:text-base">
+          <option value="">— Pilih biro —</option>
+          {biro.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
+        </select>
+      </label>
+      <button type="button" disabled={!id || sibuk} onClick={kirim} className="inline-flex min-h-9 items-center rounded-lg bg-ink px-3.5 text-sm font-semibold text-white disabled:opacity-40 max-md:min-h-11 max-md:w-full max-md:justify-center">{sibuk ? 'Menyimpan…' : 'Order ke Biro'}</button>
+      <p className="basis-full text-[11px] text-violet-900">Order dilakukan lewat grup. CS mengunggah hasilnya di sini, lalu dokumen langsung ke Admin Pusat untuk nomor register — tanpa proofreader & otorisasi.</p>
+    </div>
+  )
+}
+
+/**
+ * Bayar Apostille dicatat MENYUSUL: langkahnya boleh dilewati saat proses, tetapi tetap harus dicatat
+ * (biasanya dirapel malam hari). Hanya yang berizin membayar (apostille-proses.setujui).
+ */
+function CatatBayarSusulan({ project, sub }) {
+  const { user, patchSubData, notify } = useApp()
+  const [sibuk, setSibuk] = useState(false)
+  if (!belumCatatBayar(sub, project)) return null
+  const bolehCatat = bolehPajakApostille(user)
+  const total = totalBiaya(sub.data || {})
+  const catat = async () => {
+    if (sibuk) return
+    if (!(total > 0)) return notify('Isi dulu Biaya apostille di atas, lalu tekan “Simpan biaya”.', 'err')
+    setSibuk(true)
+    try {
+      await patchSubData(project, sub.id, { proses_checklist: [...(sub.data?.proses_checklist || []), 'Bayar Pajak'], pajak_nominal: total, pajak_dicatat_at: new Date().toISOString(), pajak_dicatat_oleh: user.name, pajak_susulan: true },
+        `Bayar Apostille dicatat menyusul: Rp ${total.toLocaleString('id-ID')}`)
+      notify(`${sub.title}: bayar apostille tercatat`)
+    } catch (e) { notify(e.message, 'err') } finally { setSibuk(false) }
+  }
+  return (
+    <div className="mx-4 mb-3 flex flex-wrap items-center gap-2 rounded-xl bg-amber-50 p-3 text-xs text-amber-900 ring-1 ring-amber-200" data-catat-bayar onClick={(e) => e.stopPropagation()}>
+      <span className="min-w-0 flex-1 basis-56"><b className="font-semibold">Bayar Apostille belum dicatat.</b> {total > 0 ? `Nominal: Rp ${total.toLocaleString('id-ID')} (dari Biaya apostille).` : 'Biaya apostille belum diisi.'}</span>
+      {bolehCatat
+        ? <button type="button" disabled={sibuk} onClick={catat} className="inline-flex min-h-9 items-center rounded-lg bg-ink px-3.5 text-sm font-semibold text-white disabled:opacity-40 max-md:min-h-11 max-md:w-full max-md:justify-center">{sibuk ? 'Menyimpan…' : 'Catat Bayar Apostille'}</button>
+        : <span className="font-semibold">Dicatat oleh yang berwenang membayar.</span>}
+    </div>
+  )
+}
+
 export function SubProject({ n, project, sub, compact, tanpaTahap, ringkas }) {
   const { user, data } = useApp()
   const [pakaiForm, setPakaiForm] = useState(false)
@@ -335,13 +397,15 @@ export function SubProject({ n, project, sub, compact, tanpaTahap, ringkas }) {
   const done = sub.stage === DONE
 
   if (ringkas && !pakaiForm && sub.stage === 'pilih_penerjemah' && can.processStage(user, stages[idx], sub, project) && !coordinatorFor(data.users, foreignLang(sub))) return (
-    <div data-sub-card={sub.id} data-panel-ringkas><TugaskanPenerjemah inline p={project} sub={sub} onLainnya={() => setPakaiForm(true)} /></div>
+    <div data-sub-card={sub.id} data-panel-ringkas><TugaskanPenerjemah inline p={project} sub={sub} onLainnya={() => setPakaiForm(true)} /><OrderBiro project={project} sub={sub} /></div>
   )
   if (ringkas) return (
     <div data-sub-card={sub.id} data-panel-ringkas>
       {['ap_int', 'lg_int'].includes(flow) && <BiayaPanel project={project} sub={sub} ringkas />}
       <SambungSuratKuasa project={project} sub={sub} ringkas />
       {done ? <p className="px-4 py-3 text-[13px] font-semibold text-emerald-700">Sub project ini sudah selesai.</p> : <StagePanel project={project} sub={sub} stage={stages[idx]} ringkas />}
+      <CatatBayarSusulan project={project} sub={sub} />
+      <OrderBiro project={project} sub={sub} />
     </div>
   )
   return (
@@ -393,6 +457,9 @@ export function SubProject({ n, project, sub, compact, tanpaTahap, ringkas }) {
       <SambungSuratKuasa project={project} sub={sub} />
       <Collected project={project} sub={sub} />
       {!done && <StagePanel project={project} sub={sub} stage={stages[idx]} />}
+      {['ap_int', 'lg_int'].includes(flow) && done && <BiayaPanel project={project} sub={sub} ringkas />}
+      <CatatBayarSusulan project={project} sub={sub} />
+      <OrderBiro project={project} sub={sub} />
 
       <div className="border-t border-slate-100 px-4 py-2">
         <button onClick={() => setShowLog((v) => !v)} className="inline-flex items-center gap-1 text-xs font-semibold text-ink-mute hover:text-ink"><History className="h-3 w-3" />Riwayat ({sub.history?.length || 0})</button>
@@ -472,7 +539,7 @@ function Collected({ project, sub }) {
   if (!items.length) return null
   return (
     <div className="mx-4 mb-3 grid gap-x-4 gap-y-2 rounded-xl bg-slate-50 p-3 sm:grid-cols-2">
-      {items.map((f) => <div key={f.key} className="min-w-0"><p className="text-[10px] font-semibold uppercase tracking-wide text-ink-mute">{f.label}</p><Value f={f} v={sub.data[f.key]} d={sub.data} people={[...data.users.map((u) => ({ ...u, name: displayNameFor(user, u) })), ...data.people]} canFund={can.seeFunding(user)} /></div>)}
+      {items.map((f) => <div key={f.key} className="min-w-0"><p className="text-[10px] font-semibold uppercase tracking-wide text-ink-mute">{f.label}</p><Value f={f} v={sub.data[f.key]} d={sub.data} samar={biayaVendorTersembunyi(user, sub, data.people.find((x) => x.id === sub.data?.vendor))} people={[...data.users.map((u) => ({ ...u, name: displayNameFor(user, u) })), ...data.people]} canFund={can.seeFunding(user)} /></div>)}
     </div>
   )
 }
@@ -489,10 +556,10 @@ function TeamPick({ label, value, onPick, users, projects, empty }) {
   )
 }
 
-function Value({ f, v, people, d = {}, canFund }) {
+function Value({ f, v, people, d = {}, canFund, samar }) {
   if (f.type.startsWith('person:') || f.type.startsWith('user:')) return <p className="truncate text-sm font-semibold">{people.find((p) => p.id === v)?.name ?? '—'}</p>
-  if (f.type === 'vendor_service') return <p className="text-sm font-semibold">{v} <span className="font-normal text-ink-mute">· {rupiah(d.vendor_cost)}</span></p>
-  if (f.type === 'computed') return <p className="text-sm font-bold">{rupiah(v)}</p>
+  if (f.type === 'vendor_service') return <p className="text-sm font-semibold">{v}{!samar && <span className="font-normal text-ink-mute"> · {rupiah(d.vendor_cost)}</span>}</p>
+  if (f.type === 'computed') return samar ? <p className="text-sm text-ink-mute" data-biaya-samar>Tidak ditampilkan</p> : <p className="text-sm font-bold">{rupiah(v)}</p>
   if (f.type === 'sumber_dana') return canFund ? <p className="text-sm font-semibold">{sumberLabel(v)}</p> : <p className="text-sm text-ink-mute">Disetujui Direktur</p>
   if (f.type === 'vendor_account') return <p className="text-sm">{accountLabel(v)}</p>
   if (f.type === 'money') return <p className="text-sm font-semibold">{rupiah(v)}</p>
@@ -511,7 +578,12 @@ function FileChip({ file }) {
     : <span className="flex min-w-0 items-center gap-1.5 text-xs font-semibold">{Inner}</span>
 }
 
-export function StagePanel({ project, sub, stage, ringkas }) {
+/** Penjaga: tahap dokumen tidak ada di alurnya (data tidak konsisten) → tampilkan pesan, jangan sampai layar kosong. */
+export function StagePanel(props) {
+  if (!props.stage) return <p className="px-4 py-3 text-[13px] text-amber-800" data-tahap-tak-dikenal>Tahap dokumen ini tidak cocok dengan alurnya, jadi belum bisa dikerjakan dari sini. Minta Superadmin memeriksa datanya.</p>
+  return <StagePanelIsi {...props} />
+}
+function StagePanelIsi({ project, sub, stage, ringkas }) {
   const { user, data, processStage, notify, pettyBalance, claimSub, nameOf, patchSubData } = useApp()
   const [vals, setVals] = useState({})
   const [busy, setBusy] = useState(null)
@@ -673,7 +745,7 @@ export function StagePanel({ project, sub, stage, ringkas }) {
               hint={!vendor ? 'Pilih vendor dulu' : !services.length ? 'Vendor ini belum punya daftar layanan — isi di Setting → Vendor' : undefined}>
               <Select value={v} disabled={!services.length} onChange={(e) => { const sv = services.find((x) => x.name === e.target.value); setVals((o) => ({ ...o, vendor_service: sv?.name ?? '', vendor_cost: sv ? Number(sv.price) : '' })) }}>
                 <option value="">— Pilih layanan —</option>
-                {services.map((x) => <option key={x.name} value={x.name}>{x.name} — {rupiah(x.price)}</option>)}
+                {services.map((x) => <option key={x.name} value={x.name}>{biayaVendorTersembunyi(user, sub, vendor) ? x.name : `${x.name} — ${rupiah(x.price)}`}</option>)}
               </Select>
             </Field>
           }
@@ -681,6 +753,7 @@ export function StagePanel({ project, sub, stage, ringkas }) {
           if (f.type === 'choice') return <Field key={f.key} label={f.label} required={f.required}>
             <Select value={v} onChange={(e) => set(e.target.value)}><option value="">Tanpa ongkir</option>{f.options.map((o) => <option key={o}>{o}</option>)}</Select>
           </Field>
+          if (f.type === 'computed' && biayaVendorTersembunyi(user, sub, data.people.find((x) => x.id === (vals.vendor || sub.data?.vendor)))) return null // total = biaya vendor → ikut disembunyikan
           if (f.type === 'computed') return (
             <div key={f.key} data-total className="flex items-center justify-between rounded-xl bg-ink px-4 py-3 text-white">
               <span className="text-xs font-semibold uppercase tracking-wide text-white/70">{f.label}</span>

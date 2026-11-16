@@ -1,6 +1,6 @@
 import { autoDeadline } from '../lib/waktu.js'
 import { useEffect, useState } from 'react'
-import { Search, Plus, Check, Loader2, UserRound, Receipt, Upload, X, FileText, RefreshCw, Headset, Building2, Printer, CalendarPlus, CalendarClock, Flag, ClipboardList, Truck, Layers, CloudUpload, StickyNote, Sparkles, Pencil, Copy, ChevronDown, ChevronUp } from 'lucide-react'
+import { Search, Plus, Check, Loader2, UserRound, Receipt, Upload, X, FileText, RefreshCw, Headset, Building2, Printer, CalendarPlus, CalendarClock, Flag, ClipboardList, Truck, Layers, CloudUpload, StickyNote, Sparkles, Pencil, Copy, ChevronDown, ChevronUp, ChevronLeft } from 'lucide-react'
 import { useApp } from '../lib/store.jsx'
 import { go } from '../lib/router.js'
 import { zoho } from '../lib/integrations.js'
@@ -12,6 +12,7 @@ import { stagesOf, deriveFlow } from '../config/workflows.js'
 import { Button, Field, FieldError, Input, Select, Sheet, SectionCard, cx, Textarea } from '../components/ui.jsx'
 import SubProjectEditor, { newSub, validateSub, docFileName, safeName } from '../components/SubProjectEditor.jsx'
 import { SUB_TYPES, points } from '../config/subtypes.js'
+import SubBaris, { subBaru, pasangKeSub, nomoriAntarSub } from '../components/SubBaris.jsx'
 import { uploadProjectFiles } from '../components/FileManager.jsx'
 import { boleh as bolehIzin } from '../lib/izin.js'
 import { kb } from '../lib/format.js'
@@ -57,13 +58,14 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
       const list = sp.data?.dokumen_sumber_list || (sp.data?.dokumen_sumber ? [sp.data.dokumen_sumber] : [])
       return { ...sp, docs: sp.docs.map((d, i) => ({ ...d, existing: list[i]?.name || list[0]?.name || (sp.stage !== 'cs_input' ? 'sudah berjalan' : '') })) }
     })
-    : [newSub('terjemahan')])
+    : [page ? subBaru('terjemahan', data) : newSub('terjemahan')])
   const [busy, setBusy] = useState(false)
   const [queue, setQueue] = useState([]) // file yang akan diunggah: {_k, file, name, sub_ref}
   const [progress, setProgress] = useState('')
   const [autoFill, setAutoFill] = useState(null) // ringkasan isian otomatis dari item invoice Zoho (alamat/kurir/prioritas)
   const [invoiceItems, setInvoiceItems] = useState(null) // item invoice Zoho — hanya ditampilkan (view) untuk dibaca/disalin saat mengisi sub project
   const [editShip, setEditShip] = useState(false)
+  const [seretBawah, setSeretBawah] = useState(false)
   const [lengkap, setLengkap] = useState(() => new Set()) // versi minimalis: sub yang dibuka isian lengkapnya
   // Simpan draf (F7): isian project baru disimpan di perangkat ini supaya tidak hilang saat pindah halaman.
   // File (dokumen) tidak bisa disimpan sebagai draf — hanya teks & pilihannya.
@@ -80,6 +82,8 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
     }, 600)
     return () => clearTimeout(t)
   }, [customer, invoice, branch, about, subs, editing, drafTersedia]) // eslint-disable-line react-hooks/exhaustive-deps
+  // Halaman penuh Project Baru: nama file apostille / legalisasi dinomori berurutan antar sub project.
+  useEffect(() => { if (!page || editing) return; const rapi = nomoriAntarSub(subs); if (rapi !== subs) setSubs(rapi) }, [subs, page, editing])
   const pakaiDraf = () => { const v = drafTersedia; setCustomer(v.customer || null); setInvoice(v.invoice || ''); if (v.branch) setBranch(v.branch); if (v.about) setAbout((a) => ({ ...a, ...v.about })); if (v.subs?.length) setSubs(v.subs); setDrafTersedia(null) }
   const buangDraf = () => { try { localStorage.removeItem(DRAF_KEY) } catch { /* abaikan */ } setDrafTersedia(null) }
 
@@ -130,7 +134,8 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
   }, [invoice]) // eslint-disable-line react-hooks/exhaustive-deps
   // Sub project yang alurnya sudah berjalan: jenis & pelaksana dikunci
   const vendorOf = (s) => (s.translator_kind === 'vendor' ? data.people.find((p) => p.id === s.translator) : null)
-  const isStarted = (s) => !!s.id && s.stage !== stagesOf(s.flow || project?.category || deriveFlow(s, vendorOf(s)))[0].key
+  // s._ulang = kunci dibuka dari editor (ganti bahasa/penerjemah/vendor) → diperlakukan seperti belum berjalan: alur & tahap dihitung ulang saat disimpan.
+  const isStarted = (s) => !s._ulang && !!s.id && s.stage !== stagesOf(s.flow || project?.category || deriveFlow(s, vendorOf(s)))[0].key
 
   const setA = (k) => (e) => setAbout((a) => {
     const next = { ...a, [k]: e.target.value }
@@ -140,6 +145,20 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
   })
 
   const [tried, setTried] = useState(false)
+  // Apostille / Legalisasi: 1 sub = 1 dokumen. File ke-2 dst. yang ditarik sekaligus otomatis jadi sub project baru
+  // dengan jenis, negara/lembaga, objek & eksekutor yang sama — ID pemohon tetap diisi per dokumen.
+  const pecahJadiSub = (i) => (files) => {
+    setSubs((arr) => {
+      const asal = arr[i]; if (!asal) return arr
+      const baru = [...files].map((f) => {
+        const desc = f.name.replace(/\.[^.]+$/, '')
+        return { ...(page ? subBaru(asal.type, data, asal) : newSub(asal.type)), country: asal.country, institution: asal.institution, objek: asal.objek, executor_kind: asal.executor_kind, executor_id: asal.executor_id,
+          docs: [{ desc, pages: 1, file: f, file_name: `${safeName(desc) || 'dokumen'}${(f.name.match(/\.[^.]+$/) || [''])[0]}`, name_edited: false }], description: `1. ${desc}`, file_count: 1, pages: 1 }
+      })
+      return [...arr.slice(0, i + 1), ...baru, ...arr.slice(i + 1)]
+    })
+    notify(`${files.length} file berikutnya dijadikan ${files.length} sub project baru — lengkapi ID pemohon tiap dokumen`)
+  }
   // Metode pengiriman dipilih di awal (project baru wajib). Softcopy / ambil di kantor / dari penerjemah langsung
   // tersimpan sebagai "kurir" jenis itu; "Dikirim Kurir" → ekspedisi & resinya tetap dipilih nanti di tahap Siap Kirim.
   const metodeKirim = about.metode_kirim || (data.couriers || []).find((k) => k.id === about.courier)?.type || ''
@@ -165,6 +184,7 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
     const inv = normInvoice(invoice)
     if (!customer) return notify('Pilih pelanggan dari Zoho', 'err')
     if (!inv) return notify('Isi nomor invoice', 'err')
+    if (subs.some((x) => x._ulang && !String(x._ulang_alasan || '').trim())) return notify('Isi alasan ganti penerjemah / vendor', 'err')
     if (errs.metode) return notify(errs.metode, 'err')
     if (!about.deadline) return notify('Isi deadline', 'err')
     if (about.received_at && about.deadline.slice(0, 10) < about.received_at.slice(0, 10)) return notify('Deadline tidak boleh sebelum tanggal masuk', 'err')
@@ -188,8 +208,15 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
         const flow = isStarted(s) ? (s.flow || project?.category || deriveFlow(s, vendorOf(s))) : deriveFlow(s, vendorOf(s))
         const first = stagesOf(flow)[0].key
         const docs = usesDocs(s.type) && s.docs ? s.docs.filter((d) => d.desc.trim()).map(({ file, file_name, name_edited, existing, ...d }) => d) : undefined
-        const { applicant_file, ...rest } = s // file ID pemohon diunggah terpisah (lihat idUploads)
+        const { applicant_file, _ulang, _ulang_alasan, ...rest } = s // file ID pemohon diunggah terpisah (lihat idUploads)
         const base = { ...rest, title, file_count: pts.length, data, flow, docs }
+        if (s.id && _ulang) {
+          // Penugasan diulang: data pelaksana & pengajuan lama dibuang, tahap kembali ke awal alur yang baru, alasan masuk riwayat.
+          const bersih = { ...data, translator: s.translator && s.translator_kind !== 'vendor' ? s.translator : '', vendor: vendorId || '', coordinator: '',
+            vendor_service: '', vendor_cost: 0, total_pengajuan: 0, ongkir_cost: 0, ongkir_to: '', sumber_dana: '', rekening: '', vendor_note: '', submitted_by: '', submitted_name: '', submitted_at: '', ordered_by: '', ordered_name: '', ordered_at: '', penerjemahan_work_started_at: '' }
+          return { ...base, data: bersih, stage: first, stage_at: now,
+            history: [...(s.history || []), { at: now, by: user.name, role: user.role, action: `Penugasan diulang (ganti bahasa / penerjemah / vendor) → ${stagesOf(flow)[0].label} · alasan: ${String(_ulang_alasan || '').trim()}`, reason: String(_ulang_alasan || '').trim() }] }
+        }
         return s.id ? { ...base, ...(isStarted(s) ? {} : { stage: first }) }
           : { ...base, id: crypto.randomUUID?.() ?? String(Math.random()), stage: first, history: [{ at: now, by: user.name, action: 'Dibuat' }] }
       })
@@ -381,7 +408,7 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
             )}
             {subs.map((s, i) => (
               <SubProjectEditor key={s.id ?? s._k} n={i + 1} sub={s} branch={branch} error={tried ? errs.subs[i] : null}
-                locked={isStarted(s)}
+                locked={isStarted(s)} onPecah={pecahJadiSub(i)}
                 onChange={(next) => setSubs((arr) => arr.map((x, j) => (j === i ? next : x)))}
                 onRemove={subs.length > 1 && !isStarted(s) ? () => setSubs((a) => a.filter((_, j) => j !== i)) : null} />
             ))}
@@ -480,7 +507,7 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
               const sederhana = x.type === 'terjemahan' && (x.docs || []).length <= 1 && !lengkap.has(x._k ?? x.id) && !isStarted(x) && !(tried && errs.subs[i] && !/dokumen/i.test(errs.subs[i]))
               if (!sederhana) return (
                 <div key={x.id ?? x._k}>
-                  <SubProjectEditor ringkas n={i + 1} sub={x} branch={branch} error={err} locked={isStarted(x)}
+                  <SubProjectEditor ringkas n={i + 1} sub={x} branch={branch} error={err} locked={isStarted(x)} onPecah={pecahJadiSub(i)}
                     onChange={(next) => setSubs((arr) => arr.map((y, j) => (j === i ? next : y)))}
                     onRemove={subs.length > 1 && !isStarted(x) ? () => setSubs((a) => a.filter((_, j) => j !== i)) : null} />
                 </div>
@@ -539,6 +566,165 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
     )
   }
 
+  // ============================================================
+  //  PROJECT BARU — satu halaman penuh (bukan panel samping). Tiap sub project satu baris,
+  //  diisi ke samping; dokumen cukup ditarik / diunggah. Logika simpan & validasi sama.
+  // ============================================================
+  if (page && !editing) {
+    const sh = customer?.ship || {}
+    const alamatRingkas = [sh.attention, sh.street1, sh.street2, sh.city, sh.state, sh.zip].filter(Boolean).join(' · ')
+    const nDokumen = subs.reduce((a, x) => a + (Number(x.file_count) || 0), 0)
+    const nHalaman = subs.reduce((a, x) => a + (Number(x.pages) || 0), 0)
+    const tambahSub = (k) => setSubs((a) => [...a, subBaru(k, data, [...a].reverse().find((x) => x.type === k))])
+    // File ditarik ke area bawah → masuk ke sub project terakhir yang memakai dokumen (aturan per jenis tetap berlaku).
+    const tarikKeBawah = async (files) => {
+      let i = subs.map((x) => usesDocs(x.type)).lastIndexOf(true)
+      const daftar = i < 0 ? [...subs, subBaru('terjemahan', data)] : subs
+      if (i < 0) i = daftar.length - 1
+      const hasil = await pasangKeSub(daftar[i], files)
+      setSubs(daftar.map((x, j) => (j === i ? hasil.sub : x)))
+      if (hasil.sisa.length) pecahJadiSub(i)(hasil.sisa)
+    }
+    const kelas = 'h-9 w-full min-w-0 rounded-[10px] border-0 bg-white px-2.5 text-sm text-ink ring-1 ring-[#D9DBE7] placeholder:text-slate-400 hover:ring-slate-400 focus:outline-none focus:ring-2 focus:ring-brand max-md:h-11 max-md:text-base'
+    const tombolSimpan = progress || 'Buat Project'
+    return (
+      <div className="space-y-3.5 pb-2" data-project-baru>
+        <div className="flex flex-wrap items-center gap-3">
+          <button type="button" onClick={onClose} aria-label="Kembali ke daftar project" className="grid h-11 w-11 flex-none place-items-center rounded-xl text-ink hover:bg-white"><ChevronLeft className="h-[22px] w-[22px]" /></button>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-semibold text-[#5E6380]">Project{preset?.invoice_no ? ` · dari faktur ${invoiceLabel(preset.invoice_no)}` : ''}</p>
+            <h1 className="text-[22px] font-extrabold leading-tight tracking-tight">Project Baru</h1>
+          </div>
+          {!drafTersedia && <span className="text-xs font-semibold text-[#17693A] max-sm:hidden" title="Isian teks tersimpan di perangkat ini. File dokumen tidak ikut tersimpan.">Draf tersimpan otomatis</span>}
+          <div className="hidden gap-2 md:flex">
+            <Button variant="outline" onClick={onClose} className="!h-11 px-5">Batal</Button>
+            <Button loading={busy} onClick={submit} className="!h-11 px-6" data-aksi="buat-project-atas"><Check className="h-[18px] w-[18px]" />{tombolSimpan}</Button>
+          </div>
+        </div>
+
+        {drafTersedia && (
+          <div role="status" className="flex flex-wrap items-center gap-2 rounded-xl bg-sky-50 px-3.5 py-2.5 text-xs text-sky-900 ring-1 ring-sky-200" data-draf>
+            <span className="min-w-0 flex-1">Ada <b>draf project</b> yang belum selesai ({tgl(drafTersedia.at)}{drafTersedia.invoice ? ` · ${invoiceLabel(drafTersedia.invoice)}` : ''}). File dokumen perlu dipilih ulang.</span>
+            <Button size="sm" onClick={pakaiDraf}>Lanjutkan draf</Button><Button size="sm" variant="outline" onClick={buangDraf}>Buang</Button>
+          </div>
+        )}
+
+        {/* 1 · Pelanggan, invoice & pengiriman — satu pita */}
+        <div className="flex flex-col gap-2.5 rounded-2xl bg-white px-4 py-3.5" data-bagian="1">
+          <h2 className="text-xs font-bold uppercase tracking-[0.06em] text-[#5E6380]">1 · Pelanggan, invoice & pengiriman</h2>
+          <div className="flex flex-wrap items-start gap-2.5">
+            <KolBaru label="Pelanggan" wajib style={{ flex: '1.4 1 220px' }} error={E('customer')}>
+              <CustomerPicker ringkas value={customer} invalid={!!E('customer')} onChange={(c) => { setCustomer(c); setInvoice(preset?.invoice_no || '') }} />
+            </KolBaru>
+            <KolBaru label="No. invoice" wajib style={{ flex: '1 1 170px' }} error={preset?.invoice_no ? E('invoice') : null}>
+              {preset?.invoice_no
+                ? <p className="flex h-9 items-center text-sm font-bold max-md:h-11">{invoiceLabel(invoice)}</p>
+                : <InvoicePicker ringkas customer={customer} value={invoice} onChange={setInvoice} error={E('invoice')} />}
+            </KolBaru>
+            <KolBaru label="Metode pengiriman" wajib style={{ flex: '1 1 190px' }} error={E('metode')}>
+              <select value={metodeKirim} onChange={(e) => pilihMetode(e.target.value)} aria-label="Metode pengiriman" aria-invalid={!!E('metode')} data-metode-kirim className={cx(kelas, '!px-2', E('metode') && '!ring-2 !ring-rose-500')}>
+                <option value="" disabled>Pilih metode…</option>
+                {METODE_URUT.map((t) => <option key={t} value={t}>{t === 'pickup' && about.print_location ? `Diambil di Kantor ${about.print_location}` : DELIVERY_LABEL[t]}</option>)}
+              </select>
+            </KolBaru>
+            <KolBaru label="Alamat kirim" style={{ flex: '2 1 300px' }}>
+              {!perluAlamat
+                ? <p className="flex min-h-9 items-center rounded-[10px] bg-slate-50 px-2.5 text-xs text-ink-mute ring-1 ring-slate-200 max-md:min-h-11" data-tanpa-alamat>{metodeKirim === 'pickup' ? 'Diambil di kantor — alamat tidak diperlukan.' : 'Softcopy saja — alamat tidak diperlukan.'}</p>
+                : !customer
+                ? <p className="flex min-h-9 items-center rounded-[10px] bg-slate-50 px-2.5 text-xs text-ink-mute ring-1 ring-slate-200 max-md:min-h-11">Tampil otomatis setelah pelanggan dipilih.</p>
+                : (
+                  <div className="flex min-h-9 items-center gap-2 rounded-[10px] bg-white px-2.5 ring-1 ring-[#D9DBE7] max-md:min-h-11" data-alamat-ringkas>
+                    <span className="min-w-0 flex-1 truncate text-sm" title={alamatRingkas}>{alamatRingkas || <span className="text-ink-mute">Belum ada alamat</span>}</span>
+                    {customer.ship_source === 'invoice' && <span className="hidden flex-none items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800 sm:inline-flex"><Sparkles className="h-3 w-3" />dari invoice — periksa</span>}
+                    <button type="button" onClick={() => setEditShip((v) => !v)} className="inline-flex min-h-9 flex-none items-center gap-1 text-xs font-semibold text-brand hover:underline max-md:min-h-11"><Pencil className="h-3 w-3" />{editShip ? 'Tutup' : 'Edit'}</button>
+                  </div>
+                )}
+            </KolBaru>
+          </div>
+          {perluAlamat && customer && editShip && <div className="rounded-xl bg-slate-50 p-3 ring-1 ring-slate-200"><ShipEditor ship={customer.ship || {}} onChange={(ship) => setCustomer((c) => ({ ...c, ship }))} onDone={() => setEditShip(false)} /></div>}
+        </div>
+
+        {/* 2 · Project */}
+        <div className="flex flex-col gap-2.5 rounded-2xl bg-white px-4 py-3.5" data-bagian="2">
+          <h2 className="text-xs font-bold uppercase tracking-[0.06em] text-[#5E6380]">2 · Project</h2>
+          <div className="flex flex-wrap items-start gap-2.5">
+            <KolBaru label="Prioritas" wajib hp="half" style={{ flex: '1 1 140px' }}>
+              <PrioritySelect value={about.priority} onChange={(v) => setA('priority')({ target: { value: v } })} />
+            </KolBaru>
+            <KolBaru label="Deadline (WITA)" wajib style={{ flex: '1.6 1 236px' }} error={E('deadline')}>
+              <div className="flex gap-1.5">
+                <input type="date" aria-label="Tanggal deadline" aria-invalid={!!E('deadline')} value={about.deadline?.slice(0, 10) || ''} min={about.received_at?.slice(0, 10)} onChange={setA('deadline')} className={kelas} />
+                <input type="time" aria-label="Jam deadline" value={about.deadline_time || '17:00'} onChange={setA('deadline_time')} className={cx(kelas, '!w-[110px] flex-none')} data-jam-deadline />
+              </div>
+            </KolBaru>
+            <KolBaru label="Tanggal masuk" hp="half" style={{ flex: '1 1 136px' }}>
+              <input type="date" aria-label="Tanggal masuk" value={about.received_at?.slice(0, 10) || ''} onChange={setA('received_at')} className={kelas} />
+            </KolBaru>
+            <KolBaru label="Cabang" hp="half" style={{ flex: '1 1 120px' }}>
+              {can.seeAllBranches(user) || isMultiBranch(user)
+                ? <select aria-label="Cabang" value={branch} onChange={(e) => { const lama = branch; setBranch(e.target.value); setAbout((a) => (a.print_location === lama ? { ...a, print_location: e.target.value } : a)) }} className={cx(kelas, '!px-2')}>{(can.seeAllBranches(user) ? BRANCHES : branchesOf(user)).map((b) => <option key={b}>{b}</option>)}</select>
+                : <input aria-label="Cabang" value={branch} readOnly disabled tabIndex={-1} className={cx(kelas, 'bg-slate-50 text-ink-mute')} />}
+            </KolBaru>
+            <KolBaru label="Lokasi print" hp="half" style={{ flex: '1 1 120px' }}>
+              <select aria-label="Lokasi print" value={about.print_location} onChange={setA('print_location')} data-print-pilih className={cx(kelas, '!px-2')}>
+                <optgroup label="Cabang">{BRANCHES.map((b) => <option key={b} value={b}>{b}</option>)}</optgroup>
+                <optgroup label="Eksternal"><option value={PRINT_VENDOR}>Vendor</option></optgroup>
+              </select>
+            </KolBaru>
+            <KolBaru label="Catatan" style={{ flex: '3 1 200px' }}>
+              <input aria-label="Catatan" value={about.notes || ''} onChange={setA('notes')} placeholder="Opsional" className={kelas} />
+            </KolBaru>
+          </div>
+        </div>
+
+        {/* 3 · Sub project — satu baris per sub, jarak rapat */}
+        <div className="flex flex-col gap-1.5 rounded-2xl bg-white px-4 py-3.5 max-md:px-2.5" data-bagian="3">
+          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+            <h2 className="text-xs font-bold uppercase tracking-[0.06em] text-[#5E6380]">3 · Sub project & dokumen</h2>
+            <span className="text-xs text-[#5E6380]" data-ringkasan-sub>{subs.length} sub project · {nDokumen} dokumen · {nHalaman} halaman</span>
+          </div>
+          {invoiceItems && <InvoiceItemsView inv={invoiceItems} />}
+          {autoFill && (autoFill.ship || autoFill.courier || autoFill.priority) && (
+            <div role="status" className="flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-xl bg-amber-50 px-3.5 py-2 text-xs text-amber-900 ring-1 ring-amber-200">
+              <Sparkles className="h-4 w-4 shrink-0 text-amber-600" />
+              <span><b className="font-semibold">Diisi otomatis dari {invoiceLabel(autoFill.invoice_no)}</b>: {[autoFill.ship && 'alamat kirim', autoFill.courier && `kurir ${autoFill.courier}`, autoFill.priority && `prioritas ${autoFill.priority}`].filter(Boolean).join(' · ')}</span>
+            </div>
+          )}
+          {subs.map((s, i) => (
+            <SubBaris key={s.id ?? s._k} n={i + 1} sub={s} branch={branch} error={tried ? errs.subs[i] : null} onPecah={pecahJadiSub(i)}
+              onChange={(next) => setSubs((arr) => arr.map((x, j) => (j === i ? next : x)))}
+              onRemove={subs.length > 1 ? () => setSubs((a) => a.filter((_, j) => j !== i)) : null} />
+          ))}
+          <div data-tarik-bawah className={cx('mt-1.5 flex flex-wrap items-center gap-2 rounded-xl border-2 border-dashed px-3 py-2.5', seretBawah ? 'border-brand bg-brand-soft' : 'border-[#B9BEDA] bg-[#F8F9FD]')}
+            onDragOver={(e) => { if ([...(e.dataTransfer?.types || [])].includes('Files')) { e.preventDefault(); setSeretBawah(true) } }} onDragLeave={() => setSeretBawah(false)}
+            onDrop={(e) => { if (e.dataTransfer?.files?.length) { e.preventDefault(); setSeretBawah(false); tarikKeBawah(e.dataTransfer.files) } }}>
+            <span className="inline-flex items-center gap-2 text-sm font-semibold"><Upload className="h-[18px] w-[18px]" />{seretBawah ? 'Lepas file di sini' : 'Tarik file ke sini'}</span>
+            <span className="min-w-0 flex-[1_1_280px] text-xs text-[#5E6380]">Jenis dokumen: Reguler / Non Reguler hanya untuk bahasa Indonesia, Inggris, Belanda; bahasa lain Normal / Ekspres. Terjemahan: tiap file jadi satu baris dokumen dalam sub yang sama. Apostille & legalisasi: tiap file jadi sub project sendiri.</span>
+            {Object.entries(SUB_TYPES).map(([k, t]) => (
+              <button key={k} type="button" onClick={() => tambahSub(k)} data-aksi={`tambah-sub-${k}`} className="inline-flex h-9 items-center gap-1.5 rounded-[10px] bg-white px-3 text-[13px] font-semibold text-ink ring-1 ring-[#D9DBE7] hover:ring-ink max-md:h-11"><Plus className="h-3.5 w-3.5" />{t.short || t.label}</button>
+            ))}
+          </div>
+          <details className="rounded-xl ring-1 ring-slate-200">
+            <summary className="cursor-pointer px-3 py-2 text-xs font-semibold text-ink-soft max-md:py-3"><CloudUpload className="mr-1 inline h-3.5 w-3.5" />File tambahan (opsional){queue.length ? ` · ${queue.length} file` : ''}</summary>
+            <div className="px-3 pb-3"><FileQueue queue={queue} setQueue={setQueue} subs={subs} /></div>
+          </details>
+        </div>
+
+        {kurang.length > 0 && (
+          <div role="alert" className="rounded-xl bg-rose-50 px-3.5 py-2.5 text-xs text-rose-800 ring-1 ring-rose-200" data-kurang>
+            <p className="font-bold">Belum bisa disimpan — lengkapi dulu:</p>
+            <ul className="mt-1 list-disc pl-4">{kurang.map((k, i) => <li key={i}>{k}</li>)}</ul>
+          </div>
+        )}
+
+        <div className="sticky bottom-0 z-20 -mx-1 flex gap-2 border-t border-slate-200 bg-white/95 px-1 py-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] backdrop-blur md:hidden">
+          <Button variant="outline" onClick={onClose} className="!h-12 flex-1">Batal</Button>
+          <Button loading={busy} onClick={submit} className="!h-12 flex-[2]" data-aksi="buat-project-bawah"><Check className="h-[18px] w-[18px]" />{tombolSimpan}</Button>
+        </div>
+      </div>
+    )
+  }
+
   // Halaman penuh — dipakai saat dibuka dari menu / ikon +, bukan panel geser,
   // supaya formnya lebar dan mudah dibaca sambil mengisi.
   if (page) return (
@@ -564,6 +750,17 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
     <Sheet open xwide tinted side={side ? 'right' : undefined} onClose={onClose} title={judul} footer={kaki}>
       {isi}
     </Sheet>
+  )
+}
+
+/** Kolom isian ringkas di halaman penuh Project Baru: label kecil di atas, isian di bawah; di HP penuh / setengah lebar. */
+function KolBaru({ label, wajib, hp = 'full', style, error, children }) {
+  return (
+    <div className={cx('flex min-w-0 flex-col gap-[3px]', hp === 'half' ? 'max-md:!basis-[calc(50%-5px)] max-md:!grow' : 'max-md:!basis-full')} style={style}>
+      <span className="text-[11px] font-semibold text-[#5E6380]">{label}{wajib && <span className="text-[#B4233F]"> *</span>}</span>
+      {children}
+      {error && <FieldError>{error}</FieldError>}
+    </div>
   )
 }
 

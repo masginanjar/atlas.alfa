@@ -5,7 +5,7 @@ import { boleh as bolehIzin } from '../lib/izin.js'
 import { useApp } from '../lib/store.jsx'
 import { PilihPeriode } from '../components/ToolbarRingkas.jsx'
 import { tasksOf, summarize, dayKey } from '../lib/performance.js'
-import { stageLabel, flowOf, DONE, totalPengajuan, termOf, isBilled, PAYMENT_TERMS } from '../config/workflows.js'
+import { stageLabel, flowOf, DONE, totalPengajuan, termOf, isBilled, PAYMENT_TERMS, orderBiro } from '../config/workflows.js'
 import { placeOf, invoiceLabel} from '../config/access.js'
 import { rupiah, stageArrivedAt, tgl } from '../lib/format.js'
 import TimeAgo from '../components/TimeAgo.jsx'
@@ -221,7 +221,7 @@ export default function Monitoring() {
   const vRows = useMemo(() => vendors.map((v) => {
     const mine = subs.filter((s) => s.data?.vendor === v.id && s.stage !== DONE && !s.cancelled)
     const by = (st) => mine.filter((s) => st.includes(s.stage))
-    const unbilled = isBilled(v) ? subs.filter((s) => s.data?.vendor === v.id && s.flow === 'tr_bill' && !s.data?.bill_id) : []
+    const unbilled = isBilled(v) ? subs.filter((s) => s.data?.vendor === v.id && (s.flow === 'tr_bill' || orderBiro(s)) && !s.data?.bill_id) : []
     const bills = (data.vendor_bills || []).filter((b) => b.vendor_id === v.id && ['menunggu', 'disetujui'].includes(b.status))
     return { v, mine, acc: by(['pengajuan', 'persetujuan']), pay: by(['pembayaran']), work: by(['dibayar', 'kirim', 'dikirim', 'order', 'proses_vendor']), unbilled, bills, done: vendorDone(v.id),
       value: mine.reduce((a, s) => a + (totalPengajuan(s.data) || Number(s.data?.vendor_cost) || 0), 0) }

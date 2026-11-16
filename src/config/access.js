@@ -129,6 +129,7 @@ export const canAsal = {
   editProject: (u) => !WORKER_ROLES.includes(u?.role),
   editBiaya: (u) => ['superadmin', 'supervisor', 'direktur'].includes(u?.role),
   seeBiaya: (u) => ['superadmin', 'supervisor', 'direktur', 'akunting'].includes(u?.role),
+  seeBiayaApostille: (u) => ['superadmin', 'direktur', 'akunting'].includes(u?.role),
   manageUsers: (u) => u?.role === 'superadmin',
   managePeople: (u) => ['superadmin', 'admin_pusat', 'supervisor'].includes(u?.role),
   topUpPettyCash: (u) => ['superadmin', 'direktur', 'akunting', 'cs', 'admin_pusat', 'supervisor'].includes(u?.role),
@@ -152,6 +153,7 @@ export const can = {
   approveVendor: lewat('tagihan.setujui', canAsal.approveVendor),
   topUpPettyCash: lewat('petty.tambah', canAsal.topUpPettyCash),
   seeBiaya: field('project.biaya', ['lihat', 'edit'], canAsal.seeBiaya),
+  seeBiayaApostille: field('project.biaya_apostille', ['lihat', 'edit'], canAsal.seeBiayaApostille),
   editBiaya: field('project.biaya', ['edit'], canAsal.editBiaya),
   seeFunding: field('keuangan.sumber_dana', ['lihat', 'edit'], canAsal.seeFunding),
   seeCustomerDetail: field('project.kontak_pelanggan', ['samar', 'lihat', 'edit'], canAsal.seeCustomerDetail),
@@ -217,4 +219,17 @@ export function scopeByBranch(user, rows, branchFilter) {
     if (branchFilter && branchFilter !== 'Semua' && mine.length > 1) out = out.filter((r) => r.branch === branchFilter || r.about?.print_location === branchFilter)
   } else if (branchFilter && branchFilter !== 'Semua') out = out.filter((r) => r.branch === branchFilter)
   return out
+}
+
+/** Pilihan per vendor (Pengaturan → Vendor): HPP-nya boleh dilihat tim atau tidak. */
+export const HPP_TIM = { '': 'Ikuti bawaan (apostille & legalisasi disembunyikan)', tampil: 'Selalu tampil ke tim', sembunyi: 'Selalu disembunyikan dari tim' }
+/**
+ * HPP / biaya vendor disembunyikan dari orang ini? Yang tampil hanya nama paketnya.
+ * Bawaan: dokumen apostille/legalisasi disembunyikan; vendor bisa diatur "selalu tampil" / "selalu sembunyi".
+ * Superadmin, Direktur, Akunting (izin field project.biaya_apostille) selalu melihat.
+ */
+export const biayaVendorTersembunyi = (u, sub, vendor) => {
+  const m = vendor?.hpp_tim
+  const tersembunyi = m === 'sembunyi' || (m !== 'tampil' && ['apostille', 'legalisasi'].includes(sub?.type))
+  return tersembunyi && !can.seeBiayaApostille(u)
 }

@@ -44,7 +44,7 @@ const STEP_MAP = {
 }
 // Alur vendor: pengajuan/persetujuan/pembayaran adalah urusan internal — bagi pelanggan
 // semuanya "dikerjakan", dan baru "selesai" setelah hasil dari vendor ada.
-const VENDOR_FLOWS = ['tr_ext', 'tr_bill', 'ap_ext', 'lg_ext']
+const VENDOR_FLOWS = ['tr_ext', 'tr_bill', 'tr_biro', 'ap_ext', 'lg_ext']
 
 /** Semua kunci tahap yang berlaku untuk satu sub project (dipakai menyusun stepper). */
 export function stepKeysOf(sub, project) {
@@ -150,6 +150,7 @@ const PUB_FIELDS = {
   lg_int: [{ key: 'hasil_akhir', kind: 'final', label: 'Hasil legalisasi', done: true }],
   tr_ext: [{ key: 'hasil_vendor', kind: 'final', label: 'Hasil terjemahan', after: 'pembayaran' }],
   tr_bill: [{ key: 'hasil_vendor', kind: 'final', label: 'Hasil terjemahan', done: true }],
+  tr_biro: [{ key: 'file_final', kind: 'final', label: 'Hasil terjemahan final', after: 'hasil_biro' }, { key: 'scan_pdf', kind: 'final', label: 'Hasil terjemahan bercap (scan)', after: 'upload_scan' }],
   ap_ext: [{ key: 'hasil_vendor', kind: 'final', label: 'Hasil apostille', after: 'pembayaran' }],
   lg_ext: [{ key: 'hasil_vendor', kind: 'final', label: 'Hasil legalisasi', after: 'pembayaran' }],
   jl: [{ key: 'hasil_jasa', kind: 'final', label: 'Hasil layanan', after: 'proses' }],

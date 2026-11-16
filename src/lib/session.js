@@ -1,5 +1,5 @@
 // ============================================================
-//  SESI — keluar otomatis setelah 3 JAM TIDAK AKTIF
+//  SESI — tidak ada lagi batas waktu tidak aktif (dulu 3 jam)
 //  • Hitungannya dari aktivitas terakhir (klik, ketik, scroll),
 //    BUKAN dari jam login. Selama dipakai, sesi tidak akan putus.
 //  • Heartbeat / polling / refresh data otomatis TIDAK dihitung
@@ -8,7 +8,9 @@
 //    membuat tab lain ikut aman, dan keluar di satu tab membuat
 //    tab lain ikut keluar.
 // ============================================================
-export const IDLE_MS = 3 * 60 * 60 * 1000 // 3 jam
+// 16 Nov 2026 (keputusan pemilik): aturan "keluar otomatis setelah 3 jam tidak aktif" DIHAPUS.
+// Sesi sekarang hanya berakhir saat ganti hari (login harian = absen hadir) atau saat pengguna menekan Keluar.
+export const IDLE_MS = Infinity
 export const WARN_MS = 5 * 60 * 1000 // peringatan 5 menit sebelum keluar
 const K_ACT = 'atlas-last-activity'
 const K_OUT = 'atlas-signed-out'

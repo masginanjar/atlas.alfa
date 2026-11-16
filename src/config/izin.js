@@ -104,6 +104,8 @@ export const MODUL = [
     f('affidavit', 'Affidavit', ['menu', 'lihat', 'tambah', 'ubah', 'laporan'], { semua: dari(canSeeAffidavit) }),
   ], field: [
     { id: 'project.biaya', label: 'Biaya / fee vendor & penerjemah (harga modal)', asal: { lihat: dari(can.seeBiaya), edit: dari(can.editBiaya) } },
+    // 16 Nov 2026 (keputusan pemilik): biaya vendor Apostille/Legalisasi hanya untuk Superadmin, Direktur, Akunting — tim cukup melihat nama paketnya.
+    { id: 'project.biaya_apostille', label: 'HPP vendor yang disembunyikan dari tim (apostille, legalisasi & vendor pilihan)', asal: { lihat: ['superadmin', 'direktur', 'akunting'] } },
     { id: 'project.kontak_pelanggan', label: 'Kontak & alamat pelanggan', asal: { lihat: dari(can.seeCustomerDetail) } },
     { id: 'project.nominal', label: 'Nominal transaksi / harga jual', asal: { lihat: KANTOR } },
   ] },
@@ -113,6 +115,10 @@ export const MODUL = [
     // 15 Nov 2026 (keputusan pemilik): Staf Apostille/Legalisasi membuat surat kuasa dari baris pekerjaannya → lihat, tambah, ubah, cetak. Menu, hapus, atur tetap hanya Superadmin.
     // 16 Nov 2026 (keputusan pemilik): mengerjakan tahap Apostille/Legalisasi bisa diberikan PER PENGGUNA (mis. satu CS tertentu) lewat pengecualian.
     // status = Mulai Proses, centang to-do, unggah hasil, Selesai · setujui = mencentang langkah "Bayar Pajak".
+    // 16 Nov 2026 (keputusan pemilik): salah bahasa / harus ganti vendor saat alur sudah berjalan → kunci dibuka dari form edit, alur dokumen diulang, alasan wajib.
+    f('penugasan-ulang', 'Ulang penugasan dokumen (ganti bahasa / penerjemah / vendor saat alur berjalan)', ['ubah'], { ubah: ['superadmin', 'supervisor', 'direktur', 'admin_pusat'] }),
+    // 16 Nov 2026 (keputusan pemilik): order ke biro rekanan (mis. Indotrans) boleh oleh pimpinan DAN CS.
+    f('biro-order', 'Order ke biro rekanan (mis. Indotrans)', ['tambah'], { tambah: ['superadmin', 'supervisor', 'direktur', 'admin_pusat', 'cs'] }),
     f('apostille-proses', 'Proses Apostille / Legalisasi', ['status', 'setujui'], { status: ['superadmin', 'supervisor', 'staf_apostille'], setujui: ['superadmin', 'direktur'] }),
     f('surat-kuasa', 'Surat Kuasa', ['menu', 'lihat', 'tambah', 'ubah', 'hapus', 'cetak', 'atur'], { lihat: ['staf_apostille'], tambah: ['staf_apostille'], ubah: ['staf_apostille'], cetak: ['staf_apostille'] }),
   ] },

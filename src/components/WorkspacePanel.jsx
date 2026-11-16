@@ -38,6 +38,14 @@ export function PanelProvider({ children }) {
   }, [ask])
 
   const open = useCallback(async (kind, props = {}) => {
+    // Project Baru selalu HALAMAN PENUH (bukan panel geser), dari tombol mana pun.
+    if (kind === 'project') {
+      if (panel && !(await close())) return
+      const kunci = props.preset?.zoho_invoice_id
+      if (kunci) { try { sessionStorage.setItem(`atlas-preset:${kunci}`, JSON.stringify(props.preset)) } catch { /* abaikan */ } }
+      window.location.hash = kunci ? `#/projects/new/${kunci}` : '#/projects/new'
+      return
+    }
     if (panel && panel.kind === kind && !props.force) return // sudah terbuka
     if (panel && !(await close())) return
     dirty.current = false

@@ -7,7 +7,7 @@ import { Button } from './ui.jsx'
 const mmss = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
 
 /**
- * Penjaga sesi: keluar otomatis setelah 3 jam TANPA AKTIVITAS.
+ * Penjaga sesi: wajib login sekali setiap hari (WITA). Batas 3 jam tanpa aktivitas sudah dihapus (IDLE_MS = Infinity).
  * Peringatan muncul 5 menit sebelumnya dengan tombol "Lanjutkan Sesi".
  * Kartu peringatan tidak merebut fokus — pengguna boleh terus mengetik.
  */

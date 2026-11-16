@@ -5,6 +5,7 @@ import { saveBlob } from '../lib/download.js'
 import { clock } from '../lib/performance.js'
 import FilePreview from '../components/FilePreview.jsx'
 import { cx } from '../components/ui.jsx'
+import PortalVendorTodo from '../components/PortalVendorTodo.jsx'
 import { rupiah, tgl } from '../lib/format.js'
 
 // ============================================================
@@ -36,11 +37,11 @@ export default function Portal({ token }) {
           <div><p className="text-lg font-extrabold leading-tight">247 Sworn Translator</p><p className="text-sm text-white/60">{state.kind === 'vendor' ? 'Portal Vendor' : 'Status Dokumen Anda'}</p></div>
         </div>
       </header>
-      <main className="mx-auto max-w-3xl px-4 py-6">
-        {PORTAL_DEMO && <p className="mb-4 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-900 ring-1 ring-amber-200">Mode demo — validasi berjalan di browser ini. Pada versi live, semua pemeriksaan dilakukan di server.</p>}
+      <main className={cx('mx-auto px-4 py-6', view?.kind === 'vendor' ? 'max-w-6xl' : 'max-w-3xl')}>
+        {PORTAL_DEMO && <p className="mb-4 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-900 ring-1 ring-amber-200">Mode demo — validasi berjalan di browser ini. Pada versi live, semua pemeriksaan dilakukan di server. <a href="#/vendor" className="font-bold underline">Kembali ke ATLAS</a></p>}
         {state.loading ? <div className="grid place-items-center py-20"><Loader2 className="h-8 w-8 animate-spin text-brand" /></div>
           : ['expired', 'revoked', 'missing'].includes(state.state) ? <Notice icon={ShieldAlert} title={state.state === 'missing' ? 'Tautan tidak ditemukan' : 'Tautan tidak aktif'} text={INACTIVE} />
-          : !view ? <PhoneGate token={token} kind={state.kind} locked={state.state === 'locked'} onOk={load} />
+          : !view ? <PhoneGate token={token} kind={state.kind} kode={state.gate === 'kode'} locked={state.state === 'locked'} onOk={load} />
           : view.kind === 'vendor' ? <VendorView token={token} v={view} onExpired={load} />
           : <CustomerView token={token} v={view} onExpired={load} />}
       </main>
@@ -58,7 +59,7 @@ function Notice({ icon: Icon, title, text }) {
   )
 }
 
-function PhoneGate({ token, kind, locked, onOk }) {
+function PhoneGate({ token, kind, locked, onOk, kode }) {
   const [phone, setPhone] = useState('')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState(locked ? 'Terlalu banyak percobaan. Silakan coba lagi 15 menit lagi.' : '')
@@ -68,27 +69,27 @@ function PhoneGate({ token, kind, locked, onOk }) {
     setBusy(false)
     if (r.ok) return onOk()
     setErr(r.error === 'locked' ? 'Terlalu banyak percobaan. Silakan coba lagi 15 menit lagi.'
-      : r.error === 'wrong' ? `Nomor HP tidak cocok dengan data kami.${r.left ? ` Sisa percobaan: ${r.left}.` : ''}`
+      : r.error === 'wrong' ? `${kode ? 'Kode akses salah.' : 'Nomor HP tidak cocok dengan data kami.'}${r.left ? ` Sisa percobaan: ${r.left}.` : ''}`
       : r.error === 'no_phone' ? 'Nomor HP belum terdaftar untuk tautan ini. Silakan hubungi CS.'
       : ['expired', 'revoked'].includes(r.error) ? INACTIVE : 'Terjadi kendala. Silakan coba lagi.')
   }
   return (
     <form onSubmit={submit} className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200 sm:p-8">
       <Lock className="mb-3 h-10 w-10 text-brand" />
-      <h1 className="text-2xl font-extrabold">Masukkan nomor HP Anda</h1>
-      <p className="mt-1 text-lg text-ink-soft">Gunakan nomor HP yang terdaftar {kind === 'vendor' ? 'sebagai vendor' : 'pada pesanan'} untuk membuka halaman ini.</p>
-      <label className="mt-5 block text-base font-semibold" htmlFor="hp">Nomor HP</label>
+      <h1 className="text-2xl font-extrabold">{kode ? 'Masukkan kode akses' : 'Masukkan nomor HP Anda'}</h1>
+      <p className="mt-1 text-lg text-ink-soft">{kode ? 'Kode akses diberikan oleh 247 Sworn Translator. Salah 5 kali, halaman terkunci 15 menit.' : `Gunakan nomor HP yang terdaftar ${kind === 'vendor' ? 'sebagai vendor' : 'pada pesanan'} untuk membuka halaman ini.`}</p>
+      <label className="mt-5 block text-base font-semibold" htmlFor="hp">{kode ? 'Kode akses' : 'Nomor HP'}</label>
       <div className="mt-1 flex items-center gap-2 rounded-2xl bg-white px-4 ring-2 ring-slate-300 focus-within:ring-brand">
         <Phone className="h-6 w-6 text-ink-mute" />
-        <input id="hp" inputMode="tel" autoComplete="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="0812xxxxxxx atau +62812xxxxxxx"
+        <input id="hp" type={kode ? 'password' : 'text'} inputMode={kode ? 'text' : 'tel'} autoComplete={kode ? 'off' : 'tel'} value={phone} onChange={(e) => setPhone(e.target.value)} placeholder={kode ? 'Kode akses' : '0812xxxxxxx atau +62812xxxxxxx'} data-gerbang={kode ? 'kode' : 'hp'}
           className="h-14 w-full border-0 bg-transparent text-xl outline-none" />
       </div>
       {err && <p role="alert" className="mt-3 rounded-xl bg-rose-50 px-4 py-3 text-base font-semibold text-rose-700">{err}</p>}
-      <button type="submit" disabled={busy || phone.replace(/\D/g, '').length < 9}
+      <button type="submit" disabled={busy || (kode ? phone.trim().length < 3 : phone.replace(/\D/g, '').length < 9)}
         className="mt-5 flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-brand text-xl font-bold text-white disabled:opacity-40">
         {busy && <Loader2 className="h-6 w-6 animate-spin" />}Buka Halaman
       </button>
-      <p className="mt-3 text-sm text-ink-mute">Format 08… maupun +62… sama-sama bisa dipakai.</p>
+      {!kode && <p className="mt-3 text-sm text-ink-mute">Format 08… maupun +62… sama-sama bisa dipakai.</p>}
     </form>
   )
 }
@@ -223,6 +224,7 @@ const PAY_STYLE = { 'Lunas': 'bg-emerald-100 text-emerald-800', 'Sebagian': 'bg-
 function VendorView({ token, v, onExpired }) {
   const dl = useDownload(token, onExpired)
   const [f, setF] = useState('semua')
+  const [tab, setTab] = useState('todo')
   const list = v.jobs.filter((j) => (f === 'semua' ? true : f === 'selesai' ? j.done : !j.done))
   const count = (k) => v.jobs.filter((j) => (k === 'semua' ? true : k === 'selesai' ? j.done : !j.done)).length
   const Pay = ({ j }) => (
@@ -246,9 +248,16 @@ function VendorView({ token, v, onExpired }) {
       <section className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:p-6">
         <p className="text-lg text-ink-mute">Halo,</p>
         <h1 className="text-3xl font-extrabold">{v.name}</h1>
-        <p className="mt-1 text-lg text-ink-soft">Daftar pekerjaan & pembayaran Anda.</p>
+        <p className="mt-1 text-lg text-ink-soft">Daftar pekerjaan Anda. Unduh sumber (ZIP), lalu unggah hasilnya di sini.</p>
         <ExpiryNote at={v.expires_at} />
       </section>
+      <div className="flex gap-2" role="tablist" aria-label="Bagian portal">
+        {[['todo', `To-do (${(v.todo || []).filter((x) => x.status !== 'Selesai').length})`], ['bayar', 'Pembayaran']].map(([k, l]) => (
+          <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)} data-tab-portal={k} className={cx('h-12 flex-1 rounded-xl text-lg font-bold ring-2', tab === k ? 'bg-ink text-white ring-ink' : 'bg-white text-ink ring-slate-300')}>{l}</button>
+        ))}
+      </div>
+      {tab === 'todo' && <PortalVendorTodo token={token} todo={v.todo} onUbah={onExpired} onExpired={onExpired} />}
+      {tab === 'bayar' && <>
       <div className="flex gap-2" role="tablist">
         {[['semua', 'Semua'], ['berjalan', 'Berjalan'], ['selesai', 'Selesai']].map(([k, l]) => (
           <button key={k} role="tab" aria-selected={f === k} onClick={() => setF(k)} className={cx('h-12 flex-1 rounded-xl text-lg font-bold ring-2', f === k ? 'bg-ink text-white ring-ink' : 'bg-white text-ink ring-slate-300')}>{l} ({count(k)})</button>
@@ -274,6 +283,7 @@ function VendorView({ token, v, onExpired }) {
           <div className="mt-3 border-t border-slate-200 pt-3"><Pay j={j} /></div>
         </section>
       ))}</div>
+      </>}
       {dl.msg && <p role="alert" className="rounded-xl bg-rose-50 px-4 py-3 text-base font-semibold text-rose-700">{dl.msg}</p>}
       {dl.previewEl}
     </div>

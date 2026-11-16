@@ -10,7 +10,7 @@ import { kapasitasHarian, KAP_DEFAULT } from '../components/Kapasitas.jsx'
 import { Sapaan, AngkaHariIni, Hambatan, RingkasanKeuangan } from '../components/DashboardRingkas.jsx'
 import { go } from '../lib/router.js'
 import { BRANCHES, ROLES, can, scopeByBranch, activeClaim, WORKER_ROLES, roleLabel, branchesOf, isMultiBranch, APOSTILLE_FUND, pettyLabel, pettyAccountsOf, foreignLang, coordinatorFor, placeOf, invoiceLabel} from '../config/access.js'
-import { CATEGORIES, DONE, isDone, stagesOf, stageLabel, flowOf, totalPengajuan, stafStatus, PAYMENT_TERMS, termOf, isBilled, recommendFund, VENDOR_PAID_STAGES, stageShort, stageIndex } from '../config/workflows.js'
+import { CATEGORIES, DONE, isDone, stagesOf, stageLabel, flowOf, totalPengajuan, stafStatus, PAYMENT_TERMS, termOf, isBilled, recommendFund, VENDOR_PAID_STAGES, stageShort, stageIndex, orderBiro } from '../config/workflows.js'
 import { kindPages } from '../config/subtypes.js'
 import { PriorityBadge } from '../components/Priority.jsx'
 import { TypeBadge as TB, InvoiceNo } from '../components/badges.jsx'
@@ -420,7 +420,7 @@ function todoGroups(s, user, people = []) {
   }
   if (user.role === 'akunting') {
     groups.push({ title: 'Transfer Pengajuan', items: take(subs.filter((x) => x.stage === 'pembayaran').sort(byDl)).map((x) => sub(x, { txt: rupiah(totalPengajuan(x.data)), hot: true })), empty: 'Tidak ada pengajuan yang perlu ditransfer' })
-    const unb = s.subs.filter((x) => x.flow === 'tr_bill' && ['proses_vendor', DONE].includes(x.stage) && x.data?.vendor && !x.data?.bill_id)
+    const unb = s.subs.filter((x) => ((x.flow === 'tr_bill' && ['proses_vendor', DONE].includes(x.stage) && x.data?.vendor) || orderBiro(x)) && !x.data?.bill_id)
     const byV = Object.entries(unb.reduce((a, x) => { (a[x.data.vendor] ||= []).push(x); return a }, {}))
     const vName = (id) => people.find((v) => v.id === id)?.name || 'Vendor'
     const vLang = (id) => (people.find((v) => v.id === id)?.languages || []).join('/')

@@ -391,7 +391,7 @@ export function AppProvider({ children }) {
     // registrations supaya tidak dipakai dokumen lain). Admin Pusat lalu mengecek & menerbitkan.
     // Hanya terjemahan tersumpah ID ⇄ EN / NL; arah lain melewati tahap "Nomor Registrasi".
     let lompat = 0, regRows = null
-    if (advance && stage.key === 'otorisasi' && stages[idx + 1]?.key === 'registrasi') {
+    if (advance && ['otorisasi', 'hasil_biro'].includes(stage.key) && stages[idx + 1]?.key === 'registrasi') { // hasil_biro: biro rekanan, tanpa otorisasi
       if (!kodeArah(s)) lompat = 1
       else if (!(merged.reg_numbers || []).some(Boolean)) {
         const n = jumlahDok(s)
@@ -589,6 +589,12 @@ export function AppProvider({ children }) {
       }
       const v = data.people.find((p) => p.id === id)
       const d = { ...x.data, ...extra, vendor: id }
+      if (v?.biro) { // biro rekanan (mis. Indotrans): order lewat grup, CS unggah hasil, lalu langsung nomor register
+        notes.push({ to_user: project.created_by, text: `Dokumen diorder ke biro ${v?.name ?? ''} — unggah hasilnya di project bila sudah diterima` })
+        return { ...x, flow: 'tr_biro', translator_kind: 'vendor', translator: id, executor_kind: 'vendor', executor_id: id, stage: 'hasil_biro', stage_at: now,
+          data: { ...d, translator: '', ordered_by: user.id, ordered_name: user.name, ordered_at: now },
+          history: [...(x.history || []), { ...by, action: `Order ke biro rekanan: ${v?.name ?? id} → Unggah Hasil (tanpa proofreader & otorisasi)` }] }
+      }
       if (isBilled(v)) { // termin tagihan: order dicatat, tidak langsung dibayar
         let stage = 'order'
         if (service) {

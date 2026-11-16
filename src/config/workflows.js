@@ -162,13 +162,14 @@ const STAF_FLOW = [
           ],
           Scan: [{ key: 'scan_hasil', label: 'Upload hasil scan', type: 'file', required: true }],
         },
-        // "Ditunda" bukan langkah maju, jadi tidak wajib. "Bayar Pajak" WAJIB:
-        // tahap tidak bisa diselesaikan sebelum Direktur mencentangnya.
+        // "Ditunda" bukan langkah maju, jadi tidak wajib.
         // Syarat sebelum langkah boleh dicentang ('' = boleh) dan nilai yang ikut disimpan otomatis.
         itemSyarat: { 'Bayar Pajak': (d) => (totalBiaya(d) > 0 ? '' : 'Isi dulu Biaya di bagian atas panel ini, lalu tekan “Simpan biaya”.') },
         itemAuto: { 'Bayar Pajak': (d) => ({ pajak_nominal: totalBiaya(d) }) },
         itemInfo: { 'Bayar Pajak': (d) => `Nominal dibayar: Rp ${totalBiaya(d).toLocaleString('id-ID')} — diambil dari Biaya apostille di atas (termasuk biaya lain). Ubah angkanya di sana bila perlu.` },
-        opsional: ['Ditunda'] },
+        // 16 Nov 2026 (keputusan pemilik): "Bayar Apostille" boleh DILEWATI supaya proses tidak tertahan,
+        // tetapi tetap wajib dicatat menyusul (biasanya dirapel malam hari) → lihat belumCatatBayar & saringan di daftar Project.
+        opsional: ['Ditunda', 'Bayar Pajak'], susulan: ['Bayar Pajak'] },
       { key: 'hasil_akhir', label: 'Upload Hasil Apostille / Legalisasi', type: 'file', required: true },
     ],
     onAdvance: (s, u) => ({ finished_by: u.id, finished_name: u.name, finished_at: new Date().toISOString() }),
@@ -272,10 +273,40 @@ export const CATEGORIES = {
 }
 
 /** Alur kerja ditentukan per sub project: jenis + pelaksana (internal / vendor). */
+// ============================================================
+//  BIRO REKANAN (mis. Indotrans) — 16 Nov 2026, keputusan pemilik:
+//  dokumen tertentu diorder ke biro lain lewat grup, di luar ATLAS.
+//  CS mengunggah hasilnya ke project → LANGSUNG ke Admin Pusat untuk
+//  nomor register (tanpa proofreader & otorisasi) → cetak, scan, kirim.
+//  Biayanya masuk Tagihan Vendor (dibayar di akhir).
+// ============================================================
+const ambilTahap = (...kunci) => kunci.map((k) => CATEGORIES.tr_int.stages.find((x) => x.key === k))
+CATEGORIES.tr_biro = {
+  label: 'Biro Rekanan', short: 'TR Biro', tone: 'violet',
+  stages: [
+    { key: 'cs_input', label: 'CS Input', roles: ALL, action: 'Order ke Biro',
+      hint: 'Pastikan detail dokumen, halaman, deadline & lokasi Print sudah benar, lalu unggah dokumen sumber. Order ke biro dilakukan lewat grup.',
+      fields: [{ key: 'dokumen_sumber', label: 'Dokumen Sumber', type: 'file', required: true }],
+      onAdvance: (s, u) => ({ ordered_by: u.id, ordered_name: u.name, ordered_at: new Date().toISOString() }) },
+    { key: 'hasil_biro', label: 'Dikerjakan Biro — Unggah Hasil', short: 'Hasil Biro', roles: ALL, action: 'Hasil Diterima → Nomor Register', showSource: true,
+      hint: 'Biro rekanan mengerjakan di luar ATLAS. Unggah hasilnya di sini — setelah itu langsung ke Admin Pusat untuk nomor register (tanpa proofreader & otorisasi). Biaya masuk Tagihan Vendor.',
+      fields: [
+        { key: 'vendor_service', label: 'Layanan & Biaya Vendor', type: 'vendor_service', required: true },
+        { key: 'file_final', label: 'Hasil dari Biro', type: 'file', required: true },
+      ],
+      compute: (d) => ({ total_pengajuan: Number(d.vendor_cost) || 0 }),
+      onAdvance: (s, u) => ({ hasil_biro_by: u.id, hasil_biro_name: u.name, hasil_biro_at: new Date().toISOString(), ordered_at: s.data?.ordered_at || new Date().toISOString() }),
+      notify: () => [{ to_role: 'admin_pusat', text: 'Hasil dari biro rekanan sudah diunggah — nomor register menunggu dicek & diterbitkan' }] },
+    ...ambilTahap('registrasi', 'siap_print', 'upload_scan', 'siap_kirim'),
+  ],
+}
+/** Order ke biro rekanan yang sudah tercatat (untuk Tagihan Vendor). */
+export const orderBiro = (x) => x.flow === 'tr_biro' && !!x.data?.vendor && !!x.data?.vendor_service && x.stage !== 'cs_input' && x.stage !== 'hasil_biro'
+
 export function deriveFlow(sub, vendorRec) {
   const vendor = sub.executor_kind === 'vendor' || sub.translator_kind === 'vendor'
   switch (sub.type) {
-    case 'terjemahan': return vendor ? (isBilled(vendorRec) ? 'tr_bill' : 'tr_ext') : 'tr_int'
+    case 'terjemahan': return vendor ? (vendorRec?.biro ? 'tr_biro' : isBilled(vendorRec) ? 'tr_bill' : 'tr_ext') : 'tr_int'
     case 'terjemahan_nt': return 'tr_nt'
     case 'apostille': return vendor ? 'ap_ext' : 'ap_int'
     case 'legalisasi': return vendor ? 'lg_ext' : 'lg_int'
@@ -325,4 +356,12 @@ export function progressOf(project) {
 export function isDone(project) {
   const subs = project.sub_projects ?? []
   return subs.length > 0 && subs.every((s) => s.stage === DONE)
+}
+
+/** Dokumen apostille/legalisasi (dikerjakan tim sendiri) yang prosesnya sudah lewat tetapi bayar apostille-nya BELUM dicatat. */
+export const belumCatatBayar = (sb, project) => {
+  const flow = flowOf(sb, project)
+  if (!['ap_int', 'lg_int'].includes(flow)) return false
+  const lewat = sb.stage === DONE || stageIndex(flow, sb.stage) > stageIndex(flow, 'diproses')
+  return lewat && !(sb.data?.proses_checklist || []).includes('Bayar Pajak')
 }

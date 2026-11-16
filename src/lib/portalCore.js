@@ -5,6 +5,7 @@
 //  Tidak ada akses UI / jaringan di sini.
 // ============================================================
 import { stagesOf, stageIndex, DONE, flowOf, totalPengajuan } from '../config/workflows.js'
+import { points } from '../config/subtypes.js'
 
 export const MAX_FAILS = 5 // salah nomor HP maksimal 5x …
 export const LOCK_MINUTES = 15 // … lalu dikunci 15 menit
@@ -54,19 +55,23 @@ export function registeredPhones(link, { project, vendor }) {
   return [...new Set(list.map(normPhone).filter((x) => x.length >= 8))]
 }
 
+/** Kode akses portal vendor (diatur per vendor di Pengaturan). Bila diisi, kode ini yang ditanyakan — bukan nomor HP. */
+export const kodePortal = (link, ctx) => (link?.kind === 'vendor' ? String(ctx?.vendor?.kode_portal || '').trim() : '')
+
 /** Cek nomor HP + pembatasan percobaan. Mengembalikan { ok, link (diperbarui), error }. */
 export function verifyPhone(link, phone, ctx, now = new Date()) {
   const st = linkState(link, now)
   if (st !== 'active') return { ok: false, link, error: st }
   const reg = registeredPhones(link, ctx)
   const p = normPhone(phone)
+  const kode = kodePortal(link, ctx)
   const recent = (link.fails || []).filter((t) => now - new Date(t) < LOCK_MINUTES * 6e4)
-  if (reg.length && p && reg.includes(p)) {
+  if (kode ? String(phone ?? '').trim() === kode : (reg.length && p && reg.includes(p))) {
     return { ok: true, link: { ...link, fails: [], last_open_at: now.toISOString(), opens: (link.opens || 0) + 1 } }
   }
   const fails = [...recent, now.toISOString()]
   const locked = fails.length >= MAX_FAILS
-  return { ok: false, error: reg.length ? (locked ? 'locked' : 'wrong') : 'no_phone',
+  return { ok: false, error: kode || reg.length ? (locked ? 'locked' : 'wrong') : 'no_phone',
     left: Math.max(0, MAX_FAILS - fails.length),
     link: { ...link, fails, ...(locked ? { locked_until: new Date(now.getTime() + LOCK_MINUTES * 6e4).toISOString(), fails: [] } : {}) } }
 }
@@ -78,6 +83,7 @@ const FINAL_FIELDS = {
   lg_int: [{ key: 'hasil_akhir', label: 'Hasil legalisasi', done: true }],
   tr_ext: [{ key: 'hasil_vendor', label: 'Hasil terjemahan', after: 'pembayaran' }],
   tr_bill: [{ key: 'hasil_vendor', label: 'Hasil terjemahan', done: true }],
+  tr_biro: [{ key: 'scan_pdf', label: 'Hasil terjemahan (scan bercap)' }, { key: 'file_final', label: 'Hasil terjemahan final', after: 'hasil_biro' }],
   ap_ext: [{ key: 'hasil_vendor', label: 'Hasil apostille', after: 'pembayaran' }],
   lg_ext: [{ key: 'hasil_vendor', label: 'Hasil legalisasi', after: 'pembayaran' }],
   jl: [{ key: 'hasil_jasa', label: 'Hasil layanan', after: 'proses' }],
@@ -153,6 +159,9 @@ export function paymentOf(sub) {
   const status = !pays.length ? 'Belum Dibayar' : paid < total ? 'Sebagian' : 'Lunas'
   return { total, paid, status, payments: pays }
 }
+/** Dokumen sumber & hasil vendor pada satu sub project. */
+export const sumberOf = (s) => (Array.isArray(s.data?.dokumen_sumber_list) && s.data.dokumen_sumber_list.length ? s.data.dokumen_sumber_list : s.data?.dokumen_sumber ? [s.data.dokumen_sumber] : [])
+export const hasilVendorOf = (s) => (Array.isArray(s.data?.hasil_vendor_list) && s.data.hasil_vendor_list.length ? s.data.hasil_vendor_list : s.data?.hasil_vendor ? [s.data.hasil_vendor] : [])
 const fileKey = (f) => (f ? f.drive_id || `${f.name}|${f.size}` : '')
 /** Data yang boleh dilihat vendor — hanya pekerjaan & pembayaran miliknya. Tanpa data pelanggan / harga jual. */
 export function vendorView(link, vendor, projects) {
@@ -170,7 +179,28 @@ export function vendorView(link, vendor, projects) {
   const byKey = {}
   for (const j of jobs) for (const x of j.payments) if (x.key) (byKey[x.key] ||= []).push({ ref: j.ref, work: j.work, amount: x.amount, date: x.date })
   for (const j of jobs) for (const x of j.payments) { x.allocation = x.key && byKey[x.key].length > 1 ? byKey[x.key] : null; delete x.key }
-  return { kind: 'vendor', name: vendor.name, expires_at: link.expires_at, jobs: jobs.sort((a, b) => String(a.deadline || '').localeCompare(String(b.deadline || ''))) }
+  // To-do sederhana per invoice: dokumen yang harus dikerjakan, sumber untuk diunduh, hasil yang sudah diunggah.
+  // Alamat kirim hanya diberikan bila vendor sendiri yang mengirim ke pelanggan (metode "Dikirim dari Penerjemah").
+  const todo = []
+  for (const p of projects) {
+    const subs = (p.sub_projects || []).filter((s) => s.data?.vendor === vendor.id)
+    if (!subs.length) continue
+    const docs = subs.flatMap((s) => {
+      const lang = ['terjemahan', 'terjemahan_nt'].includes(s.type) ? `${s.lang_from || '?'} → ${s.lang_to || '?'}` : ''
+      const rows = Array.isArray(s.docs) && s.docs.some((d) => String(d.desc || '').trim()) ? s.docs.filter((d) => String(d.desc || '').trim()).map((d) => ({ desc: d.desc, pages: Number(d.pages) || 0 })) : points(s.description).map((desc) => ({ desc, pages: 0 }))
+      return rows.map((d) => ({ ...d, lang }))
+    })
+    const hal = subs.reduce((a, s) => a + (Number(s.pages) || 0), 0)
+    const sh = p.customer?.ship || {}
+    const kirimVendor = p.about?.metode_kirim === 'vendor'
+    const hasil = subs.flatMap((s) => hasilVendorOf(s).map((f) => ({ name: f.name, at: f.uploaded_at || '' })))
+    todo.push({ id: p.id, ref: p.invoice_no, nama: p.customer?.name || '', deadline: p.about?.deadline || null, jam: p.about?.deadline_time || '', dok: docs.length, hal,
+      alamat: kirimVendor ? [sh.attention, sh.street1, sh.street2, sh.city, sh.state, sh.zip, sh.phone].filter(Boolean).join(', ') : '', kirim_vendor: kirimVendor,
+      docs, sumber: subs.flatMap((s) => sumberOf(s).map((f, i) => ({ ref: `src:${s.id}:${i}`, name: f.name }))), hasil,
+      status: subs.every((s) => s.stage === DONE) ? 'Selesai' : hasil.length ? 'Hasil diunggah' : 'Dikerjakan' })
+  }
+  todo.sort((a, b) => (a.status === 'Selesai') - (b.status === 'Selesai') || String(a.deadline || '9').localeCompare(String(b.deadline || '9')))
+  return { kind: 'vendor', name: vendor.name, expires_at: link.expires_at, todo, jobs: jobs.sort((a, b) => String(a.deadline || '').localeCompare(String(b.deadline || ''))) }
 }
 
 /** Cari file berdasar ref + pastikan ref memang diizinkan untuk tautan ini (dipakai juga untuk unduhan langsung). */
@@ -179,9 +209,10 @@ export function resolveFile(link, ref, { project, vendor, projects, requests = [
     if (!(link.shared || []).includes(ref)) return null
     return finalFilesOf(project, requests).find((f) => f.ref === ref)?.file ?? null
   }
-  const [, subId, i] = String(ref).split(':')
+  const [jenis, subId, i] = String(ref).split(':')
   for (const p of projects) for (const s of p.sub_projects || []) {
     if (s.id !== subId || s.data?.vendor !== vendor.id) continue
+    if (jenis === 'src') return sumberOf(s)[Number(i)] ?? null // dokumen sumber — hanya milik pekerjaan vendor ini
     return paymentOf(s).payments[Number(i)]?.bukti ?? null
   }
   return null

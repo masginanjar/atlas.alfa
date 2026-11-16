@@ -25,6 +25,9 @@ const Lbl = ({ children, htmlFor }) => <label htmlFor={htmlFor} className="mb-1 
 const Bagian = ({ no, judul, sisi, children }) => <Card className="space-y-3 p-4"><div className="flex flex-wrap items-center gap-2"><h2 className="min-w-0 flex-1 text-sm font-extrabold tracking-tight"><span className="mr-2 inline-grid h-6 w-6 place-items-center rounded-full bg-[#141B34] text-[11px] text-white">{no}</span>{judul}</h2>{sisi}</div>{children}</Card>
 const TanpaAkses = () => <Card><Empty icon={Lock} title="Tidak ada akses" text="Surat Kuasa hanya untuk yang diberi izin." /></Card>
 
+/** Pilihan jenis dokumen pada daftar dokumen Surat Kuasa. "Lainnya" → jenisnya ditulis sendiri. */
+const JENIS_DOKUMEN = ['Dokumen Pendidikan', 'Dokumen Pernikahan', 'Dokumen Perdagangan', 'Dokumen Terjemahan', 'Dokumen Kependudukan', 'Dokumen Karantina', 'SKCK', 'Dokumen Kesehatan', 'Dokumen Perizinan', 'Dokumen Perceraian', 'Dokumen Hak Kekayaan Intelektual (HAKI)', 'Dokumen Notaris', 'Lainnya']
+
 export default function SuratKuasa({ param, param2 }) {
   const { user } = useApp()
   if (!boleh(user, 'surat-kuasa.lihat')) return <TanpaAkses />
@@ -200,7 +203,15 @@ function Editor({ id, projectId }) {
   const nik = cekNik(s.pemberi.nik)
   const n = s.jumlah_penerima === 1 ? 1 : 2
   const setPenerima = (i, mid) => ubah((v) => { const m = master.find((x) => x.id === mid); const arr = [...(v.penerima || [])]; arr[i] = m ? { master_id: m.id, nama: m.nama, nik: m.nik, pekerjaan: m.pekerjaan, alamat: m.alamat } : { nama: '', nik: '', pekerjaan: '', alamat: '' }; return { penerima: arr } })
-  const setDok = (i, k, val) => ubah((v) => ({ dokumen: v.dokumen.map((d, j) => (j === i ? { ...d, [k]: val } : d)) }))
+  const setDok = (i, k, val) => ubah((v) => ({ dokumen: v.dokumen.map((d, j) => (j === i ? { ...d, [k]: val, ...(k === 'pemilik' ? { pemilik_manual: true, pemilik_auto: false } : {}) } : d)) }))
+  // Pemilik dokumen bawaan = nama pemberi kuasa (hasil baca KTP / ID). Mengikuti bila nama dikoreksi; berhenti mengikuti begitu kolomnya diubah sendiri.
+  const namaPemberi = String(s.pemberi?.nama || '').trim()
+  useEffect(() => {
+    if (!bolehUbah || !namaPemberi) return
+    const perlu = (d) => !d.pemilik_manual && d.pemilik !== namaPemberi && (!String(d.pemilik || '').trim() || d.pemilik_auto)
+    if (!s.dokumen.some(perlu)) return
+    setS((v) => ({ ...v, dokumen: v.dokumen.map((d) => (perlu(d) ? { ...d, pemilik: namaPemberi, pemilik_auto: true } : d)) }))
+  }, [namaPemberi, s.dokumen, bolehUbah]) // eslint-disable-line react-hooks/exhaustive-deps
   const geser = (i, d) => ubah((v) => { const a = [...v.dokumen]; const j = i + d; if (j < 0 || j >= a.length) return {}; [a[i], a[j]] = [a[j], a[i]]; return { dokumen: a } })
   const ambilDok = () => ubah((v) => { const baru = (project.sub_projects || []).filter((x) => ['apostille', 'legalisasi'].includes(x.type) || !(project.sub_projects || []).some((y) => ['apostille', 'legalisasi'].includes(y.type))).map((x) => ({ jenis: '', nama: x.title || SUB_TYPES[x.type]?.label || '', pemilik: '', tanggal: '', nomor: '', dari: 'pekerjaan' })); const ada = v.dokumen.filter((d) => [d.jenis, d.nama, d.pemilik, d.nomor].some((t) => String(t || '').trim())); return { dokumen: [...ada, ...baru] } })
 
@@ -276,14 +287,19 @@ function Editor({ id, projectId }) {
                     <button type="button" aria-label="Turunkan" disabled={i === s.dokumen.length - 1} onClick={() => geser(i, 1)} className="grid h-9 w-9 place-items-center rounded-lg hover:bg-slate-100 disabled:opacity-30 max-md:h-11 max-md:w-11"><ArrowDown className="h-4 w-4" /></button>
                     <button type="button" aria-label={`Hapus dokumen ${i + 1}`} onClick={() => ubah((v) => ({ dokumen: v.dokumen.filter((_, j) => j !== i) }))} className="grid h-9 w-9 place-items-center rounded-lg text-rose-600 hover:bg-rose-50 max-md:h-11 max-md:w-11"><Trash2 className="h-4 w-4" /></button></div>
                   <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                    <div><Lbl htmlFor={`d-${i}-j`}>Jenis dokumen</Lbl><Input id={`d-${i}-j`} value={d.jenis} placeholder="mis. Ijazah" onChange={(e) => setDok(i, 'jenis', e.target.value)} className="max-md:text-base" /></div>
+                    <div><Lbl htmlFor={`d-${i}-j`}>Jenis dokumen</Lbl>
+                      <Select id={`d-${i}-j`} data-jenis-dokumen value={!d.jenis ? '' : JENIS_DOKUMEN.includes(d.jenis) ? d.jenis : 'Lainnya'} onChange={(e) => setDok(i, 'jenis', e.target.value)} className="max-md:text-base">
+                        <option value="">Pilih jenis dokumen…</option>{JENIS_DOKUMEN.map((j) => <option key={j} value={j}>{j}</option>)}
+                      </Select>
+                      {d.jenis && (d.jenis === 'Lainnya' || !JENIS_DOKUMEN.includes(d.jenis)) && <Input aria-label="Jenis dokumen lainnya" value={d.jenis === 'Lainnya' ? '' : d.jenis} placeholder="Tulis jenis dokumennya" onChange={(e) => setDok(i, 'jenis', e.target.value || 'Lainnya')} className="mt-1.5 max-md:text-base" data-jenis-lain />}
+                    </div>
                     <div><Lbl htmlFor={`d-${i}-n`}>Nama dokumen</Lbl><Input id={`d-${i}-n`} value={d.nama} onChange={(e) => setDok(i, 'nama', e.target.value)} className="max-md:text-base" /></div>
                     <div className="sm:col-span-2"><Lbl htmlFor={`d-${i}-p`}>Pemilik / nama yang tertera pada dokumen</Lbl><Input id={`d-${i}-p`} value={d.pemilik} onChange={(e) => setDok(i, 'pemilik', e.target.value)} className={cx('max-md:text-base', beda && '!ring-amber-400')} />{beda && <p className="mt-1 text-[11px] font-semibold text-amber-700">Berbeda dari nama pemberi kuasa — pastikan memang demikian.</p>}</div>
                     <div><Lbl htmlFor={`d-${i}-t`}>Tanggal dokumen</Lbl><Input id={`d-${i}-t`} type="date" value={d.tanggal} onChange={(e) => setDok(i, 'tanggal', e.target.value)} className="max-md:text-base" /></div>
                     <div><Lbl htmlFor={`d-${i}-no`}>Nomor dokumen</Lbl><Input id={`d-${i}-no`} value={d.nomor} autoComplete="off" spellCheck={false} onChange={(e) => setDok(i, 'nomor', e.target.value)} className="max-md:text-base" /></div>
                   </div>
                 </div>) })}
-              <Button variant="outline" className="w-full max-md:min-h-11" onClick={() => ubah((v) => ({ dokumen: [...v.dokumen, { jenis: '', nama: '', pemilik: '', tanggal: '', nomor: '' }] }))} data-aksi="tambah-dokumen"><Plus className="h-4 w-4" />Tambah baris dokumen</Button>
+              <Button variant="outline" data-tambah-dok className="w-full max-md:min-h-11" onClick={() => ubah((v) => ({ dokumen: [...v.dokumen, { jenis: '', nama: '', pemilik: '', tanggal: '', nomor: '' }] }))} data-aksi="tambah-dokumen"><Plus className="h-4 w-4" />Tambah baris dokumen</Button>
               <LebarKolom nilai={s.kolom || setelan?.kolom || KOLOM_BAWAAN} khusus={!!s.kolom} bisa={bolehUbah} onUbah={(k) => ubah({ kolom: k })}
                 onBawaan={boleh(user, 'surat-kuasa.atur') ? async (k) => { try { await save('app_settings', { ...(setelan || { key: 'surat_kuasa' }), kolom: k }); ubah({ kolom: null }); notify('Ukuran kolom dijadikan bawaan semua surat') } catch (e) { notify(e.message, 'err') } } : null} />
             </div>

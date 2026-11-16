@@ -4,7 +4,7 @@ import { Receipt, Plus, Upload, FileCheck2, Loader2, Check, X, Ban, Banknote } f
 import { useApp } from '../lib/store.jsx'
 import { drive } from '../lib/integrations.js'
 import { can, foreignLang, branchesOf, invoiceLabel} from '../config/access.js'
-import { flowOf, DONE, PAYMENT_TERMS, termOf, isBilled, recommendFund } from '../config/workflows.js'
+import { flowOf, DONE, PAYMENT_TERMS, termOf, isBilled, recommendFund, orderBiro } from '../config/workflows.js'
 import { SumberDanaPicker, DownloadBukti, QuickAcc } from './Pengajuan.jsx'
 import CopyText from './CopyText.jsx'
 import { Button, Field, Input, Sheet, cx } from './ui.jsx'
@@ -28,7 +28,7 @@ export function useUnbilled() {
     const all = can.seeAllBranches(user) || user.role === 'akunting'
     const mine = branchesOf(user)
     return data.projects.flatMap((p) => (p.sub_projects || []).map((s) => ({ ...s, project: p, flow: flowOf(s, p) })))
-      .filter((x) => x.flow === 'tr_bill' && ['proses_vendor', DONE].includes(x.stage) && x.data?.vendor && !x.data?.bill_id)
+      .filter((x) => ((x.flow === 'tr_bill' && ['proses_vendor', DONE].includes(x.stage) && x.data?.vendor) || orderBiro(x)) && !x.data?.bill_id)
       .filter((x) => all || mine.includes(x.project.branch) || (user.coordinator_lang && foreignLang(x) === user.coordinator_lang) || x.data?.coordinator === user.id)
   }, [data.projects, user])
 }

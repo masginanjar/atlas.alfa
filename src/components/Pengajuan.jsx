@@ -4,7 +4,7 @@ import { useApp } from '../lib/store.jsx'
 import { drive } from '../lib/integrations.js'
 import { saveBlob } from '../lib/download.js'
 import { totalPengajuan, SUMBER_DANA, sumberLabel, recommendFund } from '../config/workflows.js'
-import { can, invoiceLabel} from '../config/access.js'
+import { can, invoiceLabel, biayaVendorTersembunyi } from '../config/access.js'
 import { fundSummary } from '../lib/funds.js'
 import { Button, cx } from './ui.jsx'
 import { rupiah, tgl, jam } from '../lib/format.js'
@@ -86,10 +86,11 @@ export function PengajuanSummary({ sub, className }) {
   const { data, user } = useApp()
   const d = sub.data || {}
   const vendor = data.people.find((p) => p.id === d.vendor)
+  const samar = biayaVendorTersembunyi(user, sub, vendor) // biaya vendor apostille: hanya Superadmin, Direktur, Akunting
   const rows = [
     ['Vendor', vendor?.name ?? '—'],
-    ['Layanan', d.vendor_service ? `${d.vendor_service}` : '—', rupiah(d.vendor_cost)],
-    ['Ongkir', d.ongkir_to || 'Tanpa ongkir', rupiah(d.ongkir_cost)],
+    ['Layanan', d.vendor_service ? `${d.vendor_service}` : '—', samar ? '' : rupiah(d.vendor_cost)],
+    ['Ongkir', d.ongkir_to || 'Tanpa ongkir', samar ? '' : rupiah(d.ongkir_cost)],
   ]
   return (
     <div className={cx('rounded-xl bg-white p-3 ring-1 ring-slate-200', className)} data-ringkasan-pengajuan>
@@ -103,7 +104,7 @@ export function PengajuanSummary({ sub, className }) {
         ))}
         <div className="flex items-baseline gap-2 border-t border-dashed border-slate-200 pt-1.5">
           <dt className="flex-1 text-xs font-bold uppercase tracking-wide text-ink">Total Pengajuan</dt>
-          <dd><NominalCopy nilai={totalPengajuan(d)} label="total pengajuan" besar /></dd>
+          <dd>{samar ? <span className="text-xs text-ink-mute" data-biaya-samar>Tidak ditampilkan</span> : <NominalCopy nilai={totalPengajuan(d)} label="total pengajuan" besar />}</dd>
         </div>
         {d.sumber_dana && can.seeFunding(user) && <div className="flex gap-2 text-xs"><dt className="w-16 shrink-0 font-semibold text-ink-mute">Sumber</dt><dd className="min-w-0 flex-1 font-semibold text-ink">{sumberLabel(d.sumber_dana)}</dd></div>}
         {d.rekening && <div className="flex gap-2 text-xs"><dt className="w-16 shrink-0 font-semibold text-ink-mute">Penerima</dt><dd className="min-w-0 flex-1">{accountLabel(d.rekening)}</dd></div>}
