@@ -5,7 +5,7 @@ import { useApp } from '../lib/store.jsx'
 import { boleh } from '../lib/izin.js'
 import { go } from '../lib/router.js'
 import { drive } from '../lib/integrations.js'
-import { can, PERSON_TYPES, ROLES, scopeByBranch, activeClaim, placeOf, branchesOf, printBranchOf, displayNameFor, seeProofreaderIdentity, proofreaderTeamName, pickProofreader, invoiceLabel, coordinatorFor, foreignLang } from '../config/access.js'
+import { can, PERSON_TYPES, ROLES, scopeByBranch, activeClaim, placeOf, branchesOf, printBranchOf, displayNameFor, seeProofreaderIdentity, proofreaderTeamName, pickProofreader, invoiceLabel, coordinatorFor, foreignLang, bolehItemCeklis, lewatIzinApostille } from '../config/access.js'
 import TugaskanPenerjemah from '../components/TugaskanPenerjemah.jsx'
 import { saveBlob, dataUrlToBlob } from '../lib/download.js'
 import ResiFields from '../components/ResiFields.jsx'
@@ -537,7 +537,7 @@ export function StagePanel({ project, sub, stage, ringkas }) {
   // Super Admin, Direktur & Admin Pusat boleh melanjutkan tahap tanpa menunggu role penanggung jawab (dengan alasan, tercatat di riwayat)
   const canOverride = ['superadmin', 'direktur', 'admin_pusat'].includes(user.role)
   const normal = can.processStage(user, stage, sub, project)
-  const isOwnerRole = stage.roles.includes(user.role) && !(stage.assignee && sub.data?.[stage.assignee] && sub.data[stage.assignee] !== user.id) && !(stage.claimable && user.role !== 'otorisator') && !(stage.printBranch && !branchesOf(user).includes(printBranchOf(project)))
+  const isOwnerRole = lewatIzinApostille(user, stage) || stage.roles.includes(user.role) && !(stage.assignee && sub.data?.[stage.assignee] && sub.data[stage.assignee] !== user.id) && !(stage.claimable && user.role !== 'otorisator') && !(stage.printBranch && !branchesOf(user).includes(printBranchOf(project)))
   const [overrideMode, setOverrideMode] = useState(false)
   const [reason, setReason] = useState('')
   const overriding = canOverride && !isOwnerRole && (overrideMode || normal)
@@ -707,9 +707,14 @@ export function StagePanel({ project, sub, stage, ringkas }) {
             <Input type="number" inputMode="numeric" min="0" value={v} onChange={(e) => set(e.target.value)} placeholder="0" />
           </Field>
           if (f.type === 'date') return <Field key={f.key} label={f.label} required={f.required}><Input type="date" value={v} onChange={(e) => set(e.target.value)} /></Field>
-          if (f.type === 'checklist') return ringkas ? null : (
-            <ChecklistProses key={f.key} f={f} nilai={v} setNilai={set} project={project} sub={sub} user={user} />
-          )
+          if (f.type === 'checklist') {
+            // Panel ringkas (daftar project & dasbor): centang biasa lewat lingkaran di baris. Langkah yang butuh isian/berkas
+            // (Bayar Pajak, Scan) TIDAK bisa dicentang dari lingkaran — jadi daftar centangnya tetap ditampilkan di sini selama masih ada yang belum.
+            const perluIsian = (f.items || []).some((it) => f.itemForm?.[it]?.length && bolehItemCeklis(user, f, it) && !(Array.isArray(v) ? v : []).includes(it))
+            return ringkas && !perluIsian ? null : (
+              <div key={f.key} className={ringkas ? 'col-span-full mb-2' : undefined} data-ceklis-isian><ChecklistProses f={f} nilai={v} setNilai={set} project={project} sub={sub} user={user} /></div>
+            )
+          }
           if (f.type === 'reg_numbers') {
             return <RegNumbersField key={f.key} f={f} sub={sub} project={project} vals={vals} setVals={setVals} projects={data.projects} />
           }
@@ -777,7 +782,7 @@ function ChecklistProses({ f, nilai, setNilai, project, sub, user }) {
   const [isian, setIsian] = useState(null)
   const [sibuk, setSibuk] = useState(false)
   const cur = Array.isArray(nilai) ? nilai : []
-  const items = (f.items || []).filter((it) => !f.itemRoles?.[it] || f.itemRoles[it].includes(user.role))
+  const items = (f.items || []).filter((it) => bolehItemCeklis(user, f, it))
   const opsional = f.opsional || []
   const wajib = items.filter((it) => !opsional.includes(it))
   const doneN = wajib.filter((it) => cur.includes(it)).length
@@ -785,7 +790,7 @@ function ChecklistProses({ f, nilai, setNilai, project, sub, user }) {
   // Tidak ditampilkan di daftar, tapi tetap diberitahu supaya tidak bingung
   // kenapa tahapnya belum bisa diselesaikan.
   const punyaOrangLain = (f.items || []).filter((it) =>
-    f.itemRoles?.[it] && !f.itemRoles[it].includes(user.role) && !opsional.includes(it) && !cur.includes(it))
+    !bolehItemCeklis(user, f, it) && !opsional.includes(it) && !cur.includes(it))
 
   const simpan = async (it, patch = {}) => {
     const n = cur.includes(it) ? cur.filter((x) => x !== it) : [...cur, it]

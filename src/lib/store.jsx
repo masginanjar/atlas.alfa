@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { db, TABLES, MODE } from './db.js'
 import { catatMonitor, jenisError } from './monitor.js'
 import { describe } from './activity.js'
-import { branchesOf, APOSTILLE_FUND, ROLES, roleLabel, displayNameFor, WORKER_ROLES, branchOfInvoice, can } from '../config/access.js'
+import { branchesOf, APOSTILLE_FUND, ROLES, roleLabel, displayNameFor, WORKER_ROLES, branchOfInvoice, can, bolehItemCeklis } from '../config/access.js'
 import { zoho } from './integrations.js'
 import { startHeartbeat, statusOf } from './presence.js'
 import { threadOf, myMessages, unreadByThread, pingQuota, openChatBus, PING_MAX_24H, PING_GAP_MS } from './chat.js'
@@ -373,7 +373,7 @@ export function AppProvider({ children }) {
         // Direktur), sebutkan siapa yang ditunggu — bukan "lengkapi" yang
         // membuat pelaksana mencari-cari sesuatu yang memang bukan haknya.
         const nunggu = missing.flatMap((f) => (f.type === 'checklist' ? kurangCeklist(f) : []))
-          .filter((it) => missing.some((f) => f.itemRoles?.[it] && !f.itemRoles[it].includes(user.role)))
+          .filter((it) => missing.some((f) => f.itemRoles?.[it] && !bolehItemCeklis(user, f, it)))
         if (nunggu.length && nunggu.length === missing.flatMap((f) => (f.type === 'checklist' ? kurangCeklist(f) : [f.label])).length) {
           throw new Error(`Menunggu Direktur menyelesaikan: ${nunggu.join(', ')}`)
         }

@@ -8,7 +8,7 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, useS
 import { Search, Plus, ChevronDown, ArrowLeft, ExternalLink, Maximize2, Minimize2, X, FolderOpen, Wallet, Eye, Copy, Languages, Stamp, UserCheck, Printer, LogOut, MoreHorizontal, Hash, ClipboardList } from 'lucide-react'
 import { useApp } from '../lib/store.jsx'
 import { go } from '../lib/router.js'
-import { scopeByBranch, can, branchesOf, BRANCHES, invoiceLabel, isMultiBranch, activeClaim, ROLES, rolesOf, coordinatorFor, foreignLang, diKoordinasi, vendorKoordinator } from '../config/access.js'
+import { scopeByBranch, can, branchesOf, BRANCHES, invoiceLabel, isMultiBranch, activeClaim, ROLES, rolesOf, coordinatorFor, foreignLang, diKoordinasi, vendorKoordinator, bolehItemCeklis } from '../config/access.js'
 import { projectRow, statusOf } from '../lib/projectRow.js'
 import { flowOf, stageLabel, stageIndex, DONE, isVendorFlow } from '../config/workflows.js'
 import { ProjectTypes } from './badges.jsx'
@@ -214,7 +214,7 @@ function CeklisRingkas({ f, v, set }) {
     document.addEventListener('mousedown', tutup); document.addEventListener('keydown', esc); window.addEventListener('scroll', tutup, true)
     return () => { document.removeEventListener('mousedown', tutup); document.removeEventListener('keydown', esc); window.removeEventListener('scroll', tutup, true) }
   }, [pos])
-  const items = (f.items || []).filter((it) => !f.itemRoles?.[it] || f.itemRoles[it].includes(user.role))
+  const items = (f.items || []).filter((it) => bolehItemCeklis(user, f, it))
   const cur = v[f.key] || []
   const selesai = items.filter((it) => cur.includes(it)).length
   const berikut = items.find((it) => !cur.includes(it))

@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { Play, Check, Flag, Loader2 } from 'lucide-react'
 import { useApp } from '../lib/store.jsx'
 import { go } from '../lib/router.js'
-import { branchesOf } from '../config/access.js'
+import { branchesOf, bolehProsesApostille, bolehItemCeklis } from '../config/access.js'
 import { flowOf, stagesOf, stageLabel } from '../config/workflows.js'
 import { Button, Card, cx } from './ui.jsx'
 import { ROLES, roleLabel } from '../config/access.js'
@@ -44,13 +44,14 @@ export function aksesApostille(data) {
 export const lihatTahapApostille = (user, data) => {
   if ((user?.base_role || user?.role) === 'superadmin') return true
   const a = aksesApostille(data)
-  return a.roles.includes(user?.role) || a.users.includes(user?.id)
+  return a.roles.includes(user?.role) || a.users.includes(user?.id) || bolehProsesApostille(user)
 }
 
 export function bolehCentang(user, sb) {
   if (PIMPINAN.includes(user?.role)) return true
   const staf = user?.role === 'staf_apostille' || (user?.extra_roles || []).includes('staf_apostille')
-  if (!staf || !branchesOf(user).includes('Jakarta')) return false
+  if (!staf) return bolehProsesApostille(user) // izin khusus per pengguna (Role & Hak Akses)
+  if (!branchesOf(user).includes('Jakarta')) return false
   const pemegang = sb.data?.staff_apostille || sb.data?.started_by
   return !pemegang || pemegang === user.id
 }
@@ -84,7 +85,7 @@ export default function CentangApostille({ p, sb, label, bulat, onPanel }) {
 
   const { f } = info
   const cur = Array.isArray(sb.data?.[f.key]) ? sb.data[f.key] : []
-  const items = (f.items || []).filter((it) => !f.itemRoles?.[it] || f.itemRoles[it].includes(user.role))
+  const items = (f.items || []).filter((it) => bolehItemCeklis(user, f, it))
   const wajibSemua = (f.items || []).filter((it) => !(f.opsional || []).includes(it))
   const lengkap = wajibSemua.every((it) => cur.includes(it))
   const toggle = async (e, it) => {

@@ -178,10 +178,20 @@ export const PRINT_VENDOR = 'Vendor'
 export const printAtVendor = (project) => project?.about?.print_location === PRINT_VENDOR
 /** Cabang yang bertanggung jawab atas tahap print/scan: lokasi print, atau cabang asal bila dicetak vendor. */
 export const printBranchOf = (project) => (project?.about?.print_location && project.about.print_location !== PRINT_VENDOR ? project.about.print_location : project?.branch)
+/** Proses Apostille/Legalisasi lewat izin (Pengaturan → Role & Hak Akses), termasuk pengecualian per pengguna.
+ *  Bersifat TAMBAHAN: role tahap yang lama tetap berlaku apa adanya. */
+export const bolehProsesApostille = (u) => !!IZIN && !!u && IZIN.boleh(u, 'apostille-proses.status')
+export const bolehPajakApostille = (u) => !!IZIN && !!u && IZIN.boleh(u, 'apostille-proses.setujui')
+/** Langkah ceklis yang dibatasi peran (mis. "Bayar Pajak"): role yang tercantum, atau pemegang izin setujui. */
+export const bolehItemCeklis = (u, f, it) => !f?.itemRoles?.[it] || f.itemRoles[it].includes(u?.role) || (it === 'Bayar Pajak' && bolehPajakApostille(u))
+/** Tahap milik Staf Apostille yang dibuka untuk pengguna ini lewat izin (bukan lewat role tahap). */
+export const lewatIzinApostille = (u, stage) => !!stage && stage.assignee === 'staff_apostille' && !stage.roles.includes(u?.role) && bolehProsesApostille(u)
 export function canProcess(u, stage, sub, project) {
-  if (!u || !stage || !stage.roles.includes(u.role)) return false
+  if (!u || !stage) return false
+  const izinKhusus = lewatIzinApostille(u, stage)
+  if (!stage.roles.includes(u.role) && !izinKhusus) return false
   if (u.role === 'superadmin') return true
-  if (stage.assignee && sub && !OVERRIDE.includes(u.role) && sub.data?.[stage.assignee] && sub.data[stage.assignee] !== u.id) return false
+  if (stage.assignee && sub && !OVERRIDE.includes(u.role) && !izinKhusus && sub.data?.[stage.assignee] && sub.data[stage.assignee] !== u.id) return false
   if (stage.printBranch && project && !branchesOf(u).includes(printBranchOf(project))) return false
   if (stage.claimable && sub) { const c = activeClaim(sub); if (c && c.by !== u.id) return false }
   return true
