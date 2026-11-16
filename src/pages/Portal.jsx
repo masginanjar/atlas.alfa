@@ -258,7 +258,7 @@ function VendorView({ token, v, onExpired }) {
           <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)} data-tab-portal={k} className={cx('h-12 flex-1 rounded-xl text-lg font-bold ring-2', tab === k ? 'bg-ink text-white ring-ink' : 'bg-white text-ink ring-slate-300')}>{l}</button>
         ))}
       </div>
-      {tab === 'todo' && <PortalVendorTodo token={token} todo={v.todo} onUbah={onExpired} onExpired={onExpired} />}
+      {tab === 'todo' && <PortalVendorTodo token={token} todo={v.todo} transfer={v.transfer || []} onUbah={onExpired} onExpired={onExpired} />}
       {tab === 'arsip' && (
         <div className="space-y-2" data-arsip-vendor>
           {!(v.todo || []).length && <p className="rounded-2xl bg-white px-4 py-8 text-center text-base text-ink-mute ring-1 ring-slate-200">Belum ada file.</p>}
@@ -275,24 +275,28 @@ function VendorView({ token, v, onExpired }) {
               </details>) })}
         </div>
       )}
-      {tab === 'transfer' && (
-        <div className="overflow-x-auto rounded-2xl bg-white shadow-sm ring-1 ring-slate-200" data-tabel-transfer>
-          {!(v.transfer || []).length ? <p className="px-4 py-8 text-center text-base text-ink-mute">Belum ada bukti transfer.</p> : (
-            <table className="w-full text-sm">
-              <thead className="bg-slate-100 text-left text-xs font-bold uppercase tracking-wide text-ink"><tr><th className="px-3 py-3">Tanggal</th><th className="px-3 py-3 text-right">Jumlah</th><th className="px-3 py-3">Untuk invoice</th><th className="px-3 py-3">Bukti transfer</th></tr></thead>
-              <tbody className="divide-y divide-slate-200">{v.transfer.map((t, i) => (
-                <tr key={i} className="align-top">
-                  <td className="whitespace-nowrap px-3 py-3">{t.date ? tgl(t.date) : '—'}</td>
-                  <td className="whitespace-nowrap px-3 py-3 text-right font-bold tabular-nums">{rupiah(t.amount)}</td>
-                  <td className="px-3 py-3 text-xs text-ink-soft">{t.untuk.map((u) => `${String(u.ref || '').replace(/^INV-/i, '')}${t.untuk.length > 1 ? ` (${rupiah(u.amount)})` : ''}`).join(' · ')}</td>
-                  <td className="px-3 py-3">{t.ref ? <span className="flex flex-wrap gap-2">
-                    <button type="button" onClick={() => dl.view(t.ref, t.name)} className="inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-white px-3 text-sm font-bold ring-2 ring-slate-300"><Eye className="h-4 w-4" />Lihat</button>
-                    <button type="button" onClick={() => dl.download(t.ref, t.name)} disabled={dl.busy === t.ref} className="inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-emerald-600 px-3 text-sm font-bold text-white disabled:opacity-60">{dl.busy === t.ref ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}Unduh</button>
-                  </span> : <span className="text-xs text-ink-mute">Belum ada bukti</span>}</td>
-                </tr>))}</tbody>
-            </table>)}
-        </div>
-      )}
+      {tab === 'transfer' && (() => {
+        // Satu baris per PROJECT (invoice): bukti yang sama untuk beberapa invoice tampil di tiap invoicenya.
+        const baris = (v.transfer || []).flatMap((t) => t.untuk.map((u) => ({ ...t, invoice: u.ref, jumlah: u.amount }))).sort((x, y) => String(x.invoice).localeCompare(String(y.invoice)) || String(y.date).localeCompare(String(x.date)))
+        return (
+          <div className="overflow-x-auto rounded-2xl bg-white shadow-sm ring-1 ring-slate-200" data-tabel-transfer>
+            {!baris.length ? <p className="px-4 py-8 text-center text-base text-ink-mute">Belum ada bukti transfer.</p> : (
+              <table className="w-full text-sm">
+                <thead className="bg-slate-100 text-left text-xs font-bold uppercase tracking-wide text-ink"><tr><th className="px-3 py-3">No Invoice</th><th className="px-3 py-3">Tanggal transfer</th><th className="px-3 py-3 text-right">Jumlah</th><th className="px-3 py-3">Bukti transfer</th></tr></thead>
+                <tbody className="divide-y divide-slate-200">{baris.map((t, i) => (
+                  <tr key={i} className="align-top" data-baris-transfer={t.invoice}>
+                    <td className="whitespace-nowrap px-3 py-3.5 font-extrabold">{String(t.invoice || '').replace(/^INV-/i, '')}</td>
+                    <td className="whitespace-nowrap px-3 py-3.5">{t.date ? tgl(t.date) : '—'}</td>
+                    <td className="whitespace-nowrap px-3 py-3.5 text-right font-bold tabular-nums">{rupiah(t.jumlah)}{t.untuk.length > 1 && <span className="block text-[11px] font-normal text-ink-mute">dari transfer {rupiah(t.amount)}</span>}</td>
+                    <td className="px-3 py-2">{t.ref ? <span className="flex flex-wrap gap-2">
+                      <button type="button" onClick={() => dl.view(t.ref, t.name)} className="inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-white px-3 text-sm font-bold ring-2 ring-slate-300"><Eye className="h-4 w-4" />Lihat</button>
+                      <button type="button" onClick={() => dl.download(t.ref, t.name)} disabled={dl.busy === t.ref} data-unduh-bukti className="inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-emerald-600 px-3 text-sm font-bold text-white disabled:opacity-60">{dl.busy === t.ref ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}Download</button>
+                    </span> : <span className="text-xs text-ink-mute">Belum ada bukti</span>}</td>
+                  </tr>))}</tbody>
+              </table>)}
+          </div>
+        )
+      })()}
       {tab === 'bayar' && <>
       <div className="flex gap-2" role="tablist">
         {[['semua', 'Semua'], ['berjalan', 'Berjalan'], ['selesai', 'Selesai']].map(([k, l]) => (

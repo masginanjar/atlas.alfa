@@ -89,6 +89,11 @@ function migrate(m) {
       buat('pj-anisa-2', 'INV-990202', '[Contoh Pelanggan B]', [['Surat Keterangan (contoh)', 2]], 5, 'vendor')]
     m.portal_todo_v1 = true; changed = true
   }
+  if (!m.portal_bukti_v1) {
+    const pj = (m.projects || []).find((p) => p.id === 'pj-anisa-2'); const sb = pj?.sub_projects?.[0]
+    if (sb && !sb.data?.payments?.length) { const at = new Date().toISOString(); sb.data = { ...sb.data, total_pengajuan: 300000, payments: [{ amount: 300000, date: at.slice(0, 10), bukti: { id: 'f-bukti-anisa', name: 'Bukti transfer (contoh).txt', size: 30, url: `data:text/plain;base64,${btoa('Contoh bukti transfer (data sintetis)')}`, uploaded_at: at } }] } }
+    m.portal_bukti_v1 = true; changed = true
+  }
   // Koordinator vendor (10 Nov 2026): Emma → Pak Zenzia, Debby → Pak Dedi (Jerman)
   if (!m.koordinator_v1) {
     let dedi = (m.people || []).find((x) => x.type === 'vendor' && /dedi/i.test(x.name))

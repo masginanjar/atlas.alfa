@@ -21,7 +21,7 @@ const Tanda = ({ r }) => (
   </>
 )
 
-export default function PortalVendorTodo({ token, todo = [], onUbah, onExpired }) {
+export default function PortalVendorTodo({ token, todo = [], transfer = [], onUbah, onExpired }) {
   const [buka, setBuka] = useState(null)
   const [sibuk, setSibuk] = useState('')
   const [pesan, setPesan] = useState(null)
@@ -46,6 +46,17 @@ export default function PortalVendorTodo({ token, todo = [], onUbah, onExpired }
       setPesan({ jenis: 'ok', teks: `${r.sumber.length} dokumen sumber ${inv(r.ref)} diunduh sebagai ZIP.` })
     } catch (e) { galat(e) } finally { setSibuk('') }
   }
+  // Bukti transfer per project (invoice): satu tombol unduh per bukti.
+  const buktiOf = (r) => transfer.filter((t) => t.ref && t.untuk.some((u) => u.ref === r.ref))
+  const unduhBukti = async (t) => {
+    setSibuk(`bukti:${t.ref}`); setPesan(null)
+    try { const f = await portal.file(token, t.ref); await saveBlob(f.name || t.name || 'Bukti transfer', f.blob) } catch (e) { galat(e) } finally { setSibuk('') }
+  }
+  const TombolBukti = ({ r, penuh }) => { const list = buktiOf(r); return list.length
+    ? <span className={cx('flex flex-col gap-1', penuh && 'w-full')}>{list.map((t) => (
+        <button key={t.ref} type="button" onClick={(e) => { e.stopPropagation(); unduhBukti(t) }} disabled={!!sibuk} data-unduh-bukti title={t.name || 'Bukti transfer'} className={cx('inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-3 text-sm font-bold text-white hover:opacity-90 disabled:opacity-50', penuh && 'w-full')}>
+          {sibuk === `bukti:${t.ref}` ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}<span className="whitespace-nowrap">Bukti{t.date ? ` ${tgl(t.date)}` : ''}</span></button>))}</span>
+    : <span className="text-sm text-ink-mute">Belum ada</span> }
   const mintaUnggah = (r, ganti = null) => { sasaran.current = r; gantiRef.current = ganti; if (pilihRef.current) pilihRef.current.multiple = !ganti; pilihRef.current?.click() }
   const hapusHasil = async (r, h) => {
     if (!window.confirm(`Hapus file hasil "${h.name}"?`)) return
@@ -107,24 +118,25 @@ export default function PortalVendorTodo({ token, todo = [], onUbah, onExpired }
       <div className="hidden overflow-x-auto rounded-2xl bg-white shadow-sm ring-1 ring-slate-200 md:block">
         <table className="w-full text-sm">
           <thead className="bg-slate-100 text-left text-xs font-bold uppercase tracking-wide text-ink">
-            <tr><th className="w-8 px-2 py-3" /><th className="px-2 py-3">No Invoice</th><th className="px-2 py-3">Nama</th><th className="px-2 py-3">Deadline</th><th className="px-2 py-3 text-center">Dok</th><th className="px-2 py-3 text-center">Hal</th><th className="px-2 py-3">Alamat Kirim</th><th className="px-2 py-3">Download Sumber</th><th className="px-2 py-3">Upload Hasil</th><th className="px-3 py-3">Status</th></tr>
+            <tr><th className="w-8 px-2 py-3" /><th className="px-2 py-3">No Invoice</th><th className="px-2 py-3">Nama</th><th className="px-2 py-3">Deadline</th><th className="px-2 py-3 text-center">Dok</th><th className="px-2 py-3 text-center">Hal</th><th className="px-2 py-3">Alamat Kirim</th><th className="px-2 py-3">Download Sumber</th><th className="px-2 py-3">Upload Hasil</th><th className="px-2 py-3">Bukti Transfer</th><th className="px-3 py-3">Status</th></tr>
           </thead>
           <tbody className="divide-y divide-slate-200">
             {todo.map((r) => (
               <Fragment key={r.id}>
-                <tr data-baris-todo={r.ref} data-beres={beres(r) ? '1' : '0'} onClick={() => setBuka(buka === r.id ? null : r.id)} className={cx('cursor-pointer align-middle', beres(r) ? 'bg-[#DCEBFF] hover:bg-[#CFE3FF]' : 'bg-white hover:bg-slate-50')}>
+                <tr data-baris-todo={r.ref} data-beres={beres(r) ? '1' : '0'} onClick={() => setBuka(buka === r.id ? null : r.id)} className={cx('cursor-pointer align-top', beres(r) ? 'bg-[#DCEBFF] hover:bg-[#CFE3FF]' : 'bg-white hover:bg-slate-50')}>
                   <td className="px-2 py-2"><button type="button" aria-expanded={buka === r.id} aria-label={`Lihat daftar dokumen ${inv(r.ref)}`} className="grid h-9 w-8 place-items-center rounded-lg text-ink-soft">{buka === r.id ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}</button></td>
-                  <td className="px-2 py-2"><span className="flex items-center gap-1.5 whitespace-nowrap font-extrabold">{inv(r.ref)}<Tanda r={r} /></span>{r.masuk && <span className="block whitespace-nowrap text-[11px] text-ink-mute" data-masuk>Masuk {jam(r.masuk)}</span>}</td>
-                  <td className="max-w-[180px] px-2 py-2">{r.nama}</td>
-                  <td className="whitespace-nowrap px-2 py-2">{r.deadline ? tgl(r.deadline) : '—'}{r.jam && <span className="block text-xs text-ink-mute">{r.jam} WITA</span>}</td>
-                  <td className="px-2 py-2 text-center font-semibold tabular-nums">{r.dok}</td>
-                  <td className="px-2 py-2 text-center font-semibold tabular-nums">{r.hal || '—'}</td>
-                  <td className="max-w-[220px] px-2 py-2 text-xs text-ink-soft">{r.alamat || '—'}</td>
+                  <td className="px-2 py-3.5"><span className="flex items-center gap-1.5 whitespace-nowrap font-extrabold">{inv(r.ref)}<Tanda r={r} /></span>{r.masuk && <span className="block whitespace-nowrap text-[11px] text-ink-mute" data-masuk>Masuk {jam(r.masuk)}</span>}</td>
+                  <td className="max-w-[180px] px-2 py-3.5">{r.nama}</td>
+                  <td className="whitespace-nowrap px-2 py-3.5">{r.deadline ? tgl(r.deadline) : '—'}{r.jam && <span className="block text-xs text-ink-mute">{r.jam} WITA</span>}</td>
+                  <td className="px-2 py-3.5 text-center font-semibold tabular-nums">{r.dok}</td>
+                  <td className="px-2 py-3.5 text-center font-semibold tabular-nums">{r.hal || '—'}</td>
+                  <td className="max-w-[200px] px-2 py-3.5 text-xs text-ink-soft">{r.alamat || '—'}</td>
                   <td className="px-2 py-2"><TombolZip r={r} /></td>
                   <td className="px-2 py-2"><TombolUnggah r={r} /></td>
-                  <td className="px-3 py-2"><Status r={r} /></td>
+                  <td className="px-2 py-2"><TombolBukti r={r} /></td>
+                  <td className="px-3 py-3.5"><Status r={r} /></td>
                 </tr>
-                {buka === r.id && <tr className={beres(r) ? 'bg-[#EEF5FF]' : 'bg-slate-50'}><td /><td colSpan={9} className="px-2 pb-4 pt-1"><Rincian r={r} /></td></tr>}
+                {buka === r.id && <tr className={beres(r) ? 'bg-[#EEF5FF]' : 'bg-slate-50'}><td /><td colSpan={10} className="px-2 pb-4 pt-1"><Rincian r={r} /></td></tr>}
               </Fragment>
             ))}
           </tbody>
@@ -142,6 +154,7 @@ export default function PortalVendorTodo({ token, todo = [], onUbah, onExpired }
             <p className="mt-1 text-sm"><span className="text-ink-mute">Deadline</span> <b>{r.deadline ? tgl(r.deadline) : '—'}{r.jam ? ` ${r.jam}` : ''}</b> · <b>{r.dok}</b> dok · <b>{r.hal || '—'}</b> hal</p>
             {r.alamat && <p className="mt-1 text-xs text-ink-soft"><span className="font-semibold text-ink-mute">Alamat kirim:</span> {r.alamat}</p>}
             <div className="mt-2.5 grid grid-cols-2 gap-2"><TombolZip r={r} penuh /><TombolUnggah r={r} penuh /></div>
+            {buktiOf(r).length > 0 && <div className="mt-2"><p className="mb-1 text-[11px] font-bold uppercase tracking-wide text-ink-mute">Bukti transfer</p><TombolBukti r={r} penuh /></div>}
             {buka === r.id && <div className="mt-3 border-t border-slate-200 pt-3"><Rincian r={r} /></div>}
           </section>
         ))}
