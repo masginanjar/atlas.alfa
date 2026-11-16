@@ -409,8 +409,8 @@ table.tabel-besar .text-xs { font-size: 13px; }
 
 
 /* Mode Klasik: baris selang-seling + kolom No. Invoice dibekukan saat tabel digulir ke kanan */
-:root { --klasik-baris: #FFFFFF; --klasik-zebra: #F6F7FB; --klasik-hover: #EEF0F7; --klasik-pilih: #E6E8F2; --klasik-telat: #FFF0F3; --klasik-telat-zebra: #FFE8EE; --klasik-detail: #F8F9FC; --klasik-latar: #F3F4F9; --klasik-judul: #E6E8F2; --klasik-bayang: rgba(20, 27, 52, .30); --klasik-luar: #F3F4F9; }
-[data-theme="dark"] { --klasik-baris: var(--surface); --klasik-zebra: #1d2439; --klasik-hover: #262f4a; --klasik-pilih: #28315c; --klasik-telat: #34202c; --klasik-telat-zebra: #3b2331; --klasik-detail: #1a2033; --klasik-latar: var(--page); --klasik-judul: var(--surface-2); --klasik-bayang: rgba(0, 0, 0, .8); --klasik-luar: #0b1020; }
+:root { --klasik-selesai: #DDF5E4; --klasik-baris: #FFFFFF; --klasik-zebra: #F6F7FB; --klasik-hover: #EEF0F7; --klasik-pilih: #E6E8F2; --klasik-telat: #FFF0F3; --klasik-telat-zebra: #FFE8EE; --klasik-detail: #F8F9FC; --klasik-latar: #F3F4F9; --klasik-judul: #E6E8F2; --klasik-bayang: rgba(20, 27, 52, .30); --klasik-luar: #F3F4F9; }
+[data-theme="dark"] { --klasik-selesai: #143524; --klasik-baris: var(--surface); --klasik-zebra: #1d2439; --klasik-hover: #262f4a; --klasik-pilih: #28315c; --klasik-telat: #34202c; --klasik-telat-zebra: #3b2331; --klasik-detail: #1a2033; --klasik-latar: var(--page); --klasik-judul: var(--surface-2); --klasik-bayang: rgba(0, 0, 0, .8); --klasik-luar: #0b1020; }
 :where([data-klasik-tabel], [data-klasik-pengajuan]) > tbody > tr { background-color: var(--klasik-baris); }
 :where([data-klasik-tabel], [data-klasik-pengajuan]) > tbody > tr:nth-child(even of [aria-expanded], [data-klasik-aju]) { background-color: var(--klasik-zebra); }
 :where([data-klasik-tabel]) > tbody > tr[data-klasik-dok][data-zebra] { background-color: var(--klasik-zebra); }
@@ -419,6 +419,8 @@ table.tabel-besar .text-xs { font-size: 13px; }
 :where([data-klasik-tabel], [data-klasik-pengajuan]) > tbody > tr[data-telat] { background-color: var(--klasik-telat); }
 :where([data-klasik-tabel], [data-klasik-pengajuan]) > tbody > tr[data-telat]:nth-child(even of [aria-expanded], [data-klasik-aju]) { background-color: var(--klasik-telat-zebra); }
 :where([data-klasik-tabel], [data-klasik-pengajuan]) > tbody > tr:is([aria-expanded], [data-klasik-aju]):hover { background-color: var(--klasik-hover); }
+/* Project / dokumen yang sudah selesai: baris hijau muda (menang atas zebra & terlambat, kalah dari baris yang sedang dipilih) */
+:where([data-klasik-tabel], [data-klasik-pengajuan]) > tbody > tr[data-selesai], :where([data-klasik-tabel], [data-klasik-pengajuan]) > tbody > tr[data-selesai]:nth-child(n of [data-selesai]) { background-color: var(--klasik-selesai); }
 :where([data-klasik-tabel], [data-klasik-pengajuan]) > tbody > tr[data-pilih] { background-color: var(--klasik-pilih); }
 
 [data-beku-invoice] > thead > tr > th:nth-child(2),

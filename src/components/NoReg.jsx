@@ -2,6 +2,7 @@ import { BadgeCheck, Copy } from 'lucide-react'
 import { useApp } from '../lib/store.jsx'
 import { copyText } from './CopyText.jsx'
 import { cx } from './ui.jsx'
+import { isDone } from '../config/workflows.js'
 
 /** Centang biru "Official" — penanda baris dokumen yang nomor registernya sudah terbit. */
 export function CentangOfficial({ teks = true, kecil, className }) {
@@ -38,5 +39,18 @@ export default function NoReg({ n, className }) {
 export const projectOfficial = (p) => (p?.sub_projects || []).some((x) => (x?.data?.reg_numbers || []).filter(Boolean).length > 0 && x.stage !== 'registrasi')
 /** Centang biru di belakang nomor invoice pada daftar project. */
 export function OfficialInvoice({ project, className, kecil }) {
-  return projectOfficial(project) ? <CentangOfficial teks={false} kecil={kecil} className={className} /> : null
+  const official = projectOfficial(project); const selesai = isDone(project)
+  if (!official && !selesai) return null
+  return <>{official && <CentangOfficial teks={false} kecil={kecil} className={className} />}{selesai && <CentangSelesai kecil={kecil} className={className} />}</>
 }
+/** Centang hijau — project sudah selesai. Tampil di sebelah centang biru bila nomor registernya juga sudah terbit. */
+export function CentangSelesai({ kecil, className }) {
+  return (
+    <span data-centang-selesai title="Project selesai" className={cx('inline-flex shrink-0 items-center align-middle', className)}>
+      <BadgeCheck className={cx(kecil ? 'h-3.5 w-3.5' : 'h-4 w-4', 'shrink-0 fill-emerald-500 text-white')} aria-hidden="true" />
+      <span className="sr-only">Selesai</span>
+    </span>
+  )
+}
+/** Latar baris / kartu project yang sudah selesai (hijau muda). */
+export const BG_PROJECT_SELESAI = 'bg-[#DDF5E4] dark:bg-[#143524]'

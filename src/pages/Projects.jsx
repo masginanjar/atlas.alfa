@@ -478,7 +478,7 @@ function ProjectCard({ p, onOpen, active }) {
   return (
     <div className="relative">
     <button type="button" onClick={onOpen} aria-label={`Lihat detail project ${invoiceLabel(p.invoice_no)}`} className="block w-full text-left">
-      <Card className={cx('h-full p-4 pb-0 transition hover:-translate-y-0.5 hover:shadow-md', active && 'ring-2 ring-brand')}>
+      <Card data-selesai={done ? '' : undefined} className={cx('h-full p-4 pb-0 transition hover:-translate-y-0.5 hover:shadow-md', done && '!bg-[#DDF5E4] dark:!bg-[#143524]', active && 'ring-2 ring-brand')}>
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
             <p className="flex flex-wrap items-center gap-1.5"><InvoiceNo project={p} size="base" /><OfficialInvoice project={p} /><NoteIcon note={p.about?.notes} /><DemoBadge project={p} className="align-middle" /></p>
@@ -674,7 +674,7 @@ function ProjectTable({ list, cols, detailFor, onDetail, onFiles }) {
           {list.map((p, i) => (
             <tr key={p.id}
               className={cx('border-b border-slate-100 align-top last:border-0 md:hover:bg-brand-soft/40',
-                detailFor?.id === p.id ? 'bg-brand-soft/60' : i % 2 === 1 && 'md:bg-slate-50/60')}>
+                detailFor?.id === p.id ? 'bg-brand-soft/60' : isDone(p) ? 'bg-[#DDF5E4] dark:bg-[#143524]' : i % 2 === 1 && 'md:bg-slate-50/60')} data-selesai={isDone(p) ? '' : undefined}>
               {kolom.map((c) => (
                 <td key={c.key} data-label={c.label} className="min-w-0 max-w-full px-3 py-2.5 text-sm">
                   {c.cell(p, { prog: progressOf(p), ctx, langkah: langkahBerikutnya(p, user, ctx) })}
@@ -826,7 +826,7 @@ function ProjectList({ status = 'aktif', setStatus = () => {}, statusOpsi = [], 
     const prog = progressOf(p)
     const langkah = langkahBerikutnya(p, user, ctx)
     return (
-            <li key={p.id} data-grup={grupOf(p)} data-kartu-baris className={cx('scroll-mt-28 overflow-hidden rounded-2xl border bg-white transition max-xl:mx-0.5 max-xl:my-2 xl:mb-3', open.has(p.id) || detailFor?.id === p.id || filesFor?.id === p.id ? 'border-[var(--brand)] ring-1 ring-[var(--brand)]' : 'border-[#DADDE8] hover:border-[#B9BDD0]')}>
+            <li key={p.id} data-grup={grupOf(p)} data-kartu-baris data-selesai={isDone(p) ? '' : undefined} className={cx(isDone(p) ? 'bg-[#DDF5E4] dark:bg-[#143524]' : 'bg-white', 'scroll-mt-28 overflow-hidden rounded-2xl border transition max-xl:mx-0.5 max-xl:my-2 xl:mb-3', open.has(p.id) || detailFor?.id === p.id || filesFor?.id === p.id ? 'border-[var(--brand)] ring-1 ring-[var(--brand)]' : 'border-[#DADDE8] hover:border-[#B9BDD0]')}>
               <div className="relative">
               {/* Klik baris = buka/tutup rincian sub project; ikon mata = halaman detail */}
               <div role="button" tabIndex={0} aria-expanded={open.has(p.id)} onClick={() => toggle(p.id)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(p.id) } }}

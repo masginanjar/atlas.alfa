@@ -657,7 +657,7 @@ function KlasikProject({ jenis = 'projects' }) {
               const [tg, jm] = String(tanggalJam(r.timestamp) || '').split(/\s(?=\d{1,2}[.:]\d{2}$)/)
               const sisa = r.status !== 'Selesai' ? sisaWaktu(r.p) : null
               return [
-                <tr key={r.id} onClick={() => setBuka(dipilih ? null : r.id)} {...bisaDitekan(() => setBuka(dipilih ? null : r.id))} aria-expanded={dipilih} className="cursor-pointer whitespace-nowrap align-top" data-pilih={dipilih ? '' : undefined} data-telat={r.terlambat ? '' : undefined} data-ditahan={ditahan.has(r.id) ? '' : undefined} data-klasik-baris>
+                <tr key={r.id} onClick={() => setBuka(dipilih ? null : r.id)} {...bisaDitekan(() => setBuka(dipilih ? null : r.id))} aria-expanded={dipilih} className="cursor-pointer whitespace-nowrap align-top" data-pilih={dipilih ? '' : undefined} data-telat={r.terlambat ? '' : undefined} data-selesai={r.status === 'Selesai' ? '' : undefined} data-ditahan={ditahan.has(r.id) ? '' : undefined} data-klasik-baris>
                   <td className="whitespace-nowrap px-3 py-2 leading-tight"><Lingkar warna={r.dibuatHariIni ? 'hijau' : ''} judul="Diinput hari ini"><span className="text-xs tabular-nums">{tg}</span></Lingkar>{jm && <span className="ml-1.5 text-[11px] tabular-nums text-ink-mute">{jm}</span>}{ditahan.has(r.id) && <TandaDitahan />}</td>
                   <td className="px-3 py-2"><InfoHover inline isi={<InfoLayanan r={r} nameOf={nameOf} />}><Lingkar warna={r.prioMendesak && !r.p.about?.priority?.match(/sameday|super|ekspres|speed/i) ? 'hitam' : ''} judul={`Prioritas ${r.prioritas}`}><InvoiceNo project={r.p} /></Lingkar></InfoHover><OfficialInvoice project={r.p} className="ml-1" />{r.subs.length > 1 && <span data-sub-count className="ml-1 rounded bg-slate-200 px-1 text-[10px] font-semibold text-ink-soft">{r.subs.length} sub</span>}<IkonBaris id={r.id} inv={r.invoice} lihat={setLihat} folder={setFolder} /></td>
                   <td className="max-w-[170px] truncate px-3 py-2">{r.pelanggan || '—'}</td>
@@ -1113,7 +1113,7 @@ function KlasikApostille() {
               if (awal) grup += 1
               const [jl, jc] = JENIS_AL[d.x.type] || [d.x.type, 'bg-slate-100 text-ink-soft']
               return (
-                <tr key={d.id} data-klasik-dok data-awal={awal ? '' : undefined} data-zebra={grup % 2 === 0 ? '' : undefined} data-telat={d.r.terlambat && !d.selesai ? '' : undefined} data-ditahan={ditahan.has(d.id) ? '' : undefined} className="whitespace-nowrap align-middle">
+                <tr key={d.id} data-klasik-dok data-awal={awal ? '' : undefined} data-zebra={grup % 2 === 0 ? '' : undefined} data-telat={d.r.terlambat && !d.selesai ? '' : undefined} data-selesai={d.selesai ? '' : undefined} data-ditahan={ditahan.has(d.id) ? '' : undefined} className="whitespace-nowrap align-middle">
                   <td className="px-3 py-2">{awal && <span className="inline-flex items-center gap-1"><InfoHover inline isi={<InfoLayanan r={d.r} nameOf={nameOf} />}><InvoiceNo project={d.p} /></InfoHover>
                     <IkonBaris id={d.p.id} inv={d.r.invoice} lihat={setLihat} folder={setFolder} /></span>}{ditahan.has(d.id) && <TandaDitahan />}</td>
                   <td className="max-w-[200px] truncate px-3">{awal ? (d.r.pelanggan || '—') : ''}</td>

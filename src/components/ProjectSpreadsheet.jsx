@@ -8,7 +8,7 @@ import { invoiceLabel } from '../config/access.js'
 import SalinInvoice from './SalinInvoice.jsx'
 import { tanggalJam, tanggal } from '../lib/waktu.js'
 import { projectRow, TABLE_COLS, sortRows, filterOptions, applyFilters, FILTER_LABEL } from '../lib/projectRow.js'
-import { stageLabel, flowOf } from '../config/workflows.js'
+import { stageLabel, flowOf, isDone } from '../config/workflows.js'
 import { grupOf, garisUrgensi, sisaWaktu, kelasGrup, labelGrup } from '../lib/urgensi.js'
 import { Stepper, StatusVendor } from '../pages/Projects.jsx'
 import { progressOf } from '../config/workflows.js'
@@ -306,14 +306,14 @@ export default function ProjectSpreadsheet({ list, detailFor, onDetail, onFiles,
                 <tr key={r.id} onClick={() => toggleBaris(r.id)} {...bisaDitekan(() => toggleBaris(r.id))} aria-expanded={buka.has(r.id)} data-grup={grupOf(r.p)}
                   title="Klik untuk melihat sub project"
                   className={cx('cursor-pointer border-b border-slate-100 align-top last:border-0 md:hover:bg-brand-soft/40',
-                    detailFor?.id === r.id ? 'bg-brand-soft/60' : buka.has(r.id) ? 'bg-brand-soft/40' : i % 2 === 1 ? 'bg-slate-100 md:bg-slate-50/60' : 'bg-white')}>
+                    detailFor?.id === r.id ? 'bg-brand-soft/60' : buka.has(r.id) ? 'bg-brand-soft/40' : isDone(r.p) ? 'bg-[#DDF5E4] dark:bg-[#143524]' : i % 2 === 1 ? 'bg-slate-100 md:bg-slate-50/60' : 'bg-white')} data-selesai={isDone(r.p) ? '' : undefined}>
                   {KOLOM.map((c) => (
                     <td key={c.key} data-label={c.label}
-                      className={cx('min-w-0 max-w-full whitespace-nowrap px-3 py-2.5 md:whitespace-normal', c.sticky && cx('sticky left-0 z-[1] shadow-[6px_0_8px_-6px_rgba(15,23,42,.25)] md:shadow-none', detailFor?.id === r.id || buka.has(r.id) ? 'bg-[#eef4fb]' : i % 2 === 1 ? 'bg-slate-100 md:bg-slate-50' : 'bg-white'), c.sticky && pref.urgensi && cx('border-l-[3px]', garisUrgensi(r.p)))}>
+                      className={cx('min-w-0 max-w-full whitespace-nowrap px-3 py-2.5 md:whitespace-normal', c.sticky && cx('sticky left-0 z-[1] shadow-[6px_0_8px_-6px_rgba(15,23,42,.25)] md:shadow-none', detailFor?.id === r.id || buka.has(r.id) ? 'bg-[#eef4fb]' : isDone(r.p) ? 'bg-[#DDF5E4] dark:bg-[#143524]' : i % 2 === 1 ? 'bg-slate-100 md:bg-slate-50' : 'bg-white'), c.sticky && pref.urgensi && cx('border-l-[3px]', garisUrgensi(r.p)))}>
                       {nilai(r, c.key)}
                     </td>
                   ))}
-                  <td data-label="Aksi" className="px-3 py-2.5 md:sticky md:right-0 md:z-10 md:bg-white md:shadow-[-8px_0_10px_-8px_rgba(15,23,42,.18)]">
+                  <td data-label="Aksi" className={cx('px-3 py-2.5 md:sticky md:right-0 md:z-10 md:shadow-[-8px_0_10px_-8px_rgba(15,23,42,.18)]', isDone(r.p) && !(detailFor?.id === r.id || buka.has(r.id)) ? 'md:bg-[#DDF5E4] dark:md:bg-[#143524]' : 'md:bg-white')}>
                     {renderAksi ? renderAksi(r.p) : <span className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
                       <button type="button" onClick={() => onDetail(r.p)} title="Lihat detail project"
                         aria-label={`Lihat detail project ${invoiceLabel(r.invoice)}`}
