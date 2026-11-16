@@ -47,7 +47,7 @@ import { PriorityBadge } from '../components/Priority.jsx'
 import { PingButton } from '../components/Ping.jsx'
 import { MessageCircle, MapPin } from 'lucide-react'
 import { langkahBerikutnya, penanggungJawab, labelPendek } from '../lib/langkah.js'
-import { WaktuDibuat, PrioPill, infoDeadline } from '../components/BarisCanvas.jsx'
+import { WaktuDibuat, PrioPill, infoDeadline, BG_SELESAI } from '../components/BarisCanvas.jsx'
 import { canSeePayment } from '../config/menuAccess.js'
 import { Plus, PanelRight, RotateCcw, AlertCircle } from 'lucide-react'
 import LayarKerja from './LayarKerja.jsx'
@@ -268,7 +268,7 @@ function DetailCanvas({ project, focusSub, tab, setTab, del, setEditing, setShar
             {can.editProject(user) && <button type="button" onClick={() => setEditing(true)} className="inline-flex min-h-9 items-center gap-1.5 rounded-[10px] border border-[#D9DBE7] bg-white px-3 text-[13px] font-semibold text-[#141B34] hover:bg-[#F6F7FB]">Tambah dokumen<Plus className="h-[15px] w-[15px]" aria-hidden="true" /></button>}
           </div>
           {subs.map((sb) => {
-            const w = warnaSub(sb)
+            const w = sb.stage === DONE ? { ...warnaSub(sb), bg: BG_SELESAI } : warnaSub(sb)
             const flow = flowOf(sb, project); const st = stagesOf(flow); const idx = stageIndex(flow, sb.stage); const selesai = sb.stage === DONE
             const stNow = st[idx]
             const bisa = stNow && !selesai && can.processStage(user, stNow, sb, project)

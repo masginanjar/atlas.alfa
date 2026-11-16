@@ -28,7 +28,7 @@ import { grupOf, garisUrgensi, baru, umur, sisaWaktu, porsiSla, posisiTahap, kel
 import { TABLE_COLS } from '../lib/projectRow.js'
 import TimeAgo from '../components/TimeAgo.jsx'
 import CentangApostille from '../components/CentangApostille.jsx'
-import { WaktuDibuat, PrioPill, DeadlinePill, CabangPrint, eksekutorOf, dibuatBaru, warnaKategori, infoDeadline } from '../components/BarisCanvas.jsx'
+import { WaktuDibuat, PrioPill, DeadlinePill, CabangPrint, eksekutorOf, dibuatBaru, warnaKategori, infoDeadline, BG_SELESAI } from '../components/BarisCanvas.jsx'
 import LayarKerja from './LayarKerja.jsx'
 import TugaskanPenerjemah from '../components/TugaskanPenerjemah.jsx'
 import { coordinatorFor } from '../config/access.js'
@@ -1116,7 +1116,8 @@ function ProjectExpand({ p: p0, onLangkah, awal }) {
   const subs = p.sub_projects || []
   // Klik isi baris = panel kerja langsung di bawahnya (tanpa pindah layar). 1 sub → langsung terbuka.
   const [aktif, setAktif] = useState(() => awal || (subs.length === 1 && subs[0].stage !== DONE ? subs[0].id : ''))
-  const w = warnaKategori(subs[0])
+  const w0 = warnaKategori(subs[0])
+  const w = subs.length && subs.every((x) => x.stage === DONE) ? { ...w0, bg: BG_SELESAI } : w0
   return (
     <div className="pb-1.5 pt-1" style={{ background: w.bg }} data-isi-baris>
       {subs.length === 0 && <p className="px-4 py-3 text-xs text-[#5E6380]">Belum ada sub project.</p>}

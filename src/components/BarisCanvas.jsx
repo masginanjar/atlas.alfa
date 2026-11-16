@@ -108,6 +108,9 @@ export function CabangPrint({ p }) {
   )
 }
 
+/** Baris dokumen yang SUDAH SELESAI diberi latar biru muda (keputusan pemilik 16 Nov 2026) — label kategorinya tetap. */
+export const BG_SELESAI = '#D3E7FF'
+
 /** Warna kategori sub (CANVAS ATLAS): TIM-TR abu · VEN-TR biru muda · Non Tersumpah kuning · TIM-AL hijau · VEN-AL pink. */
 export function warnaKategori(sb) {
   const t = sb?.type || 'jasa_lain'
