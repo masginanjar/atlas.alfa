@@ -37,11 +37,11 @@ export function infoDeadline(p) {
   const k = String(dl).length > 10 ? keyWita(dl) : String(dl).slice(0, 10)
   const tgl = `${Number(k.slice(8, 10))} ${BLN[Number(k.slice(5, 7)) - 1]}${jam && jam !== '00.00' ? ` ${jam}` : ''}`
   if (isDone(p)) return { tgl, bg: '#EEF0F5', fg: '#4A4F6A', teks: '#5E6380', sisa: 'Selesai' }
-  if (s < 0) return { tgl, bg: '#FFD9E2', fg: '#A3123E', teks: '#A3123E', sisa: `Terlambat ${-s} hari` }
+  if (s < 0) return { tgl, bg: '#E11D48', fg: '#FFFFFF', teks: '#A3123E', sisa: `Terlambat ${-s} hari` }
   if (s === 0 && String(dl).length > 10 && Date.now() > d.getTime()) {
     // Lewat jam deadline hari ini → tampilkan jam keterlambatan, bukan "Hari ini"
     const jamLewat = Math.max(1, Math.floor((Date.now() - d.getTime()) / 3600e3))
-    return { tgl, bg: '#FFD9E2', fg: '#A3123E', teks: '#A3123E', sisa: `Terlambat ${jamLewat} jam`, lewat: true }
+    return { tgl, bg: '#E11D48', fg: '#FFFFFF', teks: '#A3123E', sisa: `Terlambat ${jamLewat} jam`, lewat: true }
   }
   if (s === 0) return { tgl, bg: '#C62828', fg: '#FFFFFF', teks: '#B71C1C', sisa: 'Hari ini' }
   if (s === 1) return { tgl, bg: '#FB923C', fg: '#141B34', teks: '#9A3A06', sisa: 'Besok' }
