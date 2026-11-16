@@ -767,12 +767,12 @@ export const COLUMNS = [
     cell: (p) => <>
       <span className="flex min-w-0 max-w-full items-center gap-0.5 self-start">
         <span data-inv={dibuatBaru(p) ? 'baru' : 'lama'} title={invoiceLabel(p.invoice_no)}
-          className={cx('min-w-0 break-all rounded-md text-base font-bold leading-[26px] tabular-nums text-[#141B34]', dibuatBaru(p) && cx('-ml-1.5 px-1.5 !text-white', isCepat(p) ? 'bg-[#141B34]' : 'bg-emerald-600'))}>{invoiceLabel(p.invoice_no)}</span>
-        {dibuatBaru(p) && isCepat(p) && <TandaBaru />}
+          className={cx('shrink-0 whitespace-nowrap rounded-md text-base font-bold leading-[26px] tabular-nums text-[#141B34]', dibuatBaru(p) && cx('-ml-1.5 px-1.5 !text-white', isCepat(p) ? 'bg-[#141B34]' : 'bg-emerald-600'))}>{invoiceLabel(p.invoice_no)}</span>
         <OfficialInvoice project={p} kecil />
         <SalinInvoice no={invoiceLabel(p.invoice_no)} />
       </span>
-      <WaktuDibuat p={p} />
+      {/* Nomor invoice selalu satu baris; tanda "Baru" pindah ke baris waktu supaya nomornya tidak terpotong */}
+      <span className="flex min-w-0 items-center gap-1.5"><WaktuDibuat p={p} />{dibuatBaru(p) && isCepat(p) && <TandaBaru />}</span>
     </> },
   { key: 'pelanggan', label: 'Pelanggan', w: 'minmax(0,142fr)', cls: 'flex min-w-0 flex-col gap-[3px]',
     cell: (p) => <>
