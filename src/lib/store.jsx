@@ -422,8 +422,28 @@ export function AppProvider({ children }) {
       if (rows.length !== (merged.reg_numbers || []).filter(Boolean).length) throw new Error('Ada nomor registrasi yang formatnya salah (harus 14 angka, diawali 41–44).')
       try { await (merged.reg_reserved_at ? db.regUpsert(rows) : db.regInsert(rows)) } catch (e) { throw new Error(/duplicate|sudah dipakai/i.test(e.message) ? 'Nomor registrasi sudah dipakai dokumen lain — tekan "Ambil nomor" lagi.' : e.message) }
     }
+    // Apostille atas HASIL TERJEMAHAN: begitu hasil scan terjemahan ada, filenya diteruskan ke sub apostille yang menunggu
+    // (data.menunggu_sub) dan sub itu masuk antrean staf — CS tidak perlu mengunggah ulang.
+    const terusan = []
+    if (advance && (stage.key === 'upload_scan' || next === DONE)) {
+      const daftar = [merged.scan_pdf_list, merged.scan_pdf, merged.file_final, merged.hasil_vendor_list, merged.hasil_vendor, merged.hasil_terjemahan].map((v) => (Array.isArray(v) ? v.filter(Boolean) : v ? [v] : [])).find((v) => v.length) || []
+      if (daftar.length) for (const t of subs) {
+        if (t.id === s.id || t.data?.menunggu_sub !== s.id || t.data?.dokumen_sumber) continue
+        const st = stagesOf(flowOf(t, project))
+        if (st[0]?.key !== 'cs_upload' || t.stage !== 'cs_upload' || !st[1]) continue
+        const at = new Date().toISOString()
+        // Bila jumlah file hasil = jumlah dokumen terjemahan, diteruskan file dokumen yang ditunggu saja; kalau tidak (mis. satu PDF gabungan), semua file diteruskan.
+        const nDok = Array.isArray(s.docs) ? s.docs.length : 0
+        const milik = daftar.length > 1 && daftar.length === nDok && daftar[t.data?.menunggu_dok ?? -1] ? [daftar[t.data.menunggu_dok]] : daftar
+        t.data = { ...t.data, dokumen_sumber: milik[0], dokumen_sumber_list: milik }
+        t.stage = st[1].key; t.stage_at = at
+        t.history = [...(t.history || []), { at, by: 'ATLAS (otomatis)', action: `Hasil terjemahan diterima dari "${s.title}" → ${st[1].label}` }]
+        terusan.push(t)
+      }
+    }
     const saved = await save('projects', { ...project, sub_projects: subs })
     if (pettyRow) await save('petty_cash', pettyRow)
+    for (const t of terusan) await save('notifications', { ...(t.data?.staff_apostille ? { to_user: t.data.staff_apostille } : { to_role: 'staf_apostille' }), kind: 'task', text: `${project.invoice_no} · ${t.title}: hasil terjemahan sudah ada — siap diproses`, project_id: project.id, sub_id: t.id, by: 'ATLAS (otomatis)', read_by: [] }).catch(() => {})
     // Notifikasi in-app (tujuan: user / role / cabang)
     if (advance && stage.notify) {
       for (const n of stage.notify(project, s, user).filter((x) => x.to_user || x.to_role || x.to_branch)) {

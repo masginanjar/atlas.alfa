@@ -80,6 +80,7 @@ export const MODUL = [
   { id: 'utama', label: 'Beranda & Dashboard', fitur: [
     f('beranda', 'Beranda', ['menu', 'lihat'], { semua: dari(canSeeBeranda) }),
     f('dashboard', 'Dashboard', ['menu', 'lihat', 'laporan'], { semua: plus(SEMUA, 'dashboard') }),
+    f('dasbor-tata', 'Atur tampilan dasbor sendiri (urutan & ukuran kartu)', ['ubah'], { ubah: SEMUA }),
   ] },
   { id: 'penjualan', label: 'Penjualan', fitur: [
     f('faktur', 'Faktur', ['menu', 'lihat', 'detail', 'ekspor', 'cetak'], { semua: dari(canSeeInvoices) }),

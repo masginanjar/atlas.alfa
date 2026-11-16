@@ -869,13 +869,12 @@ export function Vendors({ keAtas } = {}) {
                 <input type="checkbox" className="mt-0.5 h-5 w-5 shrink-0" checked={!!e.biro} onChange={(x) => set({ ...e, biro: x.target.checked, ...(x.target.checked && termOf(e) === 'immediate' ? { payment_term: Object.keys(PAYMENT_TERMS).find((k) => k !== 'immediate') } : {}) })} />
                 <span><b className="font-semibold">Biro rekanan</b> (mis. Indotrans)<span className="block text-xs text-ink-mute">Order dilakukan di luar ATLAS (grup). CS mengunggah hasilnya, lalu dokumen langsung ke Admin Pusat untuk nomor register — tanpa proofreader & otorisasi. Biaya masuk Tagihan Vendor.</span></span>
               </label>
-              {/* Portal to-do vendor butuh fungsi server sendiri — sebelum itu terpasang, pengaturannya hanya tampil di demo. */}
-              {MODE === 'demo' && <>
+              <>
               <Field label="Kode akses portal vendor" hint="Vendor membuka tautan portalnya dengan kode ini (to-do, unduh sumber ZIP, unggah hasil). Kosong = memakai nomor HP vendor. Salah 5 kali terkunci 15 menit. Pakai kode yang tidak mudah ditebak.">
                 <Input value={e.kode_portal || ''} onChange={(x) => set({ ...e, kode_portal: x.target.value })} placeholder="mis. kode 6 karakter" autoComplete="off" data-kode-portal />
                 {(() => { const l = (data.share_links || []).find((x) => x.kind === 'vendor' && x.vendor_id === e.id && !x.revoked_at); return l ? <a href={`#/p/${l.token}`} data-buka-portal className="mt-1.5 inline-flex min-h-9 items-center text-xs font-semibold text-brand hover:underline max-md:min-h-11">Buka portal vendor ini →</a> : <p className="mt-1.5 text-xs text-ink-mute">Tautan portal dibuat lewat tombol Bagikan pada vendor ini.</p> })()}
               </Field>
-              </>}
+              </>
               <Field label="HPP (biaya vendor) untuk tim" hint="Superadmin, Direktur, dan Akunting selalu melihat HPP. Bila disembunyikan, tim hanya melihat nama paket layanannya.">
                 <Select value={e.hpp_tim || ''} onChange={(x) => set({ ...e, hpp_tim: x.target.value })} data-hpp-tim>{Object.entries(HPP_TIM).map(([k, t]) => <option key={k} value={k}>{t}</option>)}</Select>
               </Field>

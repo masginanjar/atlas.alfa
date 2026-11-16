@@ -12,7 +12,7 @@ import { stagesOf, deriveFlow } from '../config/workflows.js'
 import { Button, Field, FieldError, Input, Select, Sheet, SectionCard, cx, Textarea } from '../components/ui.jsx'
 import SubProjectEditor, { newSub, validateSub, docFileName, safeName } from '../components/SubProjectEditor.jsx'
 import { SUB_TYPES, points } from '../config/subtypes.js'
-import SubBaris, { subBaru, pasangKeSub, nomoriAntarSub } from '../components/SubBaris.jsx'
+import SubBaris, { subBaru, pasangKeSub, nomoriAntarSub, bagikanId } from '../components/SubBaris.jsx'
 import { uploadProjectFiles } from '../components/FileManager.jsx'
 import { boleh as bolehIzin } from '../lib/izin.js'
 import { kb } from '../lib/format.js'
@@ -83,7 +83,7 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
     return () => clearTimeout(t)
   }, [customer, invoice, branch, about, subs, editing, drafTersedia]) // eslint-disable-line react-hooks/exhaustive-deps
   // Halaman penuh Project Baru: nama file apostille / legalisasi dinomori berurutan antar sub project.
-  useEffect(() => { if (!page || editing) return; const rapi = nomoriAntarSub(subs); if (rapi !== subs) setSubs(rapi) }, [subs, page, editing])
+  useEffect(() => { if (!page || editing) return; const rapi = bagikanId(nomoriAntarSub(subs)); if (rapi !== subs) setSubs(rapi) }, [subs, page, editing])
   const pakaiDraf = () => { const v = drafTersedia; setCustomer(v.customer || null); setInvoice(v.invoice || ''); if (v.branch) setBranch(v.branch); if (v.about) setAbout((a) => ({ ...a, ...v.about })); if (v.subs?.length) setSubs(v.subs); setDrafTersedia(null) }
   const buangDraf = () => { try { localStorage.removeItem(DRAF_KEY) } catch { /* abaikan */ } setDrafTersedia(null) }
 
@@ -208,7 +208,7 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
         const flow = isStarted(s) ? (s.flow || project?.category || deriveFlow(s, vendorOf(s))) : deriveFlow(s, vendorOf(s))
         const first = stagesOf(flow)[0].key
         const docs = usesDocs(s.type) && s.docs ? s.docs.filter((d) => d.desc.trim()).map(({ file, file_name, name_edited, existing, ...d }) => d) : undefined
-        const { applicant_file, _ulang, _ulang_alasan, ...rest } = s // file ID pemohon diunggah terpisah (lihat idUploads)
+        const { applicant_file, _ulang, _ulang_alasan, _id_ikut, _id_lepas, ...rest } = s // file ID pemohon diunggah terpisah (lihat idUploads)
         const base = { ...rest, title, file_count: pts.length, data, flow, docs }
         if (s.id && _ulang) {
           // Penugasan diulang: data pelaksana & pengajuan lama dibuang, tahap kembali ke awal alur yang baru, alasan masuk riwayat.
@@ -219,6 +219,13 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
         }
         return s.id ? { ...base, ...(isStarted(s) ? {} : { stage: first }) }
           : { ...base, id: crypto.randomUUID?.() ?? String(Math.random()), stage: first, history: [{ at: now, by: user.name, action: 'Dibuat' }] }
+      })
+      // Apostille atas hasil terjemahan: catat sub terjemahan yang ditunggu (id final) — filenya diteruskan otomatis saat hasil scan terjemahan diunggah.
+      subs.forEach((x, i) => {
+        if (x.type !== 'apostille' || x.objek !== 'terjemahan' || !x.sumber_sub) return
+        const [refSub, noDok] = String(x.sumber_sub).split('#')
+        const j = subs.findIndex((y) => String(y.id ?? y._k) === refSub)
+        if (j >= 0) sub_projects[i] = { ...sub_projects[i], sumber_sub: `${sub_projects[j].id}#${noDok || 0}`, data: { ...sub_projects[i].data, menunggu_sub: sub_projects[j].id, menunggu_dok: Number(noDok) || 0 } }
       })
       const row = {
         ...(project ?? {}), invoice_no: inv, branch, customer, sub_projects,
@@ -239,10 +246,12 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
         row.files = [...(project?.files || []), ...added]
       }
       // Scan ID / dokumen pemohon (apostille & legalisasi) → File Project + data.dokumen_id
-      const idUploads = subs.flatMap((s, si) => (s.applicant_file ? [{ file: s.applicant_file, name: `ID Pemohon - ${safeName(s.applicant_file.name)}`, sub_id: sub_projects[si].id, si }] : []))
+      // File ID yang sama dipakai beberapa sub (satu pemohon) → diunggah sekali saja, lalu disambungkan ke tiap sub.
+      const idSemua = subs.flatMap((s, si) => (s.applicant_file ? [{ file: s.applicant_file, name: `ID Pemohon - ${safeName(s.applicant_file.name)}`, sub_id: sub_projects[si].id, si }] : []))
+      const idUploads = idSemua.filter((x, k) => idSemua.findIndex((y) => y.file === x.file) === k)
       if (idUploads.length) {
         const added = await uploadProjectFiles(idUploads, { branch, invoice: inv, by: user.name, subs: sub_projects }, (i, n) => setProgress(`Mengunggah ID pemohon ${i}/${n}…`))
-        added.forEach((f, k) => { const sp = sub_projects[idUploads[k].si]; sp.data = { ...sp.data, dokumen_id: f } })
+        idSemua.forEach((x) => { const f = added[idUploads.findIndex((y) => y.file === x.file)]; const sp = sub_projects[x.si]; if (f) sp.data = { ...sp.data, dokumen_id: f } })
         row.files = [...(row.files || project?.files || []), ...added]
       }
       if (queue.length) {
@@ -586,6 +595,22 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
       if (hasil.sisa.length) pecahJadiSub(i)(hasil.sisa)
     }
     const kelas = 'h-9 w-full min-w-0 rounded-[10px] border-0 bg-white px-2.5 text-sm text-ink ring-1 ring-[#D9DBE7] placeholder:text-slate-400 hover:ring-slate-400 focus:outline-none focus:ring-2 focus:ring-brand max-md:h-11 max-md:text-base'
+    // Daftar sub terjemahan — pilihan "hasil terjemahan yang mana" untuk apostille.
+    // Satu pilihan per DOKUMEN (bukan per sub): ref = "<sub>#<urutan dokumen>" — satu sub apostille tetap satu dokumen.
+    const daftarTr = subs.flatMap((x, i) => (['terjemahan', 'terjemahan_nt'].includes(x.type) ? points(x.description).map((d, di) => ({ ref: `${x.id ?? x._k}#${di}`, sub: i, n: i + 1, nama: `${di + 1}. ${d}` })) : []))
+    const apostilleHasil = (i, asal, di = 0) => {
+      const t = daftarTr.find((d) => d.sub === i && d.ref.endsWith(`#${di}`))
+      return { ...subBaru('apostille', data, asal), ...(asal ? { country: asal.country, applicant_file: asal.applicant_file, applicant_id: asal.applicant_id, applicant_id_type: asal.applicant_id_type } : {}), objek: 'terjemahan', sumber_sub: t?.ref || '', docs: [{ desc: t ? `Hasil terjemahan — ${t.nama}` : '', pages: 1 }], description: t ? `1. Hasil terjemahan — ${t.nama}` : '', file_count: t ? 1 : 0, pages: t ? 1 : 0 }
+    }
+    // "Keduanya": dipecah jadi dua sub — dokumen asli (langsung jalan) + hasil terjemahan (menunggu). Satu sub tetap satu dokumen.
+    const pecahKeduanya = (i) => () => {
+      setSubs((arr) => { const asal = { ...arr[i], objek: 'asli', sumber_sub: '' }; const tr = daftarTr.length === 1 ? daftarTr[0].sub : -1
+        const baru = tr >= 0 ? apostilleHasil(tr, asal) : { ...apostilleHasil(i, asal), sumber_sub: '', docs: [{ desc: '', pages: 1 }], description: '', file_count: 0, pages: 0 }
+        return [...arr.slice(0, i), asal, baru, ...arr.slice(i + 1)] })
+      notify('Dipecah jadi 2 sub: dokumen asli + hasil terjemahan (menunggu terjemahan selesai)')
+    }
+    // Satu sub apostille per dokumen terjemahan (satu sub = satu dokumen) — dokumen yang tidak perlu tinggal dihapus.
+    const tambahApostilleHasil = (i) => () => { const jml = daftarTr.filter((d) => d.sub === i).length; setSubs((arr) => { const asal = [...arr].reverse().find((y) => y.type === 'apostille'); return [...arr.slice(0, i + 1), ...Array.from({ length: jml }, (_, di) => apostilleHasil(i, asal, di)), ...arr.slice(i + 1)] }); if (jml > 1) notify(`${jml} sub apostille dibuat — satu per dokumen terjemahan. Hapus yang tidak perlu.`) }
     const tombolSimpan = progress || 'Buat Project'
     return (
       <div className="space-y-3.5 pb-2" data-project-baru>
@@ -692,6 +717,7 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
           )}
           {subs.map((s, i) => (
             <SubBaris key={s.id ?? s._k} n={i + 1} sub={s} branch={branch} error={tried ? errs.subs[i] : null} onPecah={pecahJadiSub(i)}
+              daftarTr={daftarTr} onKeduanya={pecahKeduanya(i)} onApostilleHasil={tambahApostilleHasil(i)}
               onChange={(next) => setSubs((arr) => arr.map((x, j) => (j === i ? next : x)))}
               onRemove={subs.length > 1 ? () => setSubs((a) => a.filter((_, j) => j !== i)) : null} />
           ))}

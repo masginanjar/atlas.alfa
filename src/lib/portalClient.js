@@ -5,6 +5,7 @@
 //             Ditandai jelas sebagai demo di UI.
 // ============================================================
 import { MODE, db } from './db.js'
+import { SUPABASE_URL, SUPABASE_KEY, sb } from './supabase.js'
 import { dataUrlToBlob } from './download.js'
 import { linkState, verifyPhone, customerView, vendorView, resolveFile, kodePortal, SESSION_HOURS, MAX_EMAILS_PER_DAY, isEmail, maskEmail } from './portalCore.js'
 
@@ -117,8 +118,53 @@ const live = {
   upload: () => Promise.reject(new Error('Unggah lewat portal belum aktif di server — kirim hasil ke CS dulu')),
 }
 
-export const portal = MODE === 'live' ? live : demo
+// ---------- SUPABASE (live sekarang) ----------
+// Portal vendor: semua pemeriksaan di fungsi server "portal-vendor" (kode akses, sesi, hak atas file).
+// Browser hanya memegang token sesi sementara — tidak pernah kunci server.
+const FN_VENDOR = `${SUPABASE_URL}/functions/v1/portal-vendor`
+async function fnVendor(action, body) {
+  try {
+    const r = await fetch(FN_VENDOR, { method: 'POST', headers: { 'Content-Type': 'application/json', apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }, body: JSON.stringify({ action, ...body }) })
+    return await r.json()
+  } catch { return { error: 'offline' } }
+}
+const supa = {
+  open: (token) => fnVendor('open', { token }).then((r) => (r.error ? { state: 'missing' } : { ...r, verified: !!getSess(token) && r.state === 'active' })),
+  async verify(token, phone) {
+    const r = await fnVendor('verify', { token, phone })
+    if (r.ok) sessionStorage.setItem(SKEY, JSON.stringify({ token, sess: r.session, until: r.until }))
+    return r
+  },
+  view: (token) => { const s = getSess(token); return s ? fnVendor('view', { token, session: s.sess }) : Promise.resolve({ error: 'session' }) },
+  async file(token, ref) {
+    const s = getSess(token); if (!s) throw new Error('Sesi berakhir — masukkan kode akses lagi')
+    const r = await fnVendor('file', { token, session: s.sess, ref })
+    if (!r.url) throw new Error(r.error === 'session' ? 'Sesi berakhir — masukkan kode akses lagi' : ['expired', 'revoked', 'locked'].includes(r.error) ? 'Tautan ini sudah tidak aktif' : r.error === 'offline' ? 'Koneksi terputus — coba lagi' : 'File tidak tersedia')
+    const res = await fetch(r.url); if (!res.ok) throw new Error('Gagal mengunduh file — coba lagi')
+    return { blob: await res.blob(), name: r.name }
+  },
+  /** Unggah hasil: server memberi izin unggah per file, lalu mencatatnya di project setelah file benar-benar tersimpan. */
+  async upload(token, projectId, files) {
+    const s = getSess(token); if (!s) throw new Error('Sesi berakhir — masukkan kode akses lagi')
+    const jadi = []
+    for (const f of files) {
+      const izin = await fnVendor('upload_url', { token, session: s.sess, project_id: projectId, name: f.name })
+      if (!izin.path) throw new Error(izin.error === 'session' ? 'Sesi berakhir — masukkan kode akses lagi' : izin.error === 'offline' ? 'Koneksi terputus — coba lagi' : 'Unggah ditolak untuk pekerjaan ini')
+      const up = await sb().storage.from(izin.bucket).uploadToSignedUrl(izin.path, izin.token, f, { contentType: f.type || 'application/octet-stream' })
+      if (up.error) throw new Error(`Gagal mengunggah "${f.name}" — coba lagi`)
+      jadi.push({ path: izin.path, name: f.name, size: f.size })
+    }
+    const r = await fnVendor('upload_done', { token, session: s.sess, project_id: projectId, files: jadi })
+    if (!r.ok) throw new Error(r.error === 'offline' ? 'File terunggah tetapi belum tercatat — koneksi terputus, coba unggah lagi' : 'File belum tercatat di pekerjaan — coba lagi')
+    return r
+  },
+  email: () => Promise.resolve({ error: 'not_configured' }),
+}
+
+export const portal = MODE === 'supabase' ? supa : MODE === 'live' ? live : demo
 export const PORTAL_DEMO = MODE !== 'live'
+/** Portal berjalan di browser tanpa server (hanya demo) — untuk catatan "Mode demo" di halaman portal. */
+export const PORTAL_UJI = MODE === 'demo'
 /** Tautan portal yang dibagikan ke pelanggan / vendor. */
 export function portalUrl(token) {
   const base = import.meta.env.VITE_PUBLIC_URL || `${window.location.origin}${window.location.pathname}`

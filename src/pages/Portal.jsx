@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Download, Eye, Loader2, Lock, Phone, Mail, CheckCircle2, Clock, FileText, ShieldAlert, Info, CalendarClock } from 'lucide-react'
-import { portal, PORTAL_DEMO } from '../lib/portalClient.js'
+import { portal, PORTAL_UJI as PORTAL_DEMO } from '../lib/portalClient.js'
 import { saveBlob } from '../lib/download.js'
 import { clock } from '../lib/performance.js'
 import FilePreview from '../components/FilePreview.jsx'
@@ -225,8 +225,10 @@ function VendorView({ token, v, onExpired }) {
   const dl = useDownload(token, onExpired)
   const [f, setF] = useState('semua')
   const [tab, setTab] = useState('todo')
-  const list = v.jobs.filter((j) => (f === 'semua' ? true : f === 'selesai' ? j.done : !j.done))
-  const count = (k) => v.jobs.filter((j) => (k === 'semua' ? true : k === 'selesai' ? j.done : !j.done)).length
+  const jobs = v.jobs || []
+  const adaBayar = Array.isArray(v.jobs) // server live belum mengirim data pembayaran → tab disembunyikan
+  const list = jobs.filter((j) => (f === 'semua' ? true : f === 'selesai' ? j.done : !j.done))
+  const count = (k) => jobs.filter((j) => (k === 'semua' ? true : k === 'selesai' ? j.done : !j.done)).length
   const Pay = ({ j }) => (
     <div className="space-y-2">
       <span className={cx('inline-block rounded-full px-3 py-1 text-base font-bold', PAY_STYLE[j.pay_status])}>{j.pay_status}</span>
@@ -252,7 +254,7 @@ function VendorView({ token, v, onExpired }) {
         <ExpiryNote at={v.expires_at} />
       </section>
       <div className="flex gap-2" role="tablist" aria-label="Bagian portal">
-        {[['todo', `To-do (${(v.todo || []).filter((x) => x.status !== 'Selesai').length})`], ['bayar', 'Pembayaran']].map(([k, l]) => (
+        {[['todo', `To-do (${(v.todo || []).filter((x) => x.status !== 'Selesai').length})`], ...(adaBayar ? [['bayar', 'Pembayaran']] : [])].map(([k, l]) => (
           <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)} data-tab-portal={k} className={cx('h-12 flex-1 rounded-xl text-lg font-bold ring-2', tab === k ? 'bg-ink text-white ring-ink' : 'bg-white text-ink ring-slate-300')}>{l}</button>
         ))}
       </div>

@@ -3,7 +3,7 @@ import { MessageCircle, Check } from 'lucide-react'
 import { useApp } from '../lib/store.jsx'
 import { invoiceLabel } from '../config/access.js'
 import { flowOf } from '../config/workflows.js'
-import { SUB_TYPES } from '../config/subtypes.js'
+import { SUB_TYPES, points } from '../config/subtypes.js'
 import { boleh } from '../lib/izin.js'
 import { cx } from './ui.jsx'
 
@@ -46,21 +46,35 @@ export function teksOrderVendor(p, subs, namaVendor) {
     'Mohon konfirmasi order ini dan kabari bila ada kendala. Terima kasih.',
   ].join('\n')
 }
-/** Teks pengingat untuk tim Apostille / Legalisasi. */
-export function teksOrderApostille(p, subs, namaCs) {
+/**
+ * Teks "FIX ORDER" untuk tim Apostille / Legalisasi — format grup WA yang dipakai tim.
+ * "SUPORTING SPESIMEN" belum ada datanya di ATLAS → dibiarkan kosong untuk diisi CS saat menempel.
+ */
+const PROSES = { Normal: 'NORMAL', Ekspres: 'EKSPRESS', 'Super Ekspres': 'SUPER EKSPRESS', Sameday: 'SAMEDAY' }
+export function teksOrderApostille(p, subs, namaCs, people = []) {
+  const ap = subs.some((sb) => sb.type === 'apostille'); const lg = subs.some((sb) => sb.type === 'legalisasi')
+  const jenis = ap && lg ? 'APOSTILLE & LEGALISASI' : lg ? 'LEGALISASI' : 'APOSTILLE'
+  const unik = (arr) => [...new Set(arr.map((x) => String(x || '').trim()).filter(Boolean))]
+  const negara = unik(subs.map((sb) => sb.country || sb.data?.country)).map((x) => x.toUpperCase())
+  const lembaga = unik(subs.map((sb) => (people.find((x) => x.id === sb.institution)?.name) || ''))
+  const dok = subs.flatMap((sb) => (Array.isArray(sb.docs) && sb.docs.some((d) => String(d.desc || '').trim()) ? sb.docs.map((d) => String(d.desc || '').trim()).filter(Boolean) : points(sb.description).length ? points(sb.description) : [sb.title || 'Dokumen']))
+  const prio = PROSES[p.about?.priority] || String(p.about?.priority || 'NORMAL').toUpperCase()
   return [
-    '*ORDER FIX — APOSTILLE / LEGALISASI*',
-    `No. Invoice: ${invoiceLabel(p.invoice_no)}`,
-    `Pelanggan: ${p.customer?.name || '—'}`,
-    `Cabang: ${p.branch || '—'}${namaCs ? ` · CS ${namaCs}` : ''}`,
-    `Prioritas: ${p.about?.priority || 'Normal'}`,
-    `Deadline: ${tglJam(p.about?.deadline)}`,
+    `FIX ORDER ${jenis} \u2705`,
+    `${invoiceLabel(p.invoice_no)} ${p.customer?.name || ''}`.trim(),
     '',
-    `Dokumen (${subs.length}):`,
-    ...subs.map((sb, i) => barisDok(sb, i, false)),
-    ...(p.about?.notes ? ['', `Catatan: ${p.about.notes}`] : []),
+    `Deadline : ${tglJam(p.about?.deadline)}`,
+    `CS : ${namaCs || ''}`,
     '',
-    'Mohon diproses ya. Terima kasih.',
+    'SUPORTING SPESIMEN',
+    '1. ',
+    '',
+    ...(negara.length ? [`Negara Tujuan  : ${negara.join(', ')}`] : []),
+    ...(lembaga.length ? [`Lembaga            : ${lembaga.join(', ')}`] : []),
+    `Proses                : ${ap && lg ? 'Apostille & Legalisasi' : lg ? 'Legalisasi' : 'Apostille'} ${prio}`,
+    '',
+    `Dokumen (${dok.length})`,
+    ...dok.map((d, i) => `${i + 1}. ${d}`),
   ].join('\n')
 }
 
@@ -100,10 +114,10 @@ export default function SalinChatOrder({ project: p, className }) {
   const vendorBoleh = boleh(user, 'pengajuan.lihat')
   const apostilleBoleh = boleh(user, 'dokumen-al.lihat')
   const namaVendor = (id) => (data.people || []).find((x) => x.id === id)?.name || nameOf?.(id) || 'Vendor'
-  const namaCs = nameOf?.(p.about?.cs_id || p.created_by) || ''
+  const namaCs = nameOf?.(p.about?.cs_id || p.created_by) || p.about?.cs_name || ''
   const tombol = [
     ...(vendorBoleh ? [...perVendor.entries()].map(([id, list]) => <Tombol key={id} jenis="vendor" label={`Copy chat: Order Fix ke ${perVendor.size > 1 ? namaVendor(id) : 'Vendor'}`} teks={teksOrderVendor(p, list, namaVendor(id))} />) : []),
-    ...(apostilleBoleh && apostille.length ? [<Tombol key="ap" jenis="apostille" label="Copy chat: Order Fix ke Tim Apostille" teks={teksOrderApostille(p, apostille, namaCs)} />] : []),
+    ...(apostilleBoleh && apostille.length ? [<Tombol key="ap" jenis="apostille" label="Copy chat: Order Fix ke Tim Apostille" teks={teksOrderApostille(p, apostille, namaCs, data.people || [])} />] : []),
   ]
   if (!tombol.length) return null
   return <div className={cx('flex flex-wrap items-center gap-2', className)} data-salin-chat-order>{tombol}</div>

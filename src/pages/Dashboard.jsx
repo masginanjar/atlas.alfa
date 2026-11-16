@@ -30,6 +30,8 @@ import { coverHariIni, sapaan } from '../lib/cover.js'
 import { myReminders, nextAt } from './Reminders.jsx'
 import { StripTersemat } from '../components/Pengumuman.jsx'
 import BiayaAiKartu from '../components/BiayaAiKartu.jsx'
+import PapanDasbor, { useTataDasbor, TombolTata } from '../components/TataDasbor.jsx'
+import { boleh as bolehIzin } from '../lib/izin.js'
 import { KepalaDasbor, PingStrip, AngkaPeran, PetaKerja, AgendaHariIni } from '../components/DasborBaru.jsx'
 import WorkerBoard from '../components/WorkerActions.jsx'
 import { KapasitasSaya } from '../components/Kapasitas.jsx'
@@ -71,7 +73,7 @@ export function useDashStats() {
 }
 
 export default function Dashboard() {
-  const { user, data, unlinkedInvoices, branchFilter, pettyBalance } = useApp()
+  const { user, data, unlinkedInvoices, branchFilter, pettyBalance, save } = useApp()
   const s = useDashStats()
   const [tab, setTab] = useState(() => (user.role === 'staf_apostille' ? 'staf' : 'kerja'))
   const worker = ['penerjemah', 'proofreader', 'otorisator'].includes(user.role)
@@ -80,6 +82,8 @@ export default function Dashboard() {
   const todoTasks = user.role === 'admin_pusat' ? s.myTasks.filter((t) => t.stage === 'registrasi') : s.myTasks
   const todoCount = TODO_GROUP_ROLES.includes(user.role) ? roleGroupCount(s, user, data.people) : todoTasks.length
   const { pil, strip } = PingStrip()
+  const tataDasbor = useTataDasbor(user, data, save)
+  const bolehTata = bolehIzin(user, 'dasbor-tata.ubah')
 
   // ---------- angka ----------
   const act = s.active.filter((p) => !p.demo_perf)
@@ -143,6 +147,21 @@ export default function Dashboard() {
       <AngkaPeran tiles={tiles} aktif={{ tenggat: 'dl', hambatan: 'late', kerja: 'todo' }[tab]} />
       {user.role === 'penerjemah' && <KapasitasSaya />}
 
+      {bolehTata && <div className="flex justify-end"><TombolTata atur={tataDasbor.atur} adaTata={!!tataDasbor.tata} onKlik={() => tataDasbor.setAtur(!tataDasbor.atur)} /></div>}
+      {/* Sudah pernah ditata / sedang menata → papan kartu berukuran pakem. Belum pernah → tampilan bawaan di bawah, tidak berubah. */}
+      {bolehTata && (tataDasbor.tata || tataDasbor.atur) ? (
+        <PapanDasbor {...tataDasbor} kartu={[
+          { id: 'peta', label: 'Peta kerja', w: 4, h: 7, el: <PetaKerja user={user} s={s} nKerja={todoCount} kerja={kerja} tab={tab} setTab={setTab} tabsExtra={tabsExtra} sembunyi={user.role === 'staf_apostille' ? ['kerja'] : []} /> },
+          { id: 'kapasitas', label: 'Kapasitas penerjemah', w: 2, h: 3, el: pimpinan && <KapasitasPenerjemahKartu /> },
+          { id: 'followup', label: 'Follow-up per role', w: 2, h: 3, el: pimpinan && <FollowUpPeran s={s} /> },
+          { id: 'keuangan', label: 'Keuangan', w: 2, h: 2, el: exec && <RingkasanKeuangan s={s} /> },
+          { id: 'ai', label: 'Biaya AI', w: 2, h: 3, el: bolehIzin(user, 'pengaturan.ai.lihat') && <BiayaAiKartu /> },
+          { id: 'agenda', label: 'Agenda hari ini', w: 2, h: 2, el: <AgendaHariIni /> },
+          { id: 'performa', label: 'Performa saya', w: 2, h: 3, el: hasPersonalTasks(user) && user.role !== 'staf_apostille' && <PerformanceCard narrow /> },
+          { id: 'statistik', label: 'Statistik saya', w: 2, h: 3, el: user.role === 'penerjemah' ? <TranslatorStats narrow /> : user.role === 'proofreader' ? <ProofreaderStats narrow /> : user.role === 'otorisator' ? <AuthStats narrow /> : null },
+          { id: 'tim', label: 'Performa tim', w: 6, h: 5, el: canSeeTeam(user) && <TeamPerformance /> },
+        ]} />
+      ) : <>
       <div className={cx('grid gap-3 lg:items-start', (canSeeTeam(user) || exec || !worker) && 'lg:grid-cols-[minmax(0,1fr)_380px] xl:grid-cols-[minmax(0,1fr)_420px]')}>
         <PetaKerja user={user} s={s} nKerja={todoCount} kerja={kerja} tab={tab} setTab={setTab} tabsExtra={tabsExtra} sembunyi={user.role === 'staf_apostille' ? ['kerja'] : []} />
         <div className="min-w-0 space-y-3">
@@ -158,6 +177,7 @@ export default function Dashboard() {
         </div>
       </div>
       {canSeeTeam(user) && <TeamPerformance />}
+      </>}
     </div>
   )
 }

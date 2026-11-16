@@ -62,6 +62,25 @@ export function nomoriAntarSub(subs) {
   })
   return ubah ? hasil : subs
 }
+/**
+ * Satu ID pemohon untuk semua: KTP / paspor yang diunggah di satu sub apostille / legalisasi otomatis dipakai sub lain
+ * yang belum punya ID (nomornya ikut, termasuk saat baru terbaca). Sub yang ID-nya dilepas / diganti sendiri tidak diisi lagi.
+ */
+export function bagikanId(subs) {
+  const al = (x) => ['apostille', 'legalisasi'].includes(x.type)
+  const asal = subs.find((x) => al(x) && x.applicant_file && !x._id_ikut)
+  if (!asal) return subs
+  let ubah = false
+  const hasil = subs.map((x) => {
+    if (x === asal || !al(x) || x._id_lepas || x.data?.dokumen_id) return x
+    const ikut = x._id_ikut && x.applicant_file === asal.applicant_file
+    if (x.applicant_file && !ikut) return x
+    if (ikut && x.applicant_id === asal.applicant_id && x.applicant_id_type === asal.applicant_id_type) return x
+    ubah = true
+    return { ...x, applicant_file: asal.applicant_file, applicant_id: asal.applicant_id || '', applicant_id_type: asal.applicant_id_type || 'ktp', _id_ikut: true }
+  })
+  return ubah ? hasil : subs
+}
 const terisi = (d) => !!(d.file || d.existing || String(d.desc || '').trim())
 
 /** Pasang 1–banyak file ke sub. Mengembalikan sub yang sudah diisi + file sisa (melebihi batas dokumen sub). */
@@ -117,7 +136,7 @@ function Berkas({ d, i, onUbah, onLepas, className }) {
   )
 }
 
-export default function SubBaris({ n, sub, onChange, onRemove, branch, error, onPecah }) {
+export default function SubBaris({ n, sub, onChange, onRemove, branch, error, onPecah, daftarTr = [], onKeduanya, onApostilleHasil }) {
   const { data } = useApp()
   const [seret, setSeret] = useState(false)
   const [bacaId, setBacaId] = useState(null)
@@ -133,6 +152,14 @@ export default function SubBaris({ n, sub, onChange, onRemove, branch, error, on
   const ubahDok = (i, patch) => setDocs(docs.map((d, j) => (j === i ? { ...d, ...patch } : d)))
   const pasang = async (files) => { const r = await pasangKeSub(sub, files); onChange(r.sub); if (r.sisa.length) onPecah?.(r.sisa, r.sub) }
   const jenisOps = opsiJenis(sub)
+  // Apostille atas HASIL TERJEMAHAN: tidak ada file yang diunggah sekarang — sub ini menunggu hasil dari sub terjemahan yang dipilih.
+  const tunggu = sub.type === 'apostille' && sub.objek === 'terjemahan'
+  const pilihSumber = (ref) => { const t = daftarTr.find((x) => String(x.ref) === String(ref)); onChange({ ...sub, sumber_sub: t ? t.ref : '', ...fromDocs(t ? [{ desc: `Hasil terjemahan — ${t.nama}`, pages: 1 }] : [{ desc: '', pages: 1 }]) }) }
+  const pilihObjek = (v) => {
+    if (v === 'keduanya' && onKeduanya) return onKeduanya()
+    if (v === 'terjemahan') { const t = daftarTr.length === 1 ? daftarTr[0] : daftarTr.find((x) => String(x.ref) === String(sub.sumber_sub)); return onChange({ ...sub, objek: v, sumber_sub: t ? t.ref : '', ...fromDocs(t ? [{ desc: `Hasil terjemahan — ${t.nama}`, pages: 1 }] : [{ desc: '', pages: 1 }]) }) }
+    onChange({ ...sub, objek: v, ...(sub.sumber_sub ? { sumber_sub: '', ...fromDocs([{ desc: '', pages: 1 }]) } : {}) })
+  }
   const setBahasa = (patch) => onChange(rapikanJenis({ ...sub, ...patch }))
   const gantiJenisSub = (k) => {
     const dasar = usesDocs(k) ? { ...sub, type: k, ...fromDocs(docsOf(sub).slice(0, MAKS_DOK[k] || undefined)) } : { ...sub, type: k }
@@ -144,7 +171,7 @@ export default function SubBaris({ n, sub, onChange, onRemove, branch, error, on
   // nomor paspor belum dibaca otomatis → diketik. Selalu bisa dikoreksi.
   const unggahId = async (f) => {
     const paspor = /pas+por|passport/i.test(f.name)
-    onChange({ ...sub, applicant_file: f, applicant_id_type: paspor ? 'paspor' : (sub.applicant_id_type || 'ktp') })
+    onChange({ ...sub, applicant_file: f, _id_ikut: false, _id_lepas: false, applicant_id_type: paspor ? 'paspor' : (sub.applicant_id_type || 'ktp') })
     if (String(sub.applicant_id || '').trim()) return
     if (paspor) { setBacaId({ paspor: true }); return }
     setBacaId('baca')
@@ -163,6 +190,7 @@ export default function SubBaris({ n, sub, onChange, onRemove, branch, error, on
     : bacaId?.ok ? `Terbaca otomatis (${bacaId.mesin}) — cocokkan dengan KTP.`
     : bacaId?.paspor ? 'Paspor: ketik nomor paspornya — dipakai sebagai ID pemohon.'
     : bacaId?.gagal ? 'Nomor tidak terbaca otomatis — ketik manual.' : ''
+  const ketIkut = sub._id_ikut && sub.applicant_file ? 'Memakai ID pemohon yang sama dengan sub di atas — lepas (×) lalu unggah lagi bila pemohonnya berbeda.' : ''
   const lembaga = extra.includes('institution') ? of('lembaga').find((p) => p.id === sub.institution) : null
   const nHal = docs.reduce((a, d) => a + (Number(d.pages) || 0), 0)
 
@@ -197,13 +225,21 @@ export default function SubBaris({ n, sub, onChange, onRemove, branch, error, on
               </div>
             ))}
             <TombolUnggah data="data-unggah-banyak" salah={errOn('dokumen')} label={seret ? 'Lepas file di sini' : docs.length ? 'Upload / tarik file lagi (bisa banyak)' : 'Upload / tarik file (bisa banyak)'} onFiles={pasang} />
+            {onApostilleHasil && sub.type === 'terjemahan' && docs.length > 0 && <button type="button" onClick={onApostilleHasil} data-aksi="apostille-hasil" className="inline-flex min-h-9 items-center gap-1 self-start rounded-lg px-1 text-xs font-semibold text-[#17693A] hover:underline max-md:min-h-11">+ Apostille hasil terjemahan ini</button>}
           </div>
         </Kol>
       )}
 
       {['apostille', 'legalisasi'].includes(sub.type) && (
-        <Kol label="Dokumen" wajib style={{ flex: '4 0.4 240px' }}>
-          {docs[0]
+        <Kol label={tunggu ? 'Dokumen · menunggu hasil terjemahan' : 'Dokumen'} wajib style={{ flex: '4 0.4 240px' }}>
+          {tunggu
+            ? (daftarTr.length
+              ? <select value={sub.sumber_sub ? String(sub.sumber_sub) : ''} onChange={(e) => pilihSumber(e.target.value)} aria-label="Hasil terjemahan dari sub project" aria-invalid={errOn('dokumen')} data-sumber-sub
+                  className={cx(inputCls, '!px-2 font-semibold', !sub.sumber_sub && '!ring-[#B4233F]', errOn('dokumen') && '!ring-2')}>
+                  <option value="">Pilih hasil terjemahan yang mana…</option>{daftarTr.map((t) => <option key={String(t.ref)} value={String(t.ref)}>Sub {t.n} · {t.nama}</option>)}
+                </select>
+              : <p className="flex min-h-9 items-center rounded-[10px] bg-amber-50 px-2.5 text-xs text-amber-900 ring-1 ring-amber-200 max-md:min-h-11" data-tanpa-tr>Tambahkan dulu sub Terjemahan — hasilnya yang akan diapostille.</p>)
+            : docs[0]
             ? <Berkas d={docs[0]} i={0} onUbah={(p) => ubahDok(0, p)} onLepas={() => setDocs([])} />
             : <TombolUnggah data="data-unggah-banyak" salah={errOn('dokumen')} label={seret ? 'Lepas file di sini' : 'Upload / tarik file (bisa banyak)'} onFiles={pasang} />}
         </Kol>
@@ -259,12 +295,12 @@ export default function SubBaris({ n, sub, onChange, onRemove, branch, error, on
           {adaId ? (
             <div className="flex h-9 min-w-0 items-center gap-1 rounded-[10px] bg-[#EEEBFF] pl-2 pr-1 text-[#3B2F9E] ring-1 ring-[#D4CEFA] max-md:h-11" data-id-pemohon={tipeId}>
               <IdCard className="h-4 w-4 shrink-0" />
-              <select value={tipeId} onChange={(e) => set({ applicant_id_type: e.target.value })} aria-label="Jenis ID pemohon" className="h-[26px] !w-[78px] flex-none cursor-pointer rounded-md border-0 bg-transparent bg-[length:14px] bg-[right_2px_center] py-0 pl-1 pr-5 text-[13px] font-bold focus:outline-none focus:ring-2 focus:ring-brand max-md:h-9 max-md:text-base">
+              <select value={tipeId} onChange={(e) => set({ applicant_id_type: e.target.value })} aria-label="Jenis ID pemohon" className="h-[26px] !w-[88px] flex-none cursor-pointer rounded-md border-0 bg-transparent bg-[length:14px] bg-[right_2px_center] py-0 pl-1 pr-5 text-[13px] font-bold focus:outline-none focus:ring-2 focus:ring-brand max-md:h-9 max-md:text-base">
                 <option value="ktp">KTP</option><option value="paspor">Paspor</option><option value="lain">NIB / SK</option>
               </select>
-              <input value={sub.applicant_id || ''} onChange={(e) => set({ applicant_id: e.target.value })} aria-label="Nomor ID pemohon" placeholder={tipeId === 'paspor' ? 'No. paspor' : tipeId === 'ktp' ? 'No. KTP (NIK)' : 'No. NIB / SK'} data-nomor-id
+              <input value={sub.applicant_id || ''} onChange={(e) => set({ applicant_id: e.target.value, _id_ikut: false })} aria-label="Nomor ID pemohon" placeholder={tipeId === 'paspor' ? 'No. paspor' : tipeId === 'ktp' ? 'No. KTP (NIK)' : 'No. NIB / SK'} data-nomor-id
                 className="h-[26px] min-w-0 flex-1 rounded-md border-0 bg-white px-1.5 text-[13px] font-bold text-[#2A2170] focus:outline-none focus:ring-2 focus:ring-brand max-md:h-9 max-md:text-base" />
-              {sub.applicant_file && <button type="button" onClick={() => { set({ applicant_file: null }); setBacaId(null) }} aria-label="Lepas file ID pemohon" title={sub.applicant_file.name} className="grid h-7 w-7 shrink-0 place-items-center rounded-md hover:bg-white hover:text-rose-600 max-md:h-9 max-md:w-9"><X className="h-3.5 w-3.5" /></button>}
+              {sub.applicant_file && <button type="button" onClick={() => { set({ applicant_file: null, applicant_id: sub._id_ikut ? '' : sub.applicant_id, _id_ikut: false, _id_lepas: true }); setBacaId(null) }} aria-label="Lepas file ID pemohon" title={sub.applicant_file.name} className="grid h-7 w-7 shrink-0 place-items-center rounded-md hover:bg-white hover:text-rose-600 max-md:h-9 max-md:w-9"><X className="h-3.5 w-3.5" /></button>}
             </div>
           ) : (
             <label data-upload-id className={cx('flex h-9 w-full min-w-0 cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-[10px] border border-dashed bg-white px-2 text-[13px] font-bold max-md:h-11', errOn('id / dokumen pemohon') ? 'border-rose-500 text-rose-700' : 'border-[#8C7FE6] text-[#3B2F9E]')}>
@@ -287,7 +323,7 @@ export default function SubBaris({ n, sub, onChange, onRemove, branch, error, on
       )}
       {extra.includes('objek') && (
         <Kol label="Yang diapostille" wajib hp="half" style={{ flex: '1 1 118px' }}>
-          <select value={sub.objek || ''} onChange={(e) => set({ objek: e.target.value })} aria-label="Yang diapostille" aria-invalid={errOn('yang diapostille')} className={cx(inputCls, '!px-2', errOn('yang diapostille') && '!ring-2 !ring-rose-500')}>
+          <select value={sub.objek || ''} onChange={(e) => pilihObjek(e.target.value)} data-objek aria-label="Yang diapostille" aria-invalid={errOn('yang diapostille')} className={cx(inputCls, '!px-2', errOn('yang diapostille') && '!ring-2 !ring-rose-500')}>
             <option value="">Pilih…</option>{OBJEK_APOSTILLE.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
           </select>
         </Kol>
@@ -308,9 +344,10 @@ export default function SubBaris({ n, sub, onChange, onRemove, branch, error, on
         : <span className="w-9 flex-none max-[1199px]:hidden" />}
       </div>
 
-      {(ketId || lembaga?.note || error) && (
+      {(ketId || ketIkut || lembaga?.note || error) && (
         <div className="mt-1.5 space-y-1">
           {ketId && <p className="text-[11px] text-[#3B2F9E]" data-ket-id>{ketId}</p>}
+          {!ketId && ketIkut && <p className="text-[11px] text-[#3B2F9E]" data-ket-ikut>{ketIkut}</p>}
           {lembaga?.note && <p className="rounded-lg bg-amber-50 px-2.5 py-1.5 text-[11px] leading-relaxed text-amber-900 ring-1 ring-amber-200">{lembaga.note}</p>}
           {error && <FieldError>{error}</FieldError>}
         </div>
