@@ -23,7 +23,6 @@ import { ReminderWatcher } from './pages/Reminders.jsx'
 const Settings = lazy(() => import('./pages/Settings.jsx'))
 const Beranda = lazy(() => import('./pages/Beranda.jsx'))
 const Portal = lazy(() => import('./pages/Portal.jsx'))
-const GantiSandiWajib = lazy(() => import('./pages/GantiSandiWajib.jsx'))
 const PortalCek = lazy(() => import('./pages/PortalCek.jsx'))
 const Activity = lazy(() => import('./pages/Activity.jsx'))
 const Kehadiran = lazy(() => import('./pages/Kehadiran.jsx'))
@@ -203,8 +202,6 @@ export default function App() {
   if (rawPage === 'cek') return <Suspense fallback={null}><PortalCek /></Suspense> // portal pelanggan — satu link umum, tanpa login
   if (booting) return <div className="grid min-h-screen place-items-center"><Loader2 className="h-6 w-6 animate-spin text-brand" /></div>
   if (!user) return <><Login /><Toast toast={toast} onClose={dismissToast} /></>
-  // Sandi sementara (ditetapkan Superadmin) → wajib buat sandi sendiri + catat email asli sebelum memakai ATLAS.
-  if (user.wajib_ganti_sandi) return <><Suspense fallback={null}><GantiSandiWajib /></Suspense><Toast toast={toast} onClose={dismissToast} /></>
 
   // Halaman yang tidak boleh dibuka peran ini dialihkan ke Dashboard,
   // supaya alamat langsung (#/keuangan dsb.) juga tertutup.

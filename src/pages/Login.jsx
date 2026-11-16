@@ -77,7 +77,7 @@ export default function Login() {
 
   const judul = view === 'daftar' ? 'Buat kata sandi' : view === 'lupa' ? 'Lupa kata sandi' : view === 'sandi-baru' ? 'Kata sandi baru' : tema.judul
   const sub = view === 'daftar' ? 'Untuk email yang sudah didaftarkan Superadmin di ATLAS.'
-    : view === 'lupa' ? 'Isi email login Anda. Permintaan diteruskan ke Superadmin, yang akan memberi kata sandi sementara.'
+    : view === 'lupa' ? 'Isi email login Anda. Permintaan diteruskan ke Superadmin, yang akan memberi kata sandi baru.'
     : view === 'sandi-baru' ? 'Tentukan kata sandi baru untuk akun Anda.'
     : MODE === 'demo' ? 'Pilih akun untuk mencoba tiap peran & cabang.' : tema.sub
 

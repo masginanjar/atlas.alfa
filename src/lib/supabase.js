@@ -58,13 +58,6 @@ export const supabaseDb = {
   },
   async resetPassword(email) { unwrap(await sb().auth.resetPasswordForEmail(String(email).trim().toLowerCase(), { redirectTo: window.location.origin + window.location.pathname })) },
   async updatePassword(password) { unwrap(await sb().auth.updateUser({ password })) },
-  /** Layar wajib ganti sandi: ganti sandi sendiri, lalu server mencatat email asli & melepas tanda wajib. */
-  async selesaiGantiSandi(password, emailAsli) {
-    const { error } = await sb().auth.updateUser({ password })
-    if (error && !/different from the old|same as/i.test(error.message || '')) throw new Error(pesan(error))
-    if (error) throw new Error('Kata sandi baru harus berbeda dari kata sandi sementara.')
-    unwrap(await sb().rpc('akun_selesai_ganti', { p_email: emailAsli }))
-  },
   /** "Lupa Password?" → permintaan reset ke Superadmin (tanpa email). Jawaban sama, terdaftar atau tidak. */
   async mintaResetSandi(email) {
     const r = await fetch(`${SUPABASE_URL}/functions/v1/lupa-sandi`, { method: 'POST', headers: { 'Content-Type': 'application/json', apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }, body: JSON.stringify({ email: String(email).trim().toLowerCase() }) })

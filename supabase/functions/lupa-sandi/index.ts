@@ -6,7 +6,7 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 const CORS = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type", "Access-Control-Allow-Methods": "POST, OPTIONS" };
 const json = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: s, headers: { "Content-Type": "application/json", ...CORS } });
-const PESAN = "Bila email itu terdaftar, permintaan sudah diteruskan ke Superadmin. Kata sandi sementara akan diberikan langsung oleh Superadmin.";
+const PESAN = "Bila email itu terdaftar, permintaan sudah diteruskan ke Superadmin. Kata sandi baru akan diberikan langsung oleh Superadmin.";
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST") return json({ ok: false }, 405);

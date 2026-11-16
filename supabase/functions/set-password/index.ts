@@ -74,10 +74,9 @@ Deno.serve(async (req) => {
       if ((data?.users || []).length < 200) break
     }
 
-    // Sandi yang ditetapkan Superadmin bersifat SEMENTARA: pemiliknya wajib menggantinya saat login berikutnya
-    // (kecuali Superadmin mengganti sandinya sendiri). Permintaan "lupa sandi" akun itu ikut ditutup.
+    // Sandi yang ditetapkan Superadmin langsung berlaku (keputusan pemilik 16 Nov 2026: tidak ada wajib ganti sandi).
+    // Permintaan "lupa sandi" akun itu ikut ditutup.
     const tandai = async () => {
-      if (target !== email) await admin.from("users").update({ doc: { ...(targetRow.doc || {}), wajib_ganti_sandi: true } }).eq("id", targetRow.id)
       await admin.from("permintaan_sandi").update({ status: "selesai", selesai_at: new Date().toISOString(), selesai_oleh: akun.id }).eq("user_id", targetRow.id).eq("status", "baru")
     }
 

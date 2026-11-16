@@ -907,14 +907,12 @@ function PermintaanSandi({ users, onAtur }) {
   const [minta, setMinta] = useState([]); const [kontak, setKontak] = useState([]); const [bukaKontak, setBukaKontak] = useState(false)
   const muat = () => { db.permintaanSandi?.().then(setMinta).catch(() => {}); db.kontakAkun?.().then(setKontak).catch(() => {}) }
   useEffect(() => { muat(); const t = setInterval(muat, 60000); return () => clearInterval(t) }, []) // eslint-disable-line react-hooks/exhaustive-deps
-  const belum = users.filter((u) => u.active !== false && u.wajib_ganti_sandi).length
   const nama = (id) => users.find((u) => u.id === id)?.name || id
   const tutup = async (id) => { try { await db.tutupPermintaanSandi(id); muat() } catch (err) { notify(err.message, 'err') } }
   return (
     <section className="mb-4 rounded-2xl bg-white p-4 ring-1 ring-slate-200" data-permintaan-sandi>
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-sm font-bold text-ink">Kata sandi & email staf</h3>
-        <span className="text-xs text-ink-mute">{belum} akun belum mengganti sandi sementara · {kontak.length} email asli tercatat</span>
+        <h3 className="text-sm font-bold text-ink">Permintaan reset kata sandi</h3>
       </div>
       {minta.length === 0 ? <p className="mt-2 text-[13px] text-ink-mute">Tidak ada permintaan reset kata sandi.</p> : (
         <ul className="mt-3 space-y-2">
@@ -922,14 +920,14 @@ function PermintaanSandi({ users, onAtur }) {
             <li key={m.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-amber-50 px-3 py-2.5 ring-1 ring-amber-200" data-minta-sandi={m.email}>
               <span className="min-w-0"><b className="block truncate text-sm text-ink">{m.nama || m.email}</b><span className="block truncate text-xs text-ink-mute">{m.email} · {m.cabang || 'Mitra'} · minta reset {new Date(m.dibuat_at).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}</span></span>
               <span className="flex gap-2">
-                <button type="button" onClick={() => { const u = users.find((x) => x.id === m.user_id); if (u) onAtur(u) }} className="min-h-10 rounded-lg bg-ink px-3 text-[13px] font-semibold text-white max-md:min-h-11">Atur sandi sementara</button>
+                <button type="button" onClick={() => { const u = users.find((x) => x.id === m.user_id); if (u) onAtur(u) }} className="min-h-10 rounded-lg bg-ink px-3 text-[13px] font-semibold text-white max-md:min-h-11">Atur kata sandi</button>
                 <button type="button" onClick={() => tutup(m.id)} className="min-h-10 rounded-lg px-3 text-[13px] font-semibold text-ink-mute ring-1 ring-slate-200 max-md:min-h-11">Abaikan</button>
               </span>
             </li>
           ))}
         </ul>
       )}
-      <p className="mt-2 text-xs text-ink-mute">Sandi yang Anda tetapkan bersifat sementara: pemiliknya langsung diminta membuat sandi sendiri saat login.</p>
+      <p className="mt-2 text-xs text-ink-mute">Kata sandi yang Anda tetapkan langsung berlaku. Sampaikan ke orangnya secara langsung.</p>
       {kontak.length > 0 && (
         <div className="mt-3 border-t border-slate-100 pt-3">
           <button type="button" onClick={() => setBukaKontak((v) => !v)} aria-expanded={bukaKontak} className="min-h-10 text-[13px] font-semibold text-brand hover:underline max-md:min-h-11">{bukaKontak ? 'Sembunyikan' : 'Lihat'} email asli staf ({kontak.length})</button>
