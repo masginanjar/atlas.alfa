@@ -18,6 +18,7 @@ import { kb } from '../lib/format.js'
 import { PrioritySelect, PRIORITY_META } from '../components/Priority.jsx'
 const LANGS_MIN = ['Indonesia', 'Inggris', 'Mandarin', 'Jepang', 'Korea', 'Arab', 'Belanda', 'Jerman', 'Prancis', 'Spanyol', 'Rusia', 'Lainnya']
 import CustomerInfo from '../components/CustomerInfo.jsx'
+import { DELIVERY_LABEL } from '../components/Delivery.jsx'
 import { rupiah, tgl } from '../lib/format.js'
 
 
@@ -110,7 +111,7 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
     const courierRow = p.courier ? (data.couriers || []).find((k) => k.name.toLowerCase() === p.courier.toLowerCase()) || (data.couriers || []).find((k) => k.name.toLowerCase().includes(p.courier.toLowerCase().split(' ')[0])) : null
     setAbout((a) => {
       const next = { ...a }
-      if (courierRow && (force || !a.courier)) next.courier = courierRow.id
+      if (courierRow && (force || !a.courier)) { next.courier = courierRow.id; next.metode_kirim = courierRow.type }
       if (p.priority && (force || a.priority === 'Normal')) { next.priority = p.priority; const auto = autoDeadline(a.received_at, p.priority); if (auto && (!a.deadline || a.deadline === autoDeadline(a.received_at, a.priority))) next.deadline = auto }
       const extra = [...p.others.map((o) => [o.name, o.description.replace(/\s+/g, ' ').trim()].filter(Boolean).join(': ')), ...(p.office ? [`Ambil/kirim via kantor ${p.office}`] : [])].filter(Boolean)
       if (extra.length && !String(a.notes || '').includes('Dari invoice')) next.notes = [a.notes, `Dari invoice: ${extra.join(' · ')}`].filter(Boolean).join('\n')
@@ -139,12 +140,22 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
   })
 
   const [tried, setTried] = useState(false)
+  // Metode pengiriman dipilih di awal (project baru wajib). Softcopy / ambil di kantor / dari penerjemah langsung
+  // tersimpan sebagai "kurir" jenis itu; "Dikirim Kurir" → ekspedisi & resinya tetap dipilih nanti di tahap Siap Kirim.
+  const metodeKirim = about.metode_kirim || (data.couriers || []).find((k) => k.id === about.courier)?.type || ''
+  const pilihMetode = (t) => setAbout((a) => {
+    const kini = (data.couriers || []).find((k) => k.id === a.courier)
+    const baris = t === 'courier' ? (kini?.type === 'courier' ? kini : null) : (data.couriers || []).find((k) => k.type === t)
+    return { ...a, metode_kirim: t, courier: baris?.id || '' }
+  })
+  const perluAlamat = metodeKirim !== 'pickup' && metodeKirim !== 'softcopy'
   // Validasi per field — ditampilkan di bawah field setelah tombol simpan ditekan
   const inv0 = normInvoice(invoice)
   const errs = {
     customer: !customer && 'Pilih pelanggan dari Zoho',
     invoice: !inv0 ? 'Isi nomor invoice' : data.projects.some((p) => p.invoice_no === inv0 && p.id !== project?.id) && `Project ${inv0} sudah ada`,
     deadline: !about.deadline ? 'Isi deadline' : about.received_at && about.deadline.slice(0, 10) < about.received_at.slice(0, 10) && 'Deadline tidak boleh sebelum tanggal masuk',
+    metode: !editing && !metodeKirim && 'Pilih metode pengiriman',
     subs: subs.map((x, i) => validateSub(x, i)),
   }
   const E = (k) => (tried ? errs[k] || null : null)
@@ -154,6 +165,7 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
     const inv = normInvoice(invoice)
     if (!customer) return notify('Pilih pelanggan dari Zoho', 'err')
     if (!inv) return notify('Isi nomor invoice', 'err')
+    if (errs.metode) return notify(errs.metode, 'err')
     if (!about.deadline) return notify('Isi deadline', 'err')
     if (about.received_at && about.deadline.slice(0, 10) < about.received_at.slice(0, 10)) return notify('Deadline tidak boleh sebelum tanggal masuk', 'err')
     if (data.projects.some((p) => p.invoice_no === inv && p.id !== project?.id)) return notify(`Project ${inv} sudah ada`, 'err')
@@ -258,8 +270,8 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
     </>
   )
   // Ringkasan kekurangan — tampil di atas tombol begitu tombol ditekan (bukan hanya toast)
-  const kurang = tried ? [errs.customer, errs.invoice, errs.deadline, !subs.length && 'Tambahkan minimal 1 sub project', ...errs.subs].filter(Boolean) : []
-  const langkah1Ok = !!customer && !!inv0 && !errs.invoice
+  const kurang = tried ? [errs.customer, errs.invoice, errs.metode, errs.deadline, !subs.length && 'Tambahkan minimal 1 sub project', ...errs.subs].filter(Boolean) : []
+  const langkah1Ok = !!customer && !!inv0 && !errs.invoice && !errs.metode
   const langkah2Ok = !!about.deadline && !errs.deadline
   const printBeda = about.print_location !== branch
   const [ubahPrint, setUbahPrint] = useState(printBeda)
@@ -302,8 +314,11 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
                 : <InvoicePicker customer={customer} value={invoice} onChange={setInvoice} error={E('invoice')} />}
             </div>
             <div>
-              <p className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-ink-mute">Alamat pengiriman</p>
-              {customer
+              <MetodeKirim value={metodeKirim} onPilih={pilihMetode} error={E('metode')} kantor={about.print_location} />
+              <p className="mb-1.5 mt-3 text-[11px] font-bold uppercase tracking-wide text-ink-mute">Alamat pengiriman</p>
+              {!perluAlamat
+                ? <p className="rounded-xl border border-dashed border-slate-300 bg-white/60 px-4 py-4 text-center text-xs text-ink-mute" data-tanpa-alamat>{metodeKirim === 'pickup' ? `Diambil di Kantor ${about.print_location || ''} — alamat kirim tidak diperlukan.` : 'Softcopy saja — tidak ada pengiriman fisik, alamat tidak diperlukan.'}</p>
+                : customer
                 ? (
                   <div className="space-y-2 rounded-xl bg-white/70 p-3 ring-1 ring-slate-200">
                     {editShip
@@ -316,7 +331,7 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
                   </div>
                 )
                 : <p className="rounded-xl border border-dashed border-slate-300 bg-white/60 px-4 py-5 text-center text-xs text-ink-mute">Alamat tampil otomatis setelah pelanggan dipilih.</p>}
-              <p className="mt-1.5 text-[11px] text-ink-mute">Kurir & nomor resi dipilih nanti di tahap <b>Siap Kirim</b> (detail project → Pengiriman & kurir).</p>
+              {metodeKirim === 'courier' && <p className="mt-1.5 text-[11px] text-ink-mute">Kurir & nomor resi dipilih nanti di tahap <b>Siap Kirim</b> (detail project → Pengiriman & kurir).</p>}
             </div>
           </div>
         </SectionCard>
@@ -432,6 +447,7 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
             <CustomerPicker ringkas value={customer} invalid={!!E('customer')} onChange={(c) => { setCustomer(c); if (!editing) setInvoice('') }} />
             {E('customer') && <FieldError>{E('customer')}</FieldError>}
             {customer && (preset?.invoice_no ? <p className="text-sm font-bold">{invoiceLabel(invoice)}</p> : <InvoicePicker ringkas customer={customer} value={invoice} onChange={setInvoice} error={E('invoice')} />)}
+            <MetodeKirim value={metodeKirim} onPilih={pilihMetode} error={E('metode')} kantor={about.print_location} />
           </div>
         </section>
         {/* 2 · Deadline */}
@@ -620,6 +636,29 @@ function FileQueue({ queue, setQueue, subs }) {
 }
 
 /** Form kecil untuk mengoreksi alamat pengiriman (tersimpan di project, bukan ke Zoho). */
+/** Pilihan metode pengiriman di awal pengisian project — satu ketuk, target sentuh 44px di HP. */
+const METODE_URUT = ['courier', 'pickup', 'softcopy', 'vendor']
+function MetodeKirim({ value, onPilih, error, kantor }) {
+  return (
+    <div data-metode-kirim>
+      <p className="mb-1.5 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-ink-mute"><Truck className="h-3.5 w-3.5" />Metode pengiriman <span className="text-rose-600">*</span></p>
+      <div className="grid grid-cols-2 gap-1.5" role="radiogroup" aria-label="Metode pengiriman" aria-invalid={!!error}>
+        {METODE_URUT.map((t) => {
+          const on = value === t
+          return (
+            <button key={t} type="button" role="radio" aria-checked={on} onClick={() => onPilih(t)} data-metode={t}
+              className={cx('flex min-h-11 items-center justify-center gap-1.5 rounded-xl px-2 py-1.5 text-center text-xs font-semibold leading-tight ring-1 transition',
+                on ? 'bg-ink text-white ring-ink' : error ? 'bg-white text-ink-soft ring-rose-300 hover:ring-ink' : 'bg-white text-ink-soft ring-slate-300 hover:ring-ink')}>
+              {on && <Check className="h-3.5 w-3.5 shrink-0" />}{t === 'pickup' && kantor ? `Diambil di Kantor ${kantor}` : DELIVERY_LABEL[t]}
+            </button>
+          )
+        })}
+      </div>
+      {error && <FieldError>{error}</FieldError>}
+    </div>
+  )
+}
+
 function ShipEditor({ ship, onChange, onDone }) {
   const set = (k) => (e) => onChange({ ...ship, [k]: e.target.value })
   return (

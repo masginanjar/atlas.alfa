@@ -14,6 +14,7 @@ import Avatar from '../components/Avatar.jsx'
 import { daysLeft, tgl } from '../lib/format.js'
 import { go } from '../lib/router.js'
 import { PrioPill } from '../components/BarisCanvas.jsx'
+import KuotaPenerjemah from '../components/KuotaPenerjemah.jsx'
 
 // ============================================================
 //  PENUGASAN — kapasitas penerjemah sebagai acuan.
@@ -227,6 +228,8 @@ export default function Penugasan() {
         </p>
       </Card>
 
+      {/* Kuota penerjemah menurut tanggal (bawaan: bulan ini) — di HP tampil di tab Kapasitas */}
+      <KuotaPenerjemah className={cx(tab !== 'kapasitas' && 'max-lg:hidden')} />
       <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_400px] lg:items-start xl:grid-cols-[minmax(0,1fr)_440px]">
         {/* ============ KIRI / tab Perlu ============ */}
         <div className={cx('min-w-0', tab !== 'perlu' && 'max-lg:hidden')}>

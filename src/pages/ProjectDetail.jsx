@@ -195,8 +195,9 @@ export function TabDetailProject({ project, ringkas, tab: tabLuar, setTab: setTa
             <SectionCard tone="peach" icon={Truck} title="Alamat Pengiriman & Kurir" className="!p-4 self-start">
               <div className="space-y-4">
                 <CustomerInfo c={project.customer || {}} part="shipping" />
+                {project.about?.metode_kirim === 'courier' && !project.about?.courier && <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900 ring-1 ring-amber-200" data-metode-awal>Metode dari awal project: <b>Dikirim Kurir</b> — ekspedisinya belum dipilih.</p>}
                 <CourierSelect value={project.about?.courier} printLocation={project.about?.print_location}
-                  onChange={async (cid) => { await save('projects', { ...project, about: { ...project.about, courier: cid } }); notify('Kurir diperbarui') }} />
+                  onChange={async (cid) => { await save('projects', { ...project, about: { ...project.about, courier: cid, metode_kirim: data.couriers?.find((k) => k.id === cid)?.type || project.about?.metode_kirim } }); notify('Kurir diperbarui') }} />
                 <DeliveryRule type={deliveryType(project, data.couriers)} />
                 <ResiFields about={project.about || {}}
                   onChange={async (patch) => { await save('projects', { ...project, about: { ...project.about, ...patch } }); notify('Info resi disimpan') }} />
@@ -798,12 +799,15 @@ function ChecklistProses({ f, nilai, setNilai, project, sub, user }) {
     try { await patchSubData(project, sub.id, { [f.key]: n, ...patch }, `${cur.includes(it) ? 'Batal centang' : 'Centang'} ${namaLangkah(f, it)} (${f.label})`) }
     catch (e) { notify(e.message, 'err') }
   }
+  // Berkas langkah yang pernah tersimpan: daftar ada di `<key>_list`; `<key>` sendiri hanya berkas pertama (objek, bukan daftar).
+  // Dulu objek itu langsung dipakai sebagai daftar → layar kosong saat langkah dicentang ulang.
+  const berkasAwal = (d, k) => (Array.isArray(d?.[`${k}_list`]) ? d[`${k}_list`] : Array.isArray(d?.[k]) ? d[k] : d?.[k] && typeof d[k] === 'object' ? [d[k]] : [])
   const tick = (it) => {
     const form = f.itemForm?.[it]
     const syarat = !cur.includes(it) && f.itemSyarat?.[it]?.(sub.data || {})
     if (syarat) { notify(syarat, 'err'); return }
     if (!cur.includes(it) && form?.length) {
-      setIsian({ item: it, fields: form, vals: Object.fromEntries(form.map((x) => [x.key, sub.data?.[x.key] ?? (x.type === 'file' ? [] : '')])) })
+      setIsian({ item: it, fields: form, vals: Object.fromEntries(form.map((x) => [x.key, x.type === 'file' ? berkasAwal(sub.data, x.key) : (sub.data?.[x.key] ?? '')])) })
       return
     }
     simpan(it)
@@ -865,7 +869,7 @@ function ChecklistProses({ f, nilai, setNilai, project, sub, user }) {
               const set = (nv) => setIsian((o) => ({ ...o, vals: { ...o.vals, [x.key]: nv } }))
               if (x.type === 'file') return (
                 <Field key={x.key} label={x.label} required={x.required} hint="Bisa lebih dari satu file · otomatis masuk File Project">
-                  <StageFiles project={project} sub={sub} list={v || []} onChange={set} onBusy={() => {}} />
+                  <StageFiles project={project} sub={sub} list={Array.isArray(v) ? v : []} onChange={set} onBusy={() => {}} />
                 </Field>
               )
               if (x.type === 'money') return (
