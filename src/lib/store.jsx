@@ -8,7 +8,7 @@ import { startHeartbeat, statusOf } from './presence.js'
 import { threadOf, myMessages, unreadByThread, pingQuota, openChatBus, PING_MAX_24H, PING_GAP_MS } from './chat.js'
 import { broadcastSignOut, markActivity, setIdleReason, simpanTujuan, ambilTujuan, tandaiMasukHari, masukHariIni, setHarianReason, hariIniAbsen } from './session.js'
 import { CHAT_ENABLED } from './flags.js'
-import { DONE, stagesOf, flowOf, isBilled, regComplete, stageLabel } from '../config/workflows.js'
+import { DONE, stagesOf, flowOf, isBilled, regComplete, stageLabel, namaLangkah } from '../config/workflows.js'
 import { docListOf } from '../config/workflows.js'
 import { setKonfigIzin, boleh } from './izin.js'
 import { barisRegistrasi, ambilNomor, kodeArah, jumlahDok, namaDefault } from './registrasi.js'
@@ -375,9 +375,9 @@ export function AppProvider({ children }) {
         const nunggu = missing.flatMap((f) => (f.type === 'checklist' ? kurangCeklist(f) : []))
           .filter((it) => missing.some((f) => f.itemRoles?.[it] && !bolehItemCeklis(user, f, it)))
         if (nunggu.length && nunggu.length === missing.flatMap((f) => (f.type === 'checklist' ? kurangCeklist(f) : [f.label])).length) {
-          throw new Error(`Menunggu Direktur menyelesaikan: ${nunggu.join(', ')}`)
+          throw new Error(`Menunggu Direktur menyelesaikan: ${nunggu.map((it) => namaLangkah(missing.find((f) => f.itemLabel?.[it]), it)).join(', ')}`)
         }
-        throw new Error('Lengkapi: ' + missing.map((f) => f.label).join(', '))
+        throw new Error('Lengkapi: ' + missing.map((f) => (f.type === 'checklist' ? `${f.label} (belum dicentang: ${kurangCeklist(f).map((it) => namaLangkah(f, it)).join(', ')})` : f.label)).join(', '))
       }
       if (stage.effect === 'pettycash_out') {
         const amt = Number(merged.apostille_cost || 0)

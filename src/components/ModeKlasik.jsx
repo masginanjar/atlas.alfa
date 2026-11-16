@@ -10,7 +10,7 @@ import { useApp } from '../lib/store.jsx'
 import { go } from '../lib/router.js'
 import { scopeByBranch, can, branchesOf, BRANCHES, invoiceLabel, isMultiBranch, activeClaim, ROLES, rolesOf, coordinatorFor, foreignLang, diKoordinasi, vendorKoordinator, bolehItemCeklis } from '../config/access.js'
 import { projectRow, statusOf } from '../lib/projectRow.js'
-import { flowOf, stageLabel, stageIndex, DONE, isVendorFlow } from '../config/workflows.js'
+import { flowOf, stageLabel, stageIndex, DONE, isVendorFlow, namaLangkah } from '../config/workflows.js'
 import { ProjectTypes } from './badges.jsx'
 import NotificationBell from './NotificationBell.jsx'
 import Avatar from './Avatar.jsx'
@@ -225,7 +225,7 @@ function CeklisRingkas({ f, v, set }) {
       <button ref={ref} type="button" onClick={() => (pos ? setPos(null) : buka())} aria-expanded={!!pos} aria-label={`${f.label || 'Ceklis'}: ${selesai} dari ${items.length}`} data-ceklis={f.key}
         className={cx('inline-flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-[12px] font-bold ring-1', penuh ? 'bg-emerald-50 text-emerald-800 ring-emerald-300' : 'bg-white text-ink ring-slate-300 hover:ring-ink')}>
         <span className="tabular-nums">{penuh ? '✓' : '☐'} {selesai}/{items.length}</span>
-        {!penuh && berikut && <span className="max-w-[110px] truncate font-semibold text-ink-soft">· {berikut}</span>}
+        {!penuh && berikut && <span className="max-w-[110px] truncate font-semibold text-ink-soft">· {namaLangkah(f, berikut)}</span>}
         <ChevronDown className="h-3.5 w-3.5 opacity-60" aria-hidden="true" />
       </button>
       {pos && createPortal(
@@ -233,7 +233,7 @@ function CeklisRingkas({ f, v, set }) {
           {items.map((it) => { const on = cur.includes(it); return (
             <button key={it} type="button" role="menuitemcheckbox" aria-checked={on} onClick={() => set({ [f.key]: on ? cur.filter((x) => x !== it) : [...cur, it] })}
               className="flex min-h-[38px] w-full items-center gap-2 rounded-lg px-2 text-left hover:bg-slate-100">
-              <span className={cx('grid h-5 w-5 place-items-center rounded text-[11px] font-bold', on ? 'bg-emerald-500 text-white' : 'ring-1 ring-slate-300')}>{on ? '✓' : ''}</span>{it}
+              <span className={cx('grid h-5 w-5 place-items-center rounded text-[11px] font-bold', on ? 'bg-emerald-500 text-white' : 'ring-1 ring-slate-300')}>{on ? '✓' : ''}</span>{namaLangkah(f, it)}
             </button>) })}
         </div>, document.body)}
     </>

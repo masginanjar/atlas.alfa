@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Plus, Trash2, Calculator, Lock } from 'lucide-react'
 import { useApp } from '../lib/store.jsx'
-import { can } from '../config/access.js'
+import { can, bolehPajakApostille } from '../config/access.js'
 import { totalBiaya } from '../config/workflows.js'
 import { Button, Input, cx } from './ui.jsx'
 import { rupiah } from '../lib/format.js'
@@ -9,12 +9,13 @@ import { rupiah } from '../lib/format.js'
 /** Biaya Apostille/Legalisasi — hanya Direktur/Direktur yang bisa mengisi; staf tidak melihat panel ini. */
 export default function BiayaPanel({ project, sub, ringkas }) {
   const { user, saveBiaya, notify } = useApp()
-  const editable = can.editBiaya(user)
+  // Pemegang izin "Bayar Pajak" (termasuk izin khusus per pengguna) juga mengisi biaya — biaya dan pajak adalah angka yang sama.
+  const editable = can.editBiaya(user) || bolehPajakApostille(user)
   const [proses, setProses] = useState(sub.data?.biaya_proses ?? '')
   const [lain, setLain] = useState(sub.data?.biaya_lain ?? [])
   const [busy, setBusy] = useState(false)
   useEffect(() => { setProses(sub.data?.biaya_proses ?? ''); setLain(sub.data?.biaya_lain ?? []) }, [sub.data?.biaya_proses, sub.data?.biaya_lain])
-  if (!can.seeBiaya(user)) return null
+  if (!can.seeBiaya(user) && !bolehPajakApostille(user)) return null
 
   const total = totalBiaya({ biaya_proses: proses, biaya_lain: lain })
   const dirty = Number(proses || 0) !== Number(sub.data?.biaya_proses || 0) || JSON.stringify(lain) !== JSON.stringify(sub.data?.biaya_lain ?? [])

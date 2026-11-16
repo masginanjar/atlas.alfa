@@ -4,7 +4,7 @@ import { Play, Check, Flag, Loader2 } from 'lucide-react'
 import { useApp } from '../lib/store.jsx'
 import { go } from '../lib/router.js'
 import { branchesOf, bolehProsesApostille, bolehItemCeklis } from '../config/access.js'
-import { flowOf, stagesOf, stageLabel } from '../config/workflows.js'
+import { flowOf, stagesOf, stageLabel, namaLangkah } from '../config/workflows.js'
 import { Button, Card, cx } from './ui.jsx'
 import { ROLES, roleLabel } from '../config/access.js'
 
@@ -20,7 +20,7 @@ import { ROLES, roleLabel } from '../config/access.js'
 // ============================================================
 
 const PIMPINAN = ['superadmin', 'direktur', 'supervisor']
-const SINGKAT = { Permohonan: 'Mohon', Ditunda: 'Tunda', Verifikasi: 'Verif', 'Bayar Pajak': 'Pajak', Cetak: 'Cetak', Scan: 'Scan' }
+const SINGKAT = { Permohonan: 'Mohon', Ditunda: 'Tunda', Verifikasi: 'Verif', 'Bayar Pajak': 'Bayar', Cetak: 'Cetak', Scan: 'Scan' }
 
 /** Info alur apostille untuk sub ini — null bila bukan sub dengan ceklist proses. */
 function infoAlur(sb, p) {
@@ -94,7 +94,7 @@ export default function CentangApostille({ p, sb, label, bulat, onPanel }) {
     if (!cur.includes(it) && f.itemForm?.[it]?.length) { if (onPanel) onPanel(); else go(`projects/${p.id}`); return } // butuh isian/berkas
     const n = cur.includes(it) ? cur.filter((x) => x !== it) : [...cur, it]
     setSibuk(it)
-    try { await patchSubData(p, sb.id, { [f.key]: n }, `${cur.includes(it) ? 'Batal centang' : 'Centang'} ${it} (${f.label})`) }
+    try { await patchSubData(p, sb.id, { [f.key]: n }, `${cur.includes(it) ? 'Batal centang' : 'Centang'} ${namaLangkah(f, it)} (${f.label})`) }
     catch (er) { notify(er.message, 'err') } finally { setSibuk('') }
   }
   if (bulat) {
@@ -107,7 +107,7 @@ export default function CentangApostille({ p, sb, label, bulat, onPanel }) {
           const on = cur.includes(it)
           return (
             <button key={it} type="button" onClick={(e) => { buka(e, it); tipTimer.current = setTimeout(() => setTip(null), 2200); toggle(e, it) }} onMouseEnter={(e) => buka(e, it)} onFocus={(e) => buka(e, it)} onBlur={tutup}
-              disabled={!!sibuk} aria-disabled={!boleh} aria-pressed={on} aria-label={`${it}${(f.opsional || []).includes(it) ? ' (opsional)' : ''}${on ? ' — sudah' : ' — belum'}`} data-centang={it}
+              disabled={!!sibuk} aria-disabled={!boleh} aria-pressed={on} aria-label={`${namaLangkah(f, it)}${(f.opsional || []).includes(it) ? ' (opsional)' : ''}${on ? ' — sudah' : ' — belum'}`} data-centang={it}
               className={cx('grid h-8 w-8 shrink-0 place-items-center rounded-full border text-[12px] font-bold transition', on ? 'border-[#141B34] bg-[#141B34] text-white' : 'border-[#D9DBE7] bg-white text-[#141B34]', boleh && !on && 'hover:border-[#4169E1]', !boleh && 'cursor-default', tip?.it === it && 'ring-2 ring-[#4169E1]/40')}>
               {sibuk === it ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : on ? '✓' : it[0]}
             </button>
@@ -121,7 +121,7 @@ export default function CentangApostille({ p, sb, label, bulat, onPanel }) {
               {items.map((it) => { const on = cur.includes(it); return (
                 <li key={it} className={cx('flex items-center gap-2 rounded-lg px-2 py-1.5 text-[13px] font-semibold', tip.it === it ? 'bg-white text-[#141B34]' : on ? 'text-white/60' : 'text-white')}>
                   <span className={cx('grid h-5 w-5 shrink-0 place-items-center rounded-full text-[11px] font-bold', on ? 'bg-emerald-400 text-[#0B2A1B]' : tip.it === it ? 'ring-2 ring-[#141B34]' : 'ring-2 ring-white/60')}>{on ? '✓' : it[0]}</span>
-                  <span className={cx('min-w-0 flex-1', on && tip.it !== it && 'line-through')}>{it}</span>
+                  <span className={cx('min-w-0 flex-1', on && tip.it !== it && 'line-through')}>{namaLangkah(f, it)}</span>
                   {(f.opsional || []).includes(it) && <span className="shrink-0 text-[10px] font-semibold opacity-70">opsional</span>}
                 </li>) })}
             </ul>
@@ -136,7 +136,7 @@ export default function CentangApostille({ p, sb, label, bulat, onPanel }) {
         const on = cur.includes(it)
         const opsi = (f.opsional || []).includes(it)
         return (
-          <button key={it} type="button" onClick={(e) => toggle(e, it)} disabled={!boleh || !!sibuk} aria-pressed={on} title={`${it}${opsi ? ' (opsional)' : ''}${f.itemForm?.[it]?.length && !on ? ' — butuh isian/berkas, buka panel kerja' : ''}`}
+          <button key={it} type="button" onClick={(e) => toggle(e, it)} disabled={!boleh || !!sibuk} aria-pressed={on} title={`${namaLangkah(f, it)}${opsi ? ' (opsional)' : ''}${f.itemForm?.[it]?.length && !on ? ' — butuh isian/berkas, buka panel kerja' : ''}`}
             data-centang={it}
             className={cx('inline-flex h-7 items-center gap-1 rounded-full px-2 text-[10.5px] font-bold ring-1 transition',
               on ? 'bg-emerald-500 text-white ring-emerald-500' : opsi ? 'bg-white text-ink-mute ring-slate-200' : 'bg-white text-ink-soft ring-slate-300',

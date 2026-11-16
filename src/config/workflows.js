@@ -149,20 +149,26 @@ const STAF_FLOW = [
       { key: 'proses_checklist', label: 'To-do proses', type: 'checklist', required: true,
         items: ['Permohonan', 'Ditunda', 'Verifikasi', 'Bayar Pajak', 'Cetak', 'Scan'],
         // Langkah yang hanya boleh dicentang peran tertentu — yang lain tidak melihatnya sama sekali.
-        itemRoles: { 'Bayar Pajak': ['superadmin', 'supervisor', 'direktur'] },
+        itemRoles: { 'Bayar Pajak': ['superadmin', 'direktur'] }, // + izin khusus per pengguna (apostille-proses.setujui)
+        // Nama yang DITAMPILKAN (kunci data tetap 'Bayar Pajak' supaya centang lama tidak hilang).
+        itemLabel: { 'Bayar Pajak': 'Bayar Apostille' },
         // Langkah yang butuh data/berkas: saat dicentang, slide isian terbuka dulu.
         itemForm: {
           // Permohonan & Ditunda: cukup dicentang, tanpa slide isian.
+          // 16 Nov 2026 (keputusan pemilik): biaya apostille = pajak. Nominal TIDAK diketik dua kali —
+          // diambil dari panel "Biaya" di atas; langkah ini tinggal melampirkan bukti bayarnya.
           'Bayar Pajak': [
-            { key: 'pajak_nominal', label: 'Nominal pajak', type: 'money' },
-            { key: 'pajak_bukti', label: 'Bukti bayar pajak', type: 'file' },
+            { key: 'pajak_bukti', label: 'Bukti bayar', type: 'file' },
           ],
           Scan: [{ key: 'scan_hasil', label: 'Upload hasil scan', type: 'file', required: true }],
         },
         // "Ditunda" bukan langkah maju, jadi tidak wajib. "Bayar Pajak" WAJIB:
         // tahap tidak bisa diselesaikan sebelum Direktur mencentangnya.
+        // Syarat sebelum langkah boleh dicentang ('' = boleh) dan nilai yang ikut disimpan otomatis.
+        itemSyarat: { 'Bayar Pajak': (d) => (totalBiaya(d) > 0 ? '' : 'Isi dulu Biaya di bagian atas panel ini, lalu tekan “Simpan biaya”.') },
+        itemAuto: { 'Bayar Pajak': (d) => ({ pajak_nominal: totalBiaya(d) }) },
+        itemInfo: { 'Bayar Pajak': (d) => `Nominal dibayar: Rp ${totalBiaya(d).toLocaleString('id-ID')} — diambil dari Biaya apostille di atas (termasuk biaya lain). Ubah angkanya di sana bila perlu.` },
         opsional: ['Ditunda'] },
-      { key: 'bukti_transfer', label: 'Upload Bukti Transfer (opsional)', type: 'file' },
       { key: 'hasil_akhir', label: 'Upload Hasil Apostille / Legalisasi', type: 'file', required: true },
     ],
     onAdvance: (s, u) => ({ finished_by: u.id, finished_name: u.name, finished_at: new Date().toISOString() }),
@@ -171,6 +177,8 @@ const STAF_FLOW = [
 /** Status sederhana untuk dashboard Staf Apostille. */
 export const stafStatus = (stage) => (stage === DONE ? 'Selesai' : stage === 'diproses' ? 'Sedang Diproses' : 'Belum Diproses')
 /** Total biaya apostille/legalisasi = biaya proses + biaya lain. */
+/** Nama langkah ceklis untuk ditampilkan (bisa berbeda dari kunci datanya). */
+export const namaLangkah = (f, it) => f?.itemLabel?.[it] || it
 export const totalBiaya = (d = {}) => (Number(d.biaya_proses) || 0) + (d.biaya_lain || []).reduce((a, x) => a + (Number(x.nominal) || 0), 0)
 
 export const CATEGORIES = {

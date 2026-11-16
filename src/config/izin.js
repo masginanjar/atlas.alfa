@@ -113,7 +113,7 @@ export const MODUL = [
     // 15 Nov 2026 (keputusan pemilik): Staf Apostille/Legalisasi membuat surat kuasa dari baris pekerjaannya → lihat, tambah, ubah, cetak. Menu, hapus, atur tetap hanya Superadmin.
     // 16 Nov 2026 (keputusan pemilik): mengerjakan tahap Apostille/Legalisasi bisa diberikan PER PENGGUNA (mis. satu CS tertentu) lewat pengecualian.
     // status = Mulai Proses, centang to-do, unggah hasil, Selesai · setujui = mencentang langkah "Bayar Pajak".
-    f('apostille-proses', 'Proses Apostille / Legalisasi', ['status', 'setujui'], { status: ['superadmin', 'supervisor', 'staf_apostille'], setujui: ['superadmin', 'supervisor', 'direktur'] }),
+    f('apostille-proses', 'Proses Apostille / Legalisasi', ['status', 'setujui'], { status: ['superadmin', 'supervisor', 'staf_apostille'], setujui: ['superadmin', 'direktur'] }),
     f('surat-kuasa', 'Surat Kuasa', ['menu', 'lihat', 'tambah', 'ubah', 'hapus', 'cetak', 'atur'], { lihat: ['staf_apostille'], tambah: ['staf_apostille'], ubah: ['staf_apostille'], cetak: ['staf_apostille'] }),
   ] },
   { id: 'keuangan', label: 'Keuangan', fitur: [

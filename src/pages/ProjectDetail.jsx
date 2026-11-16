@@ -19,7 +19,7 @@ import { printBlob } from '../lib/printing.js'
 import AffidavitCetak from '../components/AffidavitCetak.jsx'
 import { perluAffidavit } from '../lib/affidavit.js'
 import { ambilNomor, kodeArah } from '../lib/registrasi.js'
-import { CATEGORIES, DONE, stageIndex, stagesOf, progressOf, flowOf, sumberLabel, isVendorFlow, recommendFund, docListOf, VENDOR_PAID_STAGES } from '../config/workflows.js'
+import { CATEGORIES, DONE, stageIndex, stagesOf, progressOf, flowOf, sumberLabel, isVendorFlow, recommendFund, docListOf, VENDOR_PAID_STAGES, namaLangkah } from '../config/workflows.js'
 import { SumberDanaPicker } from '../components/Pengajuan.jsx'
 import { ProjectTypes, PrintBadge } from '../components/badges.jsx'
 import { SUB_TYPES, points } from '../config/subtypes.js'
@@ -497,7 +497,7 @@ function Value({ f, v, people, d = {}, canFund }) {
   if (f.type === 'money') return <p className="text-sm font-semibold">{rupiah(v)}</p>
   if (f.type === 'date') return <p className="text-sm font-semibold">{tgl(v)}</p>
   if (f.type === 'file') return <div className="space-y-0.5">{fieldFiles(d, f.key).map((x, i) => <FileChip key={i} file={x} />)}</div>
-  if (f.type === 'checklist') return <p className="text-sm">{(f.items || []).map((it) => <span key={it} className={cx('mr-1.5 inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-semibold ring-1', (Array.isArray(v) ? v : []).includes(it) ? 'bg-emerald-50 text-emerald-700 ring-emerald-200' : 'bg-slate-50 text-ink-mute ring-slate-200')}>{(Array.isArray(v) ? v : []).includes(it) ? '✔' : '○'} {it}</span>)}</p>
+  if (f.type === 'checklist') return <p className="text-sm">{(f.items || []).map((it) => <span key={it} className={cx('mr-1.5 inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-semibold ring-1', (Array.isArray(v) ? v : []).includes(it) ? 'bg-emerald-50 text-emerald-700 ring-emerald-200' : 'bg-slate-50 text-ink-mute ring-slate-200')}>{(Array.isArray(v) ? v : []).includes(it) ? '✔' : '○'} {namaLangkah(f, it)}</span>)}</p>
   if (f.type === 'reg_numbers') return <div className="space-y-0.5">{(Array.isArray(v) ? v : []).map((x, i) => <p key={i} className="text-sm"><span className="text-ink-mute">{i + 1}.</span> <span className="font-mono font-semibold">{x || '—'}</span></p>)}</div>
   return <p className="text-sm">{v}</p>
 }
@@ -795,11 +795,13 @@ function ChecklistProses({ f, nilai, setNilai, project, sub, user }) {
   const simpan = async (it, patch = {}) => {
     const n = cur.includes(it) ? cur.filter((x) => x !== it) : [...cur, it]
     setNilai(n)
-    try { await patchSubData(project, sub.id, { [f.key]: n, ...patch }, `${cur.includes(it) ? 'Batal centang' : 'Centang'} ${it} (${f.label})`) }
+    try { await patchSubData(project, sub.id, { [f.key]: n, ...patch }, `${cur.includes(it) ? 'Batal centang' : 'Centang'} ${namaLangkah(f, it)} (${f.label})`) }
     catch (e) { notify(e.message, 'err') }
   }
   const tick = (it) => {
     const form = f.itemForm?.[it]
+    const syarat = !cur.includes(it) && f.itemSyarat?.[it]?.(sub.data || {})
+    if (syarat) { notify(syarat, 'err'); return }
     if (!cur.includes(it) && form?.length) {
       setIsian({ item: it, fields: form, vals: Object.fromEntries(form.map((x) => [x.key, sub.data?.[x.key] ?? (x.type === 'file' ? [] : '')])) })
       return
@@ -816,6 +818,7 @@ function ChecklistProses({ f, nilai, setNilai, project, sub, user }) {
         if (x.type === 'file') { patch[x.key] = (v || [])[0] || ''; patch[`${x.key}_list`] = v || [] }
         else patch[x.key] = x.type === 'money' ? Number(v) || '' : v
       }
+      Object.assign(patch, f.itemAuto?.[isian.item]?.(sub.data || {}) || {})
       await simpan(isian.item, patch)
       setIsian(null)
     } finally { setSibuk(false) }
@@ -831,9 +834,9 @@ function ChecklistProses({ f, nilai, setNilai, project, sub, user }) {
           <li key={it}>
             <label className={cx('flex min-h-[44px] cursor-pointer items-center gap-2 rounded-xl px-3 py-2 ring-1 transition md:min-h-0',
               on ? 'bg-emerald-50 ring-emerald-300' : 'bg-white ring-slate-200 hover:ring-brand')}>
-              <input type="checkbox" checked={on} onChange={() => tick(it)} className="h-4 w-4 rounded border-slate-300 text-brand" aria-label={it} data-ceklist-item={it} />
+              <input type="checkbox" checked={on} onChange={() => tick(it)} className="h-4 w-4 rounded border-slate-300 text-brand" aria-label={namaLangkah(f, it)} data-ceklist-item={it} />
               <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-slate-100 text-[10px] font-bold text-ink-soft">{i + 1}</span>
-              <span className={cx('min-w-0 flex-1 text-sm font-semibold', on ? 'text-emerald-800 line-through decoration-emerald-400' : 'text-ink')}>{it}
+              <span className={cx('min-w-0 flex-1 text-sm font-semibold', on ? 'text-emerald-800 line-through decoration-emerald-400' : 'text-ink')}>{namaLangkah(f, it)}
                 {opsional.includes(it) && <span className="ml-1 text-[10px] font-normal text-ink-mute">(opsional)</span>}</span>
               {perluIsi && <Upload className="h-3.5 w-3.5 shrink-0 text-ink-mute" title="Butuh isian / berkas" />}
             </label>
@@ -844,18 +847,19 @@ function ChecklistProses({ f, nilai, setNilai, project, sub, user }) {
       {punyaOrangLain.length > 0 && (
         <p className="mt-2 flex items-start gap-2 rounded-xl bg-amber-50 px-3 py-2 text-[11px] text-amber-900 ring-1 ring-amber-200" data-nunggu-peran>
           <Lock className="mt-px h-3.5 w-3.5 shrink-0" />
-          <span><b>{punyaOrangLain.length} langkah lagi dikerjakan Direktur</b> ({punyaOrangLain.join(', ')}).
+          <span><b>{punyaOrangLain.length} langkah lagi dikerjakan Direktur</b> ({punyaOrangLain.map((it) => namaLangkah(f, it)).join(', ')}).
             Tahap ini baru bisa diselesaikan setelah itu dicentang — tidak perlu Anda kerjakan.</span>
         </p>
       )}
 
       {isian && (
-        <Sheet open side onClose={() => setIsian(null)} title={isian.item} subtitle={`${invoiceLabel(project.invoice_no)} · ${sub.title}`}
+        <Sheet open side onClose={() => setIsian(null)} title={namaLangkah(f, isian.item)} subtitle={`${invoiceLabel(project.invoice_no)} · ${sub.title}`}
           footer={<>
             <Button variant="outline" className="flex-1 sm:flex-none sm:px-6" onClick={() => setIsian(null)}>Batal</Button>
             <Button className="flex-[2]" variant="dark" loading={sibuk} disabled={kurang.length > 0} onClick={kirimIsian} data-aksi="simpan-ceklist">Simpan &amp; Centang</Button>
           </>}>
           <div className="space-y-3" data-slide-ceklist={isian.item}>
+            {f.itemInfo?.[isian.item] && <p className="rounded-xl bg-slate-50 px-3 py-2.5 text-[13px] font-semibold text-ink ring-1 ring-slate-200" data-info-langkah>{f.itemInfo[isian.item](sub.data || {})}</p>}
             {isian.fields.map((x) => {
               const v = isian.vals[x.key]
               const set = (nv) => setIsian((o) => ({ ...o, vals: { ...o.vals, [x.key]: nv } }))
