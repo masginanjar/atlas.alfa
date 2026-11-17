@@ -76,18 +76,18 @@ async function bacaPejabat(kunci: string, model: string, b64: string, mime: stri
 }
 /** Cari alamat KANTOR instansi (Gemini + Google Search). Masukan hanya nama instansi & lokasi. Sumber = tautan dari hasil pencarian (groundingMetadata), bukan karangan model. */
 async function cariAlamat(kunci: string, model: string, instansi: string, lokasi: string): Promise<Hasil> {
-  const prompt = "Cari di web alamat KANTOR resmi instansi Indonesia berikut. Utamakan situs resmi instansi itu, situs pemerintah (.go.id), atau institusi pendidikan (.ac.id / .sch.id). " +
+  let prompt = "WAJIB memakai Google Search untuk permintaan ini; jangan menjawab dari ingatan. Cari di web alamat KANTOR resmi instansi Indonesia berikut. Utamakan situs resmi instansi itu, situs pemerintah (.go.id), atau institusi pendidikan (.ac.id / .sch.id). " +
     "Yang dicari alamat kantor instansi, BUKAN alamat rumah atau data pribadi pejabat. Jangan mengarang: bila tidak menemukan alamat dengan yakin, kembalikan daftar kosong. " +
     "Bila ada beberapa instansi/cabang/kampus bernama serupa yang cocok, berikan masing-masing (maksimal 4) supaya bisa dipilih. " +
     `Instansi: ${instansi}. ` + (lokasi ? `Lokasi yang tertulis di dokumen: ${lokasi}. ` : "") +
     "Jawab HANYA dengan JSON tanpa teks lain, bentuk: {\"pilihan\":[{\"nama\":\"nama instansi/cabang\",\"alamat\":\"alamat lengkap kantor termasuk kota dan kode pos bila ada\"}]}";
-  let terakhir = "";
+  let terakhir = ""; const lalu = { masuk: 0, keluar: 0 };
   for (let i = 0; i < 2; i++) {
     let r: Response;
     try { r = await fetch(urlModel(model), { method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": kunci }, body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: prompt }] }], tools: [{ google_search: {} }], generationConfig: { temperature: 0, maxOutputTokens: 10000 } }), signal: AbortSignal.timeout(80000) }); }
     catch (_) { terakhir = "Pencarian tidak menjawab dalam 80 detik"; break; }
     // deno-lint-ignore no-explicit-any
-    const j: any = await r.json().catch(() => ({})); const pakai = tokenDari(j);
+    const j: any = await r.json().catch(() => ({})); const t = tokenDari(j); const pakai = { masuk: t.masuk + lalu.masuk, keluar: t.keluar + lalu.keluar };
     if (r.ok && !j.error) {
       const c = j?.candidates?.[0]; const teks = (c?.content?.parts ?? []).map((p: { text?: string }) => p.text ?? "").join("");
       // deno-lint-ignore no-explicit-any
@@ -97,7 +97,9 @@ async function cariAlamat(kunci: string, model: string, instansi: string, lokasi
       let pilihan: any[] = [];
       try { pilihan = JSON.parse(m ? m[0] : "{}").pilihan ?? []; } catch (_) { return { ok: false, alasan: "Jawaban pencarian tidak bisa dibaca", pakai }; }
       pilihan = pilihan.filter((x) => x && typeof x.alamat === "string" && x.alamat.trim()).slice(0, 4).map((x) => ({ nama: String(x.nama ?? "").slice(0, 200), alamat: String(x.alamat).slice(0, 400) }));
-      return { ok: true, data: { pilihan, sumber, dicari_at: new Date().toISOString() }, pakai };
+      // Tanpa tautan sumber berarti model tidak benar-benar mencari → ulang sekali dengan perintah lebih tegas; bila tetap kosong, ditandai supaya layar memberi peringatan.
+      if (!sumber.length && pilihan.length && i === 0) { lalu.masuk = pakai.masuk; lalu.keluar = pakai.keluar; prompt += " PENTING: jalankan Google Search sekarang dan jawab hanya berdasarkan hasil pencarian itu."; continue; }
+      return { ok: true, data: { pilihan, sumber, tanpa_sumber: !sumber.length, dicari_at: new Date().toISOString() }, pakai };
     }
     const g = galat(r.status, j, model, pakai); if (g) return g;
     terakhir = r.status === 429 ? "Batas pemakaian Gemini tercapai — coba lagi sebentar" : `Gemini sedang bermasalah (${r.status})`;
