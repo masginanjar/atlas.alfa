@@ -7,7 +7,7 @@
 //  • DEMO: tidak ada email yang benar-benar dikirim — ditandai jelas sebagai simulasi.
 //  • Izin: email-otorisasi.tambah (kirim), email-otorisasi.atur (nyalakan/matikan mode tes).
 // ============================================================
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useSyncExternalStore } from 'react'
 import { Mail, Loader2, Paperclip, CheckCircle2, FlaskConical, Send, X, Plus, Upload, Pencil } from 'lucide-react'
 import { useApp } from '../lib/store.jsx'
 import { boleh } from '../lib/izin.js'
@@ -63,6 +63,15 @@ async function panggil(aksi, body = {}) {
   } catch { return { ok: false, alasan: 'Koneksi ke server gagal — periksa internet' } }
 }
 
+// ---- Pengiriman di latar ----
+// Popup langsung ditutup saat "Kirim" ditekan; email dikirim di belakang layar. Status per project disimpan di sini (di luar komponen)
+// supaya tetap jalan walau pengguna pindah halaman. Yang ditampilkan saat itu "Sedang dikirim", BUKAN "terkirim" —
+// "Terkirim" baru muncul setelah server mengonfirmasi; bila gagal ditandai jelas dan bisa dikirim ulang.
+const proses = new Map(); const pendengar = new Set()
+const setProses = (id, v) => { if (v) proses.set(id, v); else proses.delete(id); pendengar.forEach((f) => f()) }
+const langganan = (f) => { pendengar.add(f); return () => pendengar.delete(f) }
+if (typeof window !== 'undefined') window.addEventListener('beforeunload', (e) => { if ([...proses.values()].some((v) => v.status === 'kirim')) { e.preventDefault(); e.returnValue = '' } }) // jangan tutup tab saat email masih dikirim
+
 export default function EmailOtorisasi({ project, className }) {
   const { user, data, save, notify, ask } = useApp()
   const [open, setOpen] = useState(false)
@@ -83,6 +92,7 @@ export default function EmailOtorisasi({ project, className }) {
   // file project lain yang belum ada di daftar lampiran (bisa ditambahkan)
   const lainnya = useMemo(() => { const ada = new Set(berkas.map((f) => f._id)); return open ? collect(project, { user }).map((f) => ({ ...f, _id: f.drive_id || `${f.name}:${f.size}`, _jenis: 'File project' })).filter((f) => !ada.has(f._id)) : [] }, [open, project, user, berkas])
   const riwayat = project?.email_oto || []
+  const latar = useSyncExternalStore(langganan, () => proses.get(project?.id))
   if (!boleh(user, 'email-otorisasi.tambah') || (!subs.length && !riwayat.length)) return null
 
   const penerima = info?.penerima || []
@@ -122,19 +132,27 @@ export default function EmailOtorisasi({ project, className }) {
     if (total > MAKS_BYTE) return salah(`Lampiran ${kb(total)} — melebihi batas 18 MB. Kurangi lampiran.`)
     const tes = !!info?.mode_tes
     if (!tes && riwayat.some((x) => !x.tes && !x.simulasi) && !(await ask('Invoice ini sudah pernah dikirim ke otorisator. Kirim email lagi?'))) return
-    setSibuk('kirim')
-    try {
-      const lampiran = []
-      for (const f of terpilih) { const blob = f._blob || await drive.blob(f); lampiran.push({ nama: f.name, mime: blob.type || 'application/octet-stream', b64: await keB64(blob) }) }
-      let r = { ok: true, simulasi: true }
-      if (LIVE) r = await panggil('kirim', { project_id: project.id, oto_id: oto, subjek: judul, isi: isiPakai, lampiran })
-      if (!r.ok) { salah(r.alasan || 'Email gagal dikirim'); return }
-      const catat = { at: new Date().toISOString(), by: user.id, by_name: user.name, oto_id: oto, oto_nama: penerima.find((x) => x.id === oto)?.nama || '', tes: LIVE ? !!r.tes : tes, simulasi: !LIVE, subjek: judul, berkas: terpilih.map((f) => f.name), sub_ids: subs.map((s) => s.id) }
-      try { await save('projects', { id: project.id, email_oto: [...riwayat, catat].slice(-20) }) } catch { notify('Email terkirim, tetapi catatannya gagal disimpan di project', 'err') }
-      const teks = !LIVE ? 'Simulasi selesai' : r.tes ? 'Email TES terkirim' : 'Email terkirim'
-      const ket = !LIVE ? 'Demo: email TIDAK benar-benar dikirim. Di aplikasi live, email sungguhan terkirim dari sini.' : r.tes ? `Terkirim ke ${info?.tes_ke || 'alamat tes'} — bukan ke otorisator (mode tes).` : `Terkirim ke ${catat.oto_nama || 'otorisator'}. Balasannya masuk ke kotak masuk Gmail pengirim.`
-      setTerkirim({ teks, ket, judul: (LIVE && r.tes ? '[TES] ' : '') + judul, n: terpilih.length }); notify(teks)
-    } catch (e) { salah(e.message || 'Gagal menyiapkan lampiran') } finally { setSibuk('') }
+    // Tutup popup sekarang; kirim di latar.
+    const tugas = { id: project.id, inv: invoiceLabel(project.invoice_no), oto, subjek: judul, isi: isiPakai, berkas: terpilih, tes, oto_nama: penerima.find((x) => x.id === oto)?.nama || '', sub_ids: subs.map((s) => s.id), lama: riwayat }
+    setOpen(false); setProses(tugas.id, { status: 'kirim', n: terpilih.length })
+    notify(`Email ${tugas.inv} sedang dikirim di latar — silakan lanjut bekerja`)
+    ;(async () => {
+      try {
+        const lampiran = []
+        for (const f of tugas.berkas) { const blob = f._blob || await drive.blob(f); lampiran.push({ nama: f.name, mime: blob.type || 'application/octet-stream', b64: await keB64(blob) }) }
+        let r = { ok: true, simulasi: true }
+        if (LIVE) r = await panggil('kirim', { project_id: tugas.id, oto_id: tugas.oto, subjek: tugas.subjek, isi: tugas.isi, lampiran })
+        else await new Promise((ok) => setTimeout(ok, 1500))
+        if (!r.ok) throw new Error(r.alasan || 'Email gagal dikirim')
+        const catat = { at: new Date().toISOString(), by: user.id, by_name: user.name, oto_id: tugas.oto, oto_nama: tugas.oto_nama, tes: LIVE ? !!r.tes : tugas.tes, simulasi: !LIVE, subjek: tugas.subjek, berkas: tugas.berkas.map((f) => f.name), sub_ids: tugas.sub_ids }
+        try { await save('projects', { id: tugas.id, email_oto: [...tugas.lama, catat].slice(-20) }) } catch { notify(`Email ${tugas.inv} terkirim, tetapi catatannya gagal disimpan di project`, 'err') }
+        setProses(tugas.id, null)
+        notify(!LIVE ? `Demo: simulasi kirim ${tugas.inv} selesai (tidak ada email sungguhan)` : r.tes ? `Email TES ${tugas.inv} terkirim ke alamat tes` : `Email ${tugas.inv} terkirim ke ${tugas.oto_nama || 'otorisator'}`)
+      } catch (e) {
+        setProses(tugas.id, { status: 'gagal', alasan: e.message || 'Email gagal dikirim' })
+        notify(`Email ${tugas.inv} GAGAL terkirim: ${e.message || 'coba lagi'}`, 'err')
+      }
+    })()
   }
   const tambahFile = (f) => { setTambahan((v) => [...v, f]); setPilih((v) => new Set(v).add(f._id)) }
   const unggah = (files) => { for (const x of files) { const id = `lokal:${x.name}:${x.size}:${x.lastModified}`; if (!berkas.some((f) => f._id === id)) tambahFile({ _id: id, name: x.name, size: x.size, _jenis: 'Dari perangkat', _blob: x }) } }
@@ -148,11 +166,13 @@ export default function EmailOtorisasi({ project, className }) {
     <section className={cx('flex flex-wrap items-center gap-2', className || 'rounded-xl bg-white p-3 ring-1 ring-slate-200')} onClick={(e) => e.stopPropagation()} data-email-oto>
       <span className="flex min-w-0 flex-[1_1_220px] flex-col gap-0.5">
         <strong className="flex items-center gap-1.5 text-[13px] text-ink"><Mail className="h-4 w-4 text-brand" aria-hidden="true" />Email otorisasi</strong>
-        <span className="text-xs text-ink-mute" data-email-oto-status>{akhir
+        {latar?.status === 'kirim' && <span className="flex items-center gap-1.5 text-xs font-semibold text-[#0B57D0]" role="status" data-email-oto-latar="kirim"><Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />Sedang mengirim email ({latar.n} lampiran)… boleh lanjut bekerja, jangan tutup tab ATLAS.</span>}
+        {latar?.status === 'gagal' && <span className="text-xs font-semibold text-rose-700" role="alert" data-email-oto-latar="gagal">Email GAGAL terkirim: {latar.alasan}</span>}
+        <span className={cx('text-xs text-ink-mute', latar && 'hidden')} data-email-oto-status>{akhir
           ? <>{akhir.simulasi ? 'Simulasi demo' : akhir.tes ? 'Email TES terkirim' : 'Terkirim'} {new Date(akhir.at).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })} · oleh {akhir.by_name}{akhir.oto_nama ? ` · untuk ${akhir.oto_nama}` : ''} · {akhir.berkas?.length || 0} lampiran</>
           : 'Untuk otorisator yang bekerja lewat email: kirim dokumen sumber + hasil proofread, 1 invoice 1 email.'}</span>
       </span>
-      {subs.length > 0 && <button type="button" onClick={buka} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg bg-brand px-3 text-[13px] font-semibold text-white hover:opacity-90 max-md:min-h-11" data-aksi="buka-email-oto"><Mail className="h-4 w-4" aria-hidden="true" />{akhir ? 'Kirim lagi' : 'Kirim email ke otorisator'}</button>}
+      {subs.length > 0 && <button type="button" onClick={() => { if (latar?.status === 'gagal') setProses(project.id, null); buka() }} disabled={latar?.status === 'kirim'} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg bg-brand px-3 text-[13px] font-semibold text-white hover:opacity-90 disabled:opacity-50 max-md:min-h-11" data-aksi="buka-email-oto"><Mail className="h-4 w-4" aria-hidden="true" />{latar?.status === 'gagal' ? 'Coba kirim lagi' : akhir ? 'Kirim lagi' : 'Kirim email ke otorisator'}</button>}
 
       <Sheet open={open} onClose={() => !sibuk && setOpen(false)} title={terkirim ? terkirim.teks : 'Pesan baru'} subtitle={`Email otorisasi · ${invoiceLabel(project.invoice_no)} · 1 invoice 1 email`} wide atas
         footer={terkirim ? <button type="button" onClick={() => setOpen(false)} className="ml-auto min-h-10 rounded-full bg-[#0B57D0] px-6 text-sm font-semibold text-white max-md:min-h-11" data-aksi="tutup-email-oto">Selesai</button> : <div className="flex w-full flex-wrap items-center gap-2">
