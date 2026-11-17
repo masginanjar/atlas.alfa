@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import SalinChatOrder from '../components/SalinChatOrder.jsx'
+import EmailOtorisasi from '../components/EmailOtorisasi.jsx'
 import { subTerlihat } from '../lib/dokumenAL.js'
 import { Share2, ArrowLeft, Pencil, Trash2, Upload, FileText, Download, Check, Lock, History, CalendarClock, Loader2, UserRound, Truck, Printer, Hand, Unlock, Eye, FolderOpen, FastForward, StickyNote, FileSignature, IdCard } from 'lucide-react'
 import { useApp } from '../lib/store.jsx'
@@ -297,6 +298,7 @@ function DetailCanvas({ project, focusSub, tab, setTab, del, setEditing, setShar
       </section>
 
       <SalinChatOrder project={project} />
+      <EmailOtorisasi project={project} />
 
       <section aria-label="Bagian lain project" className="flex flex-col gap-3.5 rounded-2xl border border-[#DADDE8] bg-white px-4 pb-4 pt-3.5 dark:border-white/10 dark:bg-white/5" data-tab-canvas>
         <TabDetailProject project={project} tab={tab} setTab={setTab} />
@@ -625,7 +627,10 @@ function StagePanelIsi({ project, sub, stage, ringkas }) {
   // Otorisasi dilanjutkan oleh selain otorisator → wajib pilih otorisatornya (prestasi dicatat atas nama dia)
   const perluAtasNama = stage.key === 'otorisasi' && user.role !== 'otorisator'
   const daftarOto = perluAtasNama ? data.users.filter((u) => u.role === 'otorisator' && u.active !== false) : []
+  // Dokumen yang dikirim lewat Email Otorisasi → otorisator tujuan email jadi pilihan awal (tetap bisa diganti)
+  const otoEmail = perluAtasNama ? [...(project.email_oto || [])].reverse().find((x) => (x.sub_ids || []).includes(sub.id))?.oto_id || '' : ''
   const [atasNama, setAtasNama] = useState(() => (daftarOto.some((u) => u.id === activeClaim(sub)?.by) ? activeClaim(sub).by : ''))
+  useEffect(() => { if (otoEmail && !atasNama) setAtasNama(otoEmail) }, [otoEmail]) // eslint-disable-line react-hooks/exhaustive-deps
   const overriding = canOverride && !isOwnerRole && (overrideMode || normal)
   const allowed = normal || (canOverride && overrideMode)
   const needClaim = stage.claimable && user.role !== 'superadmin' && !overriding && (!claim || claim.by !== user.id)

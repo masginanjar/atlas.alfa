@@ -134,6 +134,18 @@ function migrate(m) {
     }
     m.pesan_acc_v1 = true; changed = true
   }
+  // Email Otorisasi (17 Nov 2026): satu contoh dokumen Belanda di tahap otorisasi, lengkap dengan berkas sumber & hasil proofread SINTETIS, supaya alurnya bisa dicoba di demo
+  if (!m.email_oto_demo_v1) {
+    const pr = (m.projects || []).find((x) => !x.cancelled && !x.archived && (x.sub_projects || []).some((sb) => sb.stage === 'otorisasi'))
+    const sb = pr?.sub_projects.find((x) => x.stage === 'otorisasi')
+    if (sb) {
+      const url = 'data:text/plain;base64,' + btoa('Berkas contoh sintetis untuk demo Email Otorisasi (bukan dokumen pelanggan).')
+      const f = (id, name) => ({ id, name, size: 78, url, drive_id: null, uploaded_at: new Date().toISOString() })
+      sb.lang_from = 'Belanda'; sb.lang_to = 'Indonesia'
+      sb.data = { ...(sb.data || {}), dokumen_sumber: null, dokumen_sumber_list: [f('demo-eo-s', 'Contoh dokumen sumber (sintetis).txt')], hasil_proofread: null, hasil_proofread_list: [f('demo-eo-p', 'NED-IND Contoh hasil proofread (sintetis).txt')] }
+    }
+    m.email_oto_demo_v1 = true; changed = true
+  }
   // Laporan Otorisasi (17 Nov 2026): akun Muhammad Arifin boleh melihat rekap semua otorisator
   if (!m.oto_lihat_semua_v1) {
     const ar = (m.users || []).find((u) => u.role === 'otorisator' && /arifin/i.test(u.name))

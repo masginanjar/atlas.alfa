@@ -123,6 +123,7 @@ export const MODUL = [
     // 16 Nov 2026 (keputusan pemilik): order ke biro rekanan (mis. Indotrans) boleh oleh pimpinan DAN CS.
     f('biro-order', 'Order ke biro rekanan (mis. Indotrans)', ['tambah'], { tambah: ['superadmin', 'supervisor', 'direktur', 'admin_pusat', 'cs'] }),
     f('chat-pelanggan', 'Copy chat WhatsApp ke pelanggan (Draft · Selesai · Review)', ['lihat'], { lihat: ['superadmin', 'supervisor', 'direktur', 'admin_pusat', 'cs'] }),
+    f('email-otorisasi', 'Email otorisasi — kirim dokumen sumber & hasil proofread ke otorisator lewat email (1 invoice 1 email)', ['tambah', 'atur'], { tambah: ['superadmin', 'admin_pusat'] }),
     f('pesan-siap', 'Pesan notifikasi Ready to proof / Ready to oto / Sudah diotorisasi (copy chat WhatsApp)', ['tambah', 'massal'], { tambah: ['superadmin', 'penerjemah', 'proofreader', 'otorisator', 'admin_pusat'], massal: ['superadmin', 'admin_pusat'] }),
     f('vendor-order', 'Order ke vendor (bahasa selain Indonesia · Inggris · Belanda)', ['tambah'], { tambah: ['superadmin', 'supervisor', 'direktur', 'admin_pusat', 'cs'] }),
     f('apostille-proses', 'Proses Apostille / Legalisasi', ['status', 'setujui'], { status: ['superadmin', 'supervisor', 'staf_apostille'], setujui: ['superadmin', 'direktur'] }),
