@@ -83,18 +83,28 @@ function CariMelebar({ c, bawaan }) {
   const hapus = () => {
     const el = input(); if (!el) return
     const set = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set
-    set.call(el, ''); el.dispatchEvent(new Event('input', { bubbles: true })); setIsi(''); el.focus()
+    set.call(el, ''); el.dispatchEvent(new Event('input', { bubbles: true })); setIsi(''); if (buka) el.focus()
   }
   // Halaman tanpa pencarian sendiri → ikon membuka pencarian umum (Ctrl K)
   if (!c.klaim.cari) return <>{bawaan}<div ref={c.pasang.cari} hidden data-slot="cari" /></>
   return (
-    <div ref={bungkus} className="h-11 w-11 shrink-0 md:relative md:h-8 md:w-8" data-cari-melebar={buka ? 'buka' : 'tutup'}
->
-      <button ref={tombol} type="button" onClick={() => setBuka(true)} aria-expanded={buka} aria-label={isi ? `${ph} — aktif: ${isi}` : ph} title={isi ? `Pencarian aktif: “${isi}”` : ph} data-tombol-cari
-        className={cx(IKON_ATAS, buka && 'invisible')}>
-        <Search className="h-[17px] w-[17px]" aria-hidden="true" />
-        {isi && <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-brand ring-2 ring-[#F3F4F9] dark:ring-[#0f1424]" aria-hidden="true" />}
-      </button>
+    <div ref={bungkus} className={cx('h-11 shrink-0 md:relative md:h-8', isi && !buka ? 'w-auto' : 'w-11 md:w-8')} data-cari-melebar={buka ? 'buka' : 'tutup'} data-cari-aktif={isi ? 'ya' : 'tidak'}>
+      {isi && !buka ? (
+        /* Ada kata pencarian tetapi panel tertutup → tampil MELEBAR dengan kata pencariannya, supaya jelas daftar sedang disaring (bukan sekadar titik kecil). */
+        <span className="flex h-full items-center rounded-[10px] bg-[#FFF4D6] ring-1 ring-[#E9C46A] dark:bg-amber-400/15 dark:ring-amber-300/40" data-cari-terpakai>
+          <button ref={tombol} type="button" onClick={() => setBuka(true)} aria-expanded={false} aria-label={`${ph} — aktif: ${isi}. Ubah pencarian`} title={`Pencarian aktif: “${isi}” — klik untuk mengubah`} data-tombol-cari
+            className="flex h-full min-w-0 items-center gap-1.5 rounded-l-[10px] pl-2.5 pr-1 max-[360px]:w-11 max-[360px]:justify-center max-[360px]:rounded-[10px] max-[360px]:p-0 text-[13px] font-semibold text-[#6B4600] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand dark:text-amber-100">
+            <Search className="h-[16px] w-[16px] shrink-0" aria-hidden="true" /><span className="max-w-[40px] truncate max-[360px]:hidden min-[420px]:max-w-[90px] md:max-w-[200px]">{isi}</span>
+          </button>
+          <button type="button" onClick={hapus} aria-label="Hapus kata pencarian" title="Hapus pencarian — tampilkan semua lagi" data-aksi="hapus-cari"
+            className="grid h-full w-11 shrink-0 place-items-center rounded-r-[10px] text-[#6B4600] hover:bg-[#FBE7B0] max-[360px]:hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand md:w-8 dark:text-amber-100 dark:hover:bg-amber-400/25"><X className="h-4 w-4" aria-hidden="true" /></button>
+        </span>
+      ) : (
+        <button ref={tombol} type="button" onClick={() => setBuka(true)} aria-expanded={buka} aria-label={ph} title={ph} data-tombol-cari
+          className={cx(IKON_ATAS, buka && 'invisible')}>
+          <Search className="h-[17px] w-[17px]" aria-hidden="true" />
+        </button>
+      )}
       {/* panel melebar ke KIRI dari posisi ikon; menimpa (bukan mendorong) kontrol lain */}
       <div ref={panel} role="search" aria-hidden={!buka}
         className={cx('absolute right-0 top-0 z-30 flex h-full items-center gap-1 overflow-hidden rounded-[10px] transition-[width,opacity] duration-200 ease-out motion-reduce:transition-none',

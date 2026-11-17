@@ -43,6 +43,8 @@ const Affidavit = lazy(() => import('./pages/Affidavit.jsx'))
 const Register = lazy(() => import('./pages/Register.jsx'))
 const LaporanOtorisasi = lazy(() => import('./pages/LaporanOtorisasi.jsx'))
 const InboxOtorisasi = lazy(() => import('./pages/InboxOtorisasi.jsx'))
+import InboxOtoLatar from './components/InboxOtoLatar.jsx'
+import { useInboxOto, jumlahInboxOto } from './lib/inboxOto.js'
 const Jadwal = lazy(() => import('./pages/Jadwal.jsx'))
 const ProjectForm = lazy(() => import('./pages/ProjectForm.jsx'))
 const Pelanggan = lazy(() => import('./pages/Pelanggan.jsx'))
@@ -119,7 +121,7 @@ const MENU = [
     { key: 'penugasan', label: 'Penugasan', icon: Users, show: canSeePenugasan },
     { key: 'register', label: 'Nomor Register', icon: Hash, show: canSeeRegister },
     { key: 'otorisasi', label: 'Laporan Otorisasi', icon: ClipboardList, show: canSeeLaporanOto },
-    { key: 'inbox-otorisasi', label: 'Inbox Otorisasi', icon: InboxIkon },
+    { key: 'inbox-otorisasi', label: 'Inbox Otorisasi', icon: InboxIkon, badge: (u, d, bf, x) => x.inboxOto || 0 },
     { key: 'dokumen', label: 'Dokumen', icon: HardDrive },
     { key: 'affidavit', label: 'Affidavit', icon: FileStack, show: canSeeAffidavit },
   ] },
@@ -185,6 +187,7 @@ const navItems = (user) => menuTerlihat(user).flatMap((n) => (n.children ? n.chi
 
 export default function App() {
   const { user, data, setActiveRole, personaList, booting, signOut, toast, dismissToast, notify, branchFilter, setBranchFilter, confirmState, setConfirmState, unlinkedInvoices, chatTotals } = useApp()
+  const inboxSt = useInboxOto(); const inboxOto = jumlahInboxOto(inboxSt.data, data?.projects, inboxSt.dibaca) // angka di menu Inbox Otorisasi
   const [rawPage, param, param2] = useRoute()
   useEffect(() => { applyTheme(readTheme()) }, []) // tema tersimpan diterapkan saat aplikasi dibuka
   // Salin pengaturan Halaman Login ke perangkat ini, supaya halaman login
@@ -308,6 +311,7 @@ export default function App() {
     <PanelProvider>
     <SlotProvider>
     <div className="min-h-screen">
+        <InboxOtoLatar />
         {/* ============================================================
             HEADER ATAS — susunan mengikuti pola Zoho Books:
             logo selebar sidebar · pemisah · riwayat · pencarian ·
@@ -320,9 +324,9 @@ export default function App() {
         <PengingatSholat />
       <div className="md:flex">
       {/* Rel ikon 64 px (K3) — menu lengkap ada di "Lainnya" */}
-      <RelIkon menu={menuTerlihat(user).map((g) => (g.children ? { ...g, children: g.children.filter((n) => !n.segera && !n.samping) } : g))} flat={navItems(user)} page={page} ctx={{ user, data, branchFilter, extra: { unlinkedInvoices, chatTotals } }}
+      <RelIkon menu={menuTerlihat(user).map((g) => (g.children ? { ...g, children: g.children.filter((n) => !n.segera && !n.samping) } : g))} flat={navItems(user)} page={page} ctx={{ user, data, branchFilter, extra: { unlinkedInvoices, chatTotals, inboxOto } }}
         atas={<LogoAtlas ringkas />} profil={<HeaderUser atas rel />} />
-      <SidebarMenu menu={menuTerlihat(user)} page={page} param={param} ctx={{ user, data, branchFilter, extra: { unlinkedInvoices, chatTotals } }}
+      <SidebarMenu menu={menuTerlihat(user)} page={page} param={param} ctx={{ user, data, branchFilter, extra: { unlinkedInvoices, chatTotals, inboxOto } }}
         atas={(rel) => rel ? <LogoAtlas ringkas /> : (
           <div className="flex flex-col gap-2" data-sidebar-atas>
             <LogoAtlas />
@@ -372,7 +376,7 @@ export default function App() {
       <NotifToast />
 
       {/* Tab bawah HP: Dasbor · Project · Buat · Pengingat · Menu */}
-      <TabBawah flat={navItems(user)} page={page} ctx={{ user, data, branchFilter, extra: { unlinkedInvoices, chatTotals } }} onMenu={() => setMore(true)} menuOpen={more} />
+      <TabBawah flat={navItems(user)} page={page} ctx={{ user, data, branchFilter, extra: { unlinkedInvoices, chatTotals, inboxOto } }} onMenu={() => setMore(true)} menuOpen={more} />
       <Sheet open={more} onClose={() => setMore(false)} title="Menu">
         {/* Jam WIB & WITA — di layar kecil header tidak muat, jadi ditaruh di sini */}
         {/* Profil · jam · mode hantu dalam satu baris */}
@@ -381,7 +385,7 @@ export default function App() {
           <JamZona tema="kartu" daftar={jamKantor(user, branchFilter)} className="flex flex-col !gap-0 text-right [&_[data-jam-zona]]:justify-end [&_[data-jam-zona]_span:last-child]:text-[13px]" />
         </div>
         <MenuHP grup={menuTerlihat(user)} user={user} page={page} onPilih={() => setMore(false)}
-          badgeOf={(n) => (n.badge ? n.badge(user, data, branchFilter, { unlinkedInvoices, chatTotals }) : 0)} />
+          badgeOf={(n) => (n.badge ? n.badge(user, data, branchFilter, { unlinkedInvoices, chatTotals, inboxOto }) : 0)} />
       </Sheet>
       <Toast toast={toast} onClose={dismissToast} />
       <SessionGuard />
