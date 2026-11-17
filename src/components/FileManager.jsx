@@ -181,7 +181,7 @@ export default function FileManager({ project, readOnly }) {
       }
       if (!used.size) throw new Error('Tidak ada file yang bisa dikemas')
       setBusy('Membuat ZIP…')
-      await saveBlob(`${invoiceLabel(project.invoice_no)}${suffix}.zip`, await zip.generateAsync({ type: 'blob' }))
+      await saveBlob(`${invoiceLabel(project.invoice_no)} ${project.customer?.name || ''}`.trim().replace(/[\\/:*?"<>|]/g, '-') + `${suffix}.zip`, await zip.generateAsync({ type: 'blob' }))
       if (skipped) notify(`${skipped} file dilewati (tidak tersedia)`, 'err')
     } catch (e) { notify(e.message, 'err') } finally { setBusy(null) }
   }

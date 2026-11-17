@@ -42,7 +42,7 @@ export default function PortalVendorTodo({ token, todo = [], transfer = [], onUb
         while (dipakai.has(nama)) nama = (f.name || s.name || 'dokumen').replace(/(\.[^.]+)?$/, ` (${++k})$1`)
         dipakai.add(nama); zip.file(nama, f.blob)
       }
-      await saveBlob(`Sumber ${inv(r.ref)}.zip`, await zip.generateAsync({ type: 'blob' }))
+      await saveBlob(`${inv(r.ref)} ${r.nama || ''}`.trim().replace(/[\\/:*?"<>|]/g, '-') + '.zip', await zip.generateAsync({ type: 'blob' }))
       setPesan({ jenis: 'ok', teks: `${r.sumber.length} dokumen sumber ${inv(r.ref)} diunduh sebagai ZIP.` })
     } catch (e) { galat(e) } finally { setSibuk('') }
   }

@@ -5,7 +5,7 @@
 //  • Prompt & bentuk jawaban ditentukan di server (fungsi ini bukan pintu bebas ke Gemini).
 //  • Batas biaya per fitur per bulan (rupiah, perkiraan). Tercapai → { ok:false, cadangan:true, habis:true }.
 //  • Isi dokumen TIDAK disimpan dan TIDAK ditulis ke log; log hanya metadata (fitur, model, token, biaya).
-//  aksi: "info" | "atur" | "jalan" (fitur + gambar) | "uji" (x-uji-token, data SINTETIS saja)
+//  aksi: "info" | "atur" | "jalan" (fitur + gambar; spesimen/alamat: teks nama instansi) | "uji" (x-uji-token, data SINTETIS saja)
 // ============================================================
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
@@ -29,6 +29,8 @@ const FITUR: Record<string, { label: string; izin: string[]; tugas: string; mode
   penerjemah: { label: "Smart Translator", izin: ["smart-translator.lihat"], tugas: "ktp", model: "gemini-3.8-flash", batas_rp: 100000 },
   surat_kuasa: { label: "Surat Kuasa (baca KTP)", izin: ["surat-kuasa.tambah", "surat-kuasa.ubah"], tugas: "ktp", model: "gemini-3.1-flash-lite", batas_rp: 50000 },
   bukti: { label: "Bukti transfer massal", izin: ["pengajuan.setujui"], tugas: "bukti", model: "gemini-3.1-flash-lite", batas_rp: 50000 },
+  // 17 Nov 2026: Pemisah Data & Spesimen Pejabat — baca data pejabat + kotak tanda tangan/paraf/stempel (tugas "pejabat") dan cari alamat instansi (tugas "alamat", teks + Google Search).
+  spesimen: { label: "Pemisah Spesimen", izin: ["pemisah-spesimen.lihat"], tugas: "pejabat", model: "gemini-3.1-pro-preview", batas_rp: 300000 }, // pemilik minta model yang lebih bagus (17 Nov 2026); bisa diganti di Pengaturan → AI
 };
 const IZIN_ATUR = "pengaturan.ai.atur";
 const BAWAAN = () => ({ kurs: 17000, fitur: Object.fromEntries(Object.entries(FITUR).map(([k, f]) => [k, { model: f.model, batas_rp: f.batas_rp, ...(k === "bukti" ? { otomatis: true } : {}) }])) });
@@ -58,7 +60,23 @@ const KK_ANGGOTA: [string, string][] = [
   ["nama", "Nama Lengkap"], ["nik", "NIK"], ["jk", "Jenis Kelamin"], ["tempat_lahir", "Tempat Lahir"], ["tgl_lahir", "Tanggal Lahir DD-MM-YYYY"], ["agama", "Agama"], ["pendidikan", "Pendidikan"], ["kerja", "Jenis Pekerjaan"], ["gol", "Golongan Darah"],
   ["status", "Status Perkawinan"], ["tgl_kawin", "Tanggal Perkawinan"], ["hub", "Status Hubungan Dalam Keluarga"], ["wn", "Kewarganegaraan"], ["paspor", "No. Paspor"], ["kitap", "No. KITAP"], ["ayah", "Nama Ayah"], ["ibu", "Nama Ibu"],
 ];
+const KOTAK = { type: "OBJECT", properties: { y1: { type: "INTEGER" }, x1: { type: "INTEGER" }, y2: { type: "INTEGER" }, x2: { type: "INTEGER" } }, required: ["y1", "x1", "y2", "x2"] };
+const PEJABAT_KOLOM: [string, string][] = [
+  ["nama", "Nama lengkap dan gelar pejabat penanda tangan, persis seperti tercetak"], ["jabatan", "Jabatan persis seperti tertulis di dokumen"],
+  ["instansi", "Nama instansi dan unit kerja seperti tertulis (kop atau blok tanda tangan); kosong bila tidak tertulis"], ["alamat", "Alamat instansi yang TERCETAK di dokumen (kop surat); kosong bila tidak tercetak"],
+  ["lokasi", "Kota/kabupaten instansi bila tercetak; kosong bila tidak"], ["label_nomor", "Label yang tercetak di depan nomor identitas pejabat, persis: NIP, NIDN, NIDK, NUPTK, NRP, NIK, NIY, atau lainnya; kosong bila tidak ada label"],
+  ["nomor", "Nomor identitas pejabat persis seperti tercetak (termasuk spasi), sebagai teks; kosong bila tidak ada"], ["bertumpuk", "YA bila tanda tangan dan stempel saling menimpa, selain itu TIDAK"],
+];
 const TUGAS: Record<string, { prompt: string; skema: unknown; maksKeluar: number; batasMs?: number }> = {
+  pejabat: {
+    prompt: "Gambar ini satu halaman dokumen Indonesia (ijazah, akta, surat keterangan, transkrip, dan sejenisnya) yang ditandatangani pejabat. Temukan SETIAP pejabat penanda tangan di halaman ini (blok tanda tangan: jabatan, tanda tangan, nama, nomor identitas). " +
+      "Untuk tiap pejabat salin isi kolom PERSIS seperti tercetak, huruf demi huruf, tanpa memperbaiki ejaan, tanpa melengkapi, tanpa menebak. Kolom yang tidak tercetak: string kosong. Kolom yang terbaca tetapi meragukan: salin apa adanya dan masukkan nama kolomnya ke \"ragu\". " +
+      "Nomor identitas: label_nomor = label yang tercetak di depan nomor, apa adanya. JANGAN mengubah NIDN, NIDK, NUPTK, NRP, atau label lain menjadi NIP, dan jangan memberi label NIP bila kata NIP tidak tercetak. Jangan menyimpulkan apakah pejabat itu PNS. Jangan mengambil alamat rumah. " +
+      "Kotak memakai skala 0–1000 terhadap gambar (y1,x1 = kiri atas; y2,x2 = kanan bawah). ttd = kotak tiap tanda tangan basah pejabat ini (goresan pena; bukan nama tercetak, bukan tanda tangan elektronik/QR). paraf = kotak paraf (tanda tangan singkat/inisial kecil yang TERPISAH dari tanda tangan utama); bila tidak ada, daftar kosong — tanda tangan TIDAK boleh dianggap paraf. stempel = kotak cap/stempel instansi yang menyertai pejabat ini. Kotak dibuat pas mengelilingi goresan/cap, sedikit longgar. " +
+      "Halaman tanpa pejabat penanda tangan: \"pejabat\" daftar kosong.",
+    skema: { type: "OBJECT", properties: { pejabat: { type: "ARRAY", items: { type: "OBJECT", properties: { ...Object.fromEntries(PEJABAT_KOLOM.map(([k, d]) => [k, S(d)])), ttd: { type: "ARRAY", items: KOTAK }, paraf: { type: "ARRAY", items: KOTAK }, stempel: { type: "ARRAY", items: KOTAK }, ragu: { type: "ARRAY", items: { type: "STRING" } } }, required: [...PEJABAT_KOLOM.map(([k]) => k), "ttd", "paraf", "stempel", "ragu"] } } }, required: ["pejabat"] },
+    maksKeluar: 3000, batasMs: 90000,
+  },
   ktp: {
     prompt: "Gambar ini seharusnya KTP Indonesia (boleh miring, terputar, atau buram). Salin isi tiap kolom PERSIS seperti tercetak, huruf demi huruf, tanpa memperbaiki ejaan, tanpa melengkapi, tanpa menebak. " +
       "Kolom yang tidak terlihat, terpotong, atau tidak bisa dibaca dengan yakin: isi string kosong dan masukkan nama kolomnya ke daftar \"ragu\". Kolom yang terbaca tetapi ada huruf/angka yang meragukan: tetap salin apa adanya dan masukkan juga ke \"ragu\". " +
@@ -171,6 +189,45 @@ async function panggilGemini(kunci: string, model: string, tugas: string, b64: s
   }
   return { ok: false, alasan: terakhir, sementara: true, pakai: { masuk: 0, keluar: 0 } };
 }
+/** Cari alamat KANTOR instansi lewat Gemini + Google Search. Masukan hanya nama instansi & lokasi (bukan isi dokumen). Sumber = tautan dari hasil pencarian (groundingMetadata), bukan karangan model. */
+async function panggilCariAlamat(kunci: string, model: string, instansi: string, lokasi: string) {
+  const prompt = "Cari di web alamat KANTOR resmi instansi Indonesia berikut. Utamakan situs resmi instansi itu, situs pemerintah (.go.id), atau institusi pendidikan (.ac.id / .sch.id). " +
+    "Yang dicari alamat kantor instansi, BUKAN alamat rumah atau data pribadi pejabat. Jangan mengarang: bila tidak menemukan alamat dengan yakin, kembalikan daftar kosong. " +
+    "Bila ada beberapa instansi/cabang/kampus bernama serupa yang cocok, berikan masing-masing (maksimal 4) supaya bisa dipilih. " +
+    `Instansi: ${instansi}. ` + (lokasi ? `Lokasi yang tertulis di dokumen: ${lokasi}. ` : "") +
+    "Jawab HANYA dengan JSON tanpa teks lain, bentuk: {\"pilihan\":[{\"nama\":\"nama instansi/cabang\",\"alamat\":\"alamat lengkap kantor termasuk kota dan kode pos bila ada\"}]}";
+  let terakhir = "";
+  for (let i = 0; i < 2; i++) {
+    let r: Response;
+    try { r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, { method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": kunci }, body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: prompt }] }], tools: [{ google_search: {} }], generationConfig: { temperature: 0, maxOutputTokens: 10000 } }), signal: AbortSignal.timeout(80000) }); }
+    catch (_) { terakhir = "Pencarian tidak menjawab dalam 80 detik"; break; }
+    // deno-lint-ignore no-explicit-any
+    const j: any = await r.json().catch(() => ({}));
+    const u = j?.usageMetadata ?? {};
+    const pakai = { masuk: (u.promptTokenCount ?? 0) + (u.toolUsePromptTokenCount ?? 0), keluar: (u.candidatesTokenCount ?? 0) + (u.thoughtsTokenCount ?? 0) };
+    if (r.ok && !j.error) {
+      const c = j?.candidates?.[0]; const teks = (c?.content?.parts ?? []).map((p: { text?: string }) => p.text ?? "").join("");
+      // deno-lint-ignore no-explicit-any
+      const sumber = ((c?.groundingMetadata?.groundingChunks ?? []) as any[]).map((g) => ({ url: String(g?.web?.uri ?? ""), judul: String(g?.web?.title ?? "") })).filter((x) => /^https?:\/\//.test(x.url)).slice(0, 8);
+      const m = teks.match(/\{[\s\S]*\}/);
+      // deno-lint-ignore no-explicit-any
+      let pilihan: any[] = [];
+      try { pilihan = (JSON.parse(m ? m[0] : "{}").pilihan ?? []); } catch (_) { return { ok: false, alasan: "Jawaban pencarian tidak bisa dibaca", sementara: false, pakai }; }
+      pilihan = pilihan.filter((x) => x && typeof x.alamat === "string" && x.alamat.trim()).slice(0, 4).map((x) => ({ nama: String(x.nama ?? "").slice(0, 200), alamat: String(x.alamat).slice(0, 400) }));
+      return { ok: true, data: { pilihan, sumber, dicari_at: new Date().toISOString(), dengan_pencarian: sumber.length > 0 }, pakai };
+    }
+    const st = r.status, kode = j?.error?.status || "", rinci = String(j?.error?.message || "").slice(0, 300);
+    const g = (alasan: string) => ({ ok: false, alasan, sementara: false, pakai, rinci });
+    if (st === 404 || kode === "NOT_FOUND") return g(`Model ${model} tidak tersedia untuk kunci ini — pilih model lain di Pengaturan → AI`);
+    if (st === 403 || kode === "PERMISSION_DENIED") return g("Google menolak permintaan (kunci dibatasi / Gemini API belum aktif)");
+    if (st === 400 && /search|tool|grounding/i.test(rinci)) return g("Model ini tidak mendukung pencarian Google — pilih model lain di Pengaturan → AI, atau isi alamat manual");
+    if (st === 400 || kode === "INVALID_ARGUMENT") return g("Permintaan pencarian ditolak Gemini");
+    if (st === 401) return g("Kunci Gemini tidak valid");
+    terakhir = st === 429 || kode === "RESOURCE_EXHAUSTED" ? "Batas pemakaian Gemini tercapai — coba lagi sebentar" : `Gemini sedang bermasalah (${st})`;
+    await new Promise((s) => setTimeout(s, 900));
+  }
+  return { ok: false, alasan: terakhir, sementara: true, pakai: { masuk: 0, keluar: 0 } };
+}
 type Kat = typeof KATALOG;
 const biayaUsd = (KAT: Kat, model: string, p: { masuk: number; keluar: number }) => { const k = KAT[model]; return k ? (p.masuk * k.masuk + p.keluar * k.keluar) / 1e6 : 0; };
 const b64dari = (u8: Uint8Array) => { let s = ""; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode(...u8.subarray(i, i + 0x8000)); return btoa(s); };
@@ -243,7 +300,8 @@ Deno.serve(async (req: Request) => {
   }
 
   /** Satu panggilan AI dengan batas biaya, batas laju, dan log metadata. */
-  async function satu(fitur: string, model: string, tugas: string, b64: string, mime: string) {
+  // deno-lint-ignore no-explicit-any
+  async function satu(fitur: string, model: string, tugas: string, b64: string, mime: string, jalankan?: () => Promise<any>) {
     if (!kunci) return { ok: false, cadangan: true, alasan: "Kunci Gemini belum dipasang di server" };
     const { count } = await admin.from("ai_pakai_log").select("id", { count: "exact", head: true }).eq("user_id", user!.id).gte("at", new Date(Date.now() - 5 * 60e3).toISOString());
     if ((count ?? 0) >= 60) return { ok: false, cadangan: true, alasan: "Terlalu banyak permintaan dalam 5 menit — tunggu sebentar" };
@@ -251,7 +309,7 @@ Deno.serve(async (req: Request) => {
     const terpakai = ((await pakaiBulan())[fitur]?.usd ?? 0) * setelan.kurs;
     if (terpakai >= batas) return { ok: false, cadangan: true, habis: true, alasan: `Batas biaya AI bulan ini untuk ${FITUR[fitur]?.label ?? fitur} sudah tercapai` };
     const t0 = Date.now();
-    const r = await panggilGemini(kunci, model, tugas, b64, mime);
+    const r = jalankan ? await jalankan() : await panggilGemini(kunci, model, tugas, b64, mime);
     const usd = biayaUsd(KAT, model, r.pakai);
     await admin.from("ai_pakai_log").insert({ bulan: bulanIni(), fitur, model, user_id: user!.id, branch: user!.branch, token_masuk: r.pakai.masuk, token_keluar: r.pakai.keluar, biaya_usd: usd, hasil: r.ok ? "ok" : "gagal", ms: Date.now() - t0 });
     // deno-lint-ignore no-explicit-any
@@ -266,6 +324,12 @@ Deno.serve(async (req: Request) => {
     if (!izin) return json({ ok: false, alasan: `Tidak ada akses ${F.label}` }, 403);
     const model = setelan.fitur[fitur].model;
     if (!model) return json({ ok: false, cadangan: true, mati: true, alasan: "AI dimatikan untuk fitur ini" });
+    // Pemisah Spesimen → cari alamat instansi: masukan teks pendek (nama instansi + lokasi), tanpa gambar.
+    if (fitur === "spesimen" && String(b.tugas ?? "") === "alamat") {
+      const instansi = String(b.instansi ?? "").replace(/\s+/g, " ").trim().slice(0, 200), lokasi = String(b.lokasi ?? "").replace(/\s+/g, " ").trim().slice(0, 120);
+      if (instansi.length < 3) return json({ ok: false, alasan: "Isi nama instansi dulu" }, 400);
+      return json(await satu(fitur, model, "alamat", "", "", () => panggilCariAlamat(kunci, model, instansi, lokasi)));
+    }
     const m = String(b.gambar ?? "").match(/^data:(image\/(?:jpeg|png|webp));base64,(.+)$/s);
     if (!m) return json({ ok: false, alasan: "gambar harus JPG/PNG/WebP" }, 400);
     if (m[2].length * 0.75 > MAKS_BYTE) return json({ ok: false, alasan: "gambar terlalu besar (maks 8 MB)" }, 400);
@@ -299,9 +363,11 @@ Deno.serve(async (req: Request) => {
     let url = "";
     if (["ktp", "akta", "kk", "ijazah", "transkrip", "nonreg"].includes(tugas) && /^[a-z0-9_\-]+\.jpg$/i.test(String(b.berkas ?? ""))) url = "https://raw.githubusercontent.com/masginanjar/atlas.alfa/uji-ocr/uji/ocr/img/" + b.berkas;
     else if (tugas === "bukti") url = "https://raw.githubusercontent.com/masginanjar/atlas.alfa/main/public/contoh/contoh-klikbca-transfer.png";
+    else if (tugas === "pejabat") url = "https://raw.githubusercontent.com/masginanjar/atlas.alfa/main/public/contoh/contoh-pejabat-sintetis.png";
+    else if (tugas === "alamat") return json(await satu("uji", model, "alamat", "", "", () => panggilCariAlamat(kunci, model, "Kementerian Hukum Republik Indonesia", "Jakarta"))); // instansi publik, bukan data pelanggan
     else return json({ ok: false, alasan: "tugas uji tidak dikenal" }, 400);
     const ib = await fetch(url); if (!ib.ok) return json({ ok: false, alasan: "data uji tidak ditemukan" }, 404);
-    const r = await satu("uji", model, tugas, b64dari(new Uint8Array(await ib.arrayBuffer())), tugas === "bukti" ? "image/png" : "image/jpeg");
+    const r = await satu("uji", model, tugas, b64dari(new Uint8Array(await ib.arrayBuffer())), tugas === "bukti" || tugas === "pejabat" ? "image/png" : "image/jpeg");
     return json({ ...r, berkas: b.berkas ?? null });
   }
 

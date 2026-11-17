@@ -113,6 +113,8 @@ export const MODUL = [
   // 15 Nov 2026: menu Alat. Fitur baru → bawaan hanya Superadmin (default deny); role lain diberi lewat Role & Hak Akses.
   { id: 'alat', label: 'Alat', fitur: [
     f('smart-translator', 'Smart Translator', ['menu', 'lihat']),
+    // 17 Nov 2026: Pemisah Data & Spesimen Pejabat (baca data pejabat, potong tanda tangan/paraf/stempel, ekspor Word). Default deny.
+    f('pemisah-spesimen', 'Pemisah Spesimen Pejabat', ['menu', 'lihat']),
     // 15 Nov 2026 (keputusan pemilik): Staf Apostille/Legalisasi membuat surat kuasa dari baris pekerjaannya → lihat, tambah, ubah, cetak. Menu, hapus, atur tetap hanya Superadmin.
     // 16 Nov 2026 (keputusan pemilik): mengerjakan tahap Apostille/Legalisasi bisa diberikan PER PENGGUNA (mis. satu CS tertentu) lewat pengecualian.
     // status = Mulai Proses, centang to-do, unggah hasil, Selesai · setujui = mencentang langkah "Bayar Pajak".
@@ -199,7 +201,7 @@ export const RUTE_FITUR = {
   beranda: 'beranda', dashboard: 'dashboard', faktur: 'faktur', pelanggan: 'pelanggan', mitra: 'mitra', 'daftar-harga': 'katalog',
   projects: 'project', penugasan: 'penugasan', register: 'register', otorisasi: 'otorisasi', dokumen: 'dokumen', affidavit: 'affidavit',
   keuangan: 'keuangan', vendor: 'vendor', agenda: 'agenda', jadwal: 'jadwal', notes: 'notes', perusahaan: 'perusahaan', faq: 'faq', settings: 'settings',
-  kehadiran: 'kehadiran', 'smart-translator': 'smart-translator', 'surat-kuasa': 'surat-kuasa', monitoring: 'monitoring', 'status-server': 'status-server', 'rilis-fitur': 'rilis-fitur', aktivitas: 'aktivitas',
+  kehadiran: 'kehadiran', 'smart-translator': 'smart-translator', 'pemisah-spesimen': 'pemisah-spesimen', 'surat-kuasa': 'surat-kuasa', monitoring: 'monitoring', 'status-server': 'status-server', 'rilis-fitur': 'rilis-fitur', aktivitas: 'aktivitas',
   'pengiriman': 'pengiriman.ringkasan', 'pengiriman/daftar': 'pengiriman.daftar', 'pengiriman/buat': 'pengiriman.buat', 'pengiriman/ongkir': 'pengiriman.ongkir',
   'pengiriman/draft': 'pengiriman.draft', 'pengiriman/alamat': 'pengiriman.alamat', 'pengiriman/label': 'pengiriman.label', 'pengiriman/kendala': 'pengiriman.kendala',
   'pengiriman/saldo': 'pengiriman.saldo', 'pengiriman/laporan': 'pengiriman.laporan', 'pengiriman/pengaturan': 'pengiriman.pengaturan',

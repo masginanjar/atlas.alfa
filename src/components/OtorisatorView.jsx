@@ -89,7 +89,7 @@ function DocCard({ project, sub }) {
       while (used.has(name)) name = `${label} (${i++}) - ${f.name}`
       used.add(name); zip.file(name, await blobOf(f))
     }
-    await saveBlob(`${invoiceLabel(project.invoice_no)} - ${sub.title}.zip`.replace(/[\\/:*?"<>|]/g, '-'), await zip.generateAsync({ type: 'blob' })); setDownloaded(true)
+    await saveBlob(`${invoiceLabel(project.invoice_no)} ${project.customer?.name || ''}`.trim().concat(` - ${sub.title}.zip`).replace(/[\\/:*?"<>|]/g, '-'), await zip.generateAsync({ type: 'blob' })); setDownloaded(true)
   })
   const saveList = (list) => processStage(project, sub.id, { file_final: list[0] ?? null, file_final_list: list }, false)
   const [reviewNames, namerDialog] = useUploadNamer({ existing: collect(project).map((f) => f.name), invoice: project.invoice_no })

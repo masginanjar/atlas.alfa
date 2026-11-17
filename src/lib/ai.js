@@ -19,9 +19,10 @@ export const KATALOG_CONTOH = [
 export const FITUR_AI = [
   { id: 'penerjemah', label: 'Smart Translator', ket: 'Pembaca kedua untuk dokumen di Smart Translator. Hasilnya dibandingkan dengan Google Vision; yang berbeda ditandai untuk dicek.', tanpa: 'Tanpa AI (Google Vision / Tesseract saja)', token: [1300, 4000] },
   { id: 'surat_kuasa', label: 'Surat Kuasa — baca KTP', ket: 'Mengisi identitas pemberi kuasa dari foto KTP.', tanpa: 'Tanpa AI (Tesseract, gratis)', token: [1300, 320] },
+  { id: 'spesimen', label: 'Pemisah Spesimen', ket: 'Membaca data pejabat penanda tangan dan letak tanda tangan / paraf / stempel, serta mencari alamat kantor instansi di internet.', tanpa: 'Tanpa AI (isi & potong manual)', token: [1500, 700] },
   { id: 'bukti', label: 'Bukti transfer massal', ket: 'Membaca screenshot daftar transfer internet banking.', tanpa: 'Tanpa AI (Tesseract, gratis)', token: [1250, 900] },
 ]
-const BAWAAN = () => ({ kurs: 17000, fitur: { penerjemah: { model: 'gemini-3-flash-preview', batas_rp: 100000 }, surat_kuasa: { model: 'gemini-3.5-flash-lite', batas_rp: 50000 }, bukti: { model: 'gemini-3.5-flash-lite', batas_rp: 50000, otomatis: true } } })
+const BAWAAN = () => ({ kurs: 17000, fitur: { penerjemah: { model: 'gemini-3-flash-preview', batas_rp: 100000 }, surat_kuasa: { model: 'gemini-3.5-flash-lite', batas_rp: 50000 }, bukti: { model: 'gemini-3.5-flash-lite', batas_rp: 50000, otomatis: true }, spesimen: { model: 'gemini-3.1-pro-preview', batas_rp: 300000 } } })
 const KUNCI_DEMO = 'atlas_ai_demo'
 const demoBaca = () => { try { const s = JSON.parse(localStorage.getItem(KUNCI_DEMO) || 'null'); const b = BAWAAN(); return s ? { kurs: s.kurs || b.kurs, fitur: Object.fromEntries(Object.keys(b.fitur).map((k) => [k, { ...b.fitur[k], ...(s.fitur?.[k] || {}) }])) } : b } catch { return BAWAAN() } }
 
@@ -51,6 +52,16 @@ export async function aiAtur(patch) {
 export async function aiJalan(fitur, gambar) {
   if (!AI_LIVE) return { ok: false, cadangan: true, demo: true, alasan: 'AI hanya berjalan di ATLAS live — demo memakai pembaca di perangkat' }
   return panggil('jalan', { fitur, gambar })
+}
+/** Pemisah Spesimen: baca pejabat + kotak tanda tangan/paraf/stempel dari satu halaman (data URL JPG/PNG). */
+export async function aiSpesimen(gambar) {
+  if (!AI_LIVE) return { ok: false, cadangan: true, demo: true, alasan: 'AI hanya berjalan di ATLAS live' }
+  return panggil('jalan', { fitur: 'spesimen', gambar })
+}
+/** Pemisah Spesimen: cari alamat KANTOR instansi di internet (hanya nama instansi & lokasi yang dikirim). */
+export async function aiCariAlamat(instansi, lokasi = '') {
+  if (!AI_LIVE) return { ok: false, demo: true, alasan: 'Pencarian hanya berjalan di ATLAS live' }
+  return panggil('jalan', { fitur: 'spesimen', tugas: 'alamat', instansi, lokasi })
 }
 /** Canvas → data URL JPEG yang cukup kecil untuk dikirim (sisi terpanjang ≤ maks px). */
 export function kanvasKeJpeg(c, maks = 2200, mutu = 0.9) {

@@ -277,7 +277,7 @@ function WorkSheetBerkas({ project, sub, t, onClose }) {
         used.add(path); zip.file(path, blob)
       }
       if (!used.size) throw new Error('Tidak ada file yang bisa dikemas')
-      await saveBlob(`${invoiceLabel(project.invoice_no)} - ${sub.title}.zip`.replace(/[\\/:*?"<>|]/g, '-'), await zip.generateAsync({ type: 'blob' }))
+      await saveBlob(`${invoiceLabel(project.invoice_no)} ${project.customer?.name || ''}`.trim().concat(` - ${sub.title}.zip`).replace(/[\\/:*?"<>|]/g, '-'), await zip.generateAsync({ type: 'blob' }))
       if (lewat) notify(`${lewat} file dilewati (tidak tersedia)`, 'err')
     } catch (e) { notify(e.message, 'err') } finally { setDl(null) }
   }

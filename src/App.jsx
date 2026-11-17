@@ -27,6 +27,7 @@ const PortalCek = lazy(() => import('./pages/PortalCek.jsx'))
 const Activity = lazy(() => import('./pages/Activity.jsx'))
 const Kehadiran = lazy(() => import('./pages/Kehadiran.jsx'))
 const SmartTranslator = lazy(() => import('./pages/SmartTranslator.jsx'))
+const PemisahSpesimen = lazy(() => import('./pages/PemisahSpesimen.jsx'))
 const SuratKuasa = lazy(() => import('./pages/SuratKuasa.jsx'))
 const Monitoring = lazy(() => import('./pages/Monitoring.jsx'))
 const Keuangan = lazy(() => import('./pages/Keuangan.jsx'))
@@ -123,6 +124,7 @@ const MENU = [
   { id: 'alat', label: 'Alat', icon: Wrench, children: [
     { key: 'smart-translator', label: 'Smart Translator', icon: Languages },
     { key: 'surat-kuasa', label: 'Surat Kuasa', icon: FileSignature },
+    { key: 'pemisah-spesimen', label: 'Pemisah Spesimen', icon: Stamp },
   ] },
   { id: 'keuangan', label: 'Keuangan', icon: Wallet, children: [
     { key: 'keuangan', label: 'Ringkasan', icon: Wallet, badge: needsAction, subOnly: true },
@@ -248,6 +250,7 @@ export default function App() {
     : page === 'settings' ? <Settings />
     : page === 'kehadiran' ? <Kehadiran />
     : page === 'smart-translator' ? <SmartTranslator />
+    : page === 'pemisah-spesimen' ? <PemisahSpesimen />
     : page === 'surat-kuasa' ? <SuratKuasa param={param} param2={param2} />
     : page === 'aktivitas' ? <Activity />
     : page === 'monitoring' ? <Monitoring />
