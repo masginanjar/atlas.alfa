@@ -94,6 +94,28 @@ function migrate(m) {
     if (sb && !sb.data?.payments?.length) { const at = new Date().toISOString(); sb.data = { ...sb.data, total_pengajuan: 300000, payments: [{ amount: 300000, date: at.slice(0, 10), bukti: { id: 'f-bukti-anisa', name: 'Bukti transfer (contoh).txt', size: 30, url: `data:text/plain;base64,${btoa('Contoh bukti transfer (data sintetis)')}`, uploaded_at: at } }] } }
     m.portal_bukti_v1 = true; changed = true
   }
+  // Contoh untuk "Buat pesan notifikasi" (17 Nov 2026): dokumen sintetis di tahap Proofread & Otorisasi, deadline besok / hari ini
+  if (!m.pesan_siap_v1) {
+    const tr = (m.users || []).find((u) => u.role === 'penerjemah' && u.active !== false)?.id
+    const pf = (m.users || []).find((u) => u.role === 'proofreader' && u.active !== false)?.id
+    if (tr && pf) {
+      const now = new Date(); const at = now.toISOString()
+      const dl = (hari, jam) => { const d = new Date(now.getTime() + 8 * 3600e3 + hari * 864e5).toISOString().slice(0, 10); return `${d}T${jam}:00+08:00` }
+      const buat = (id, inv, nama, stage, deadline, prio) => ({ id, invoice_no: inv, branch: 'Bali', created_at: at, files: [], payment_status: 'paid', customer: { zoho_id: null, name: nama, ship: {} },
+        about: { print_location: 'Bali', priority: prio, received_at: at.slice(0, 10), deadline, metode_kirim: 'softcopy', courier: '' },
+        sub_projects: [{ id: `${id}-s1`, type: 'terjemahan', title: 'Terjemahan Tersumpah: Dokumen (contoh)', description: '1. Dokumen (contoh)', file_count: 1, pages: 1, docs: [{ desc: 'Dokumen (contoh)', pages: 1 }],
+          lang_from: 'Indonesia', lang_to: 'Inggris', flow: 'tr_int', stage, stage_at: at, data: { translator: tr, proofreader: pf }, history: [] }] })
+      const baru = [
+        buat('pj-siap-o1', 'INV-990301', '[Contoh Ready Oto A]', 'otorisasi', dl(1, '08:00'), 'Normal'),
+        buat('pj-siap-o2', 'INV-990302', '[Contoh Ready Oto B]', 'otorisasi', dl(1, '08:00'), 'Normal'),
+        buat('pj-siap-o3', 'INV-990303', '[Contoh Ready Oto C]', 'otorisasi', dl(0, '17:00'), 'Sameday'),
+        buat('pj-siap-p1', 'INV-990304', '[Contoh Ready Proof A]', 'proofread', dl(1, '08:00'), 'Normal'),
+        buat('pj-siap-p2', 'INV-990305', '[Contoh Ready Proof B]', 'proofread', dl(0, '17:00'), 'Sameday'),
+      ].filter((p) => !(m.projects || []).some((x) => x.id === p.id))
+      m.projects = [...(m.projects || []), ...baru]
+    }
+    m.pesan_siap_v1 = true; changed = true
+  }
   // Koordinator vendor (10 Nov 2026): Emma → Pak Zenzia, Debby → Pak Dedi (Jerman)
   if (!m.koordinator_v1) {
     let dedi = (m.people || []).find((x) => x.type === 'vendor' && /dedi/i.test(x.name))

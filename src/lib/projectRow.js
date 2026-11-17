@@ -133,7 +133,15 @@ export function filterOptions(rows) {
     cs: kumpul((r) => [r.cs]),
     arah: kumpul((r) => r.arahAll),
     orang: kumpul((r) => r.orangAll),
+    print: kumpul((r) => [r.print]),
   }
+}
+/** Rentang jumlah (Dok / Hal) untuk filter di judul kolom. */
+export const RENTANG_JML = { '1': [1, 1], '2-5': [2, 5], '6-10': [6, 10], '>10': [11, Infinity] }
+/** Pilihan cepat tanggal di judul kolom Timestamp / Deadline → [dari, sampai] (YYYY-MM-DD). */
+export function rentangTanggal(kode) {
+  const h = geser(0)
+  return { hariini: [h, h], kemarin: [geser(-1), geser(-1)], besok: [geser(1), geser(1)], '7lalu': [geser(-6), h], '7depan': [h, geser(6)], bulanini: [`${h.slice(0, 8)}01`, `${h.slice(0, 8)}31`], lewat: ['', geser(-1)] }[kode] || ['', '']
 }
 
 /**
@@ -149,6 +157,12 @@ export function applyFilters(rows, f) {
     if (f.cs && r.cs !== f.cs) return false
     if (f.arah && !r.arahAll.includes(f.arah)) return false
     if (f.orang && !r.orangAll.includes(f.orang)) return false
+    if (f.print && r.print !== f.print) return false
+    if (f.layanan && !r.layananAll.join(' ').toLowerCase().includes(String(f.layanan).toLowerCase().trim())) return false
+    if (f.invoice && !String(r.invoice).toLowerCase().includes(String(f.invoice).toLowerCase().trim())) return false
+    if (f.pelanggan && !String(r.pelanggan).toLowerCase().includes(String(f.pelanggan).toLowerCase().trim())) return false
+    if (f.jmlDok && RENTANG_JML[f.jmlDok] && !(r.jmlDok >= RENTANG_JML[f.jmlDok][0] && r.jmlDok <= RENTANG_JML[f.jmlDok][1])) return false
+    if (f.jmlHal && RENTANG_JML[f.jmlHal] && !(r.jmlHal >= RENTANG_JML[f.jmlHal][0] && r.jmlHal <= RENTANG_JML[f.jmlHal][1])) return false
     if (f.dibuatDari && String(r.timestamp).slice(0, 10) < f.dibuatDari) return false
     if (f.dibuatSampai && String(r.timestamp).slice(0, 10) > f.dibuatSampai) return false
     if (f.dlDari && String(r.deadline).slice(0, 10) < f.dlDari) return false
@@ -159,7 +173,7 @@ export function applyFilters(rows, f) {
 
 export const FILTER_LABEL = {
   prioritas: 'Prioritas', status: 'Status', cabang: 'Cabang', cs: 'CS',
-  arah: 'Arah Bahasa', orang: 'Penerjemah/Vendor',
+  arah: 'Arah Bahasa', orang: 'Penerjemah/Vendor', print: 'Print', layanan: 'Layanan', invoice: 'No. Invoice', pelanggan: 'Pelanggan', jmlDok: 'Dok', jmlHal: 'Hal',
   dibuatDari: 'Dibuat dari', dibuatSampai: 'Dibuat sampai',
   dlDari: 'Deadline dari', dlSampai: 'Deadline sampai',
 }

@@ -13,7 +13,7 @@ import { flowOf } from '../config/workflows.js'
 import { invoiceLabel, perluVendor, BAHASA_INTERNAL, can } from '../config/access.js'
 import { stagesOf, stageIndex } from '../config/workflows.js'
 import { teksOrderVendor, tautanWa } from './SalinChatOrder.jsx'
-import { kapasitasHarian } from './Kapasitas.jsx'
+import { kapasitasHarian, halamanBulanan, HARI_BULAN } from './Kapasitas.jsx'
 import { halamanSub } from '../pages/Dashboard.jsx'
 
 const KUNCI_PIN = 'atlas-pin-penerjemah'
@@ -40,11 +40,13 @@ export default function TugaskanPenerjemah({ p, sub, onClose = () => {}, onLainn
       if (!uid || x.stage !== 'penerjemahan' || !d || (dl ? d !== dl : d !== hari)) continue
       pakai[uid] = (pakai[uid] || 0) + halamanSub(x, flowOf(x, pr))
     }
+    const bulan = halamanBulanan(data.projects, (dl || hari).slice(0, 7)) // akumulasi sebulan (bulan deadline dokumen ini)
     return data.users.filter((u) => u.role === 'penerjemah' && u.active !== false).map((u) => {
       const isi = pakai[u.id] || 0; const maks = kapasitasHarian(u, data.kapasitas) || 1
+      const bln = bulan[u.id] || 0; const kuota = maks * HARI_BULAN
       const pc = Math.round((isi / maks) * 100)
       const [bg, fg, ket] = pc >= 90 ? ['#FFD9E2', '#A3123E', 'Penuh'] : pc >= 65 ? ['#FFE7D1', '#9A3A06', 'Hampir penuh'] : ['#E2F5E8', '#17693A', 'Longgar']
-      return { u, isi, maks, pc, bg, fg, ket }
+      return { u, isi, maks, pc, bg, fg, ket, bln, kuota }
     }).sort((a, b) => ((pin[b.u.id] ? 1 : 0) - (pin[a.u.id] ? 1 : 0)) || (a.isi / a.maks - b.isi / b.maks) || a.u.name.localeCompare(b.u.name))
   }, [data.projects, data.users, data.kapasitas, dl, hari, pin])
 
@@ -126,7 +128,7 @@ export default function TugaskanPenerjemah({ p, sub, onClose = () => {}, onLainn
               <button type="button" role="radio" aria-checked={on} onClick={() => setPilih(b.u.id)} data-pilih-penerjemah={b.u.id}
                 className={cx('grid grid-cols-[minmax(64px,84px)_minmax(0,1fr)_auto] items-center gap-x-2.5 rounded-[10px] border-2 px-2.5 text-left', inline ? 'min-h-[40px] sm:grid-cols-[76px_minmax(0,1fr)_auto]' : 'min-h-[44px] sm:grid-cols-[84px_minmax(0,1fr)_78px_100px]')}
                 style={{ borderColor: on ? '#4169E1' : '#E7E8F0', background: on ? '#F3F6FF' : '#FFFFFF' }}>
-                <span className="truncate text-[13px] font-bold">{nama(b.u)}</span>
+                <span className="flex min-w-0 flex-col leading-tight"><span className="truncate text-[13px] font-bold">{nama(b.u)}</span><span className={cx('truncate text-[10.5px] tabular-nums', b.bln > b.kuota ? 'font-bold text-rose-600' : 'text-[#5E6380]')} title={`Akumulasi bulan ini: ${b.bln} dari ${b.kuota} halaman`} data-kap-bulan>bln {b.bln}/{b.kuota}</span></span>
                 <span role="img" aria-label={`Terisi ${b.pc} persen`} className="block h-2 overflow-hidden rounded bg-[#EEF0F5]"><span className="block h-full rounded" style={{ width: `${Math.min(100, b.pc)}%`, background: b.fg }} /></span>
                 {!inline && <span className="hidden whitespace-nowrap text-xs tabular-nums text-[#5E6380] sm:block">{b.isi}/{b.maks} Hal</span>}
                 <span className="justify-self-end whitespace-nowrap rounded-full px-2 py-0.5 text-[11.5px] font-bold" style={{ background: b.bg, color: b.fg }}>

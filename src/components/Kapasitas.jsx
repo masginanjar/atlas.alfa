@@ -7,24 +7,40 @@ import TimeAgo from './TimeAgo.jsx'
 
 // ============================================================
 //  KAPASITAS HARIAN PENERJEMAH
-//  Semua orang mulai dengan 10 halaman/hari. Kalau sanggup lebih,
+//  Semua penerjemah 20 halaman per hari DEADLINE (17 Nov 2026), diakumulasi
+//  sebulan: 20 × 30 = ±600 halaman/bulan. Kalau sanggup lebih,
 //  penerjemah mengajukan angkanya sendiri dan Direktur
 //  yang menyetujui — bukan diubah diam-diam.
 // ============================================================
 
-export const KAP_DEFAULT = 10
+export const KAP_DEFAULT = 20
+/** Hari hitung akumulasi bulanan: 20 halaman × 30 hari = 600 halaman/bulan. */
+export const HARI_BULAN = 30
 /**
  * Kapasitas harian seseorang (halaman/hari).
  * Sumbernya pengajuan yang TERAKHIR disetujui — bukan kolom di tabel users,
  * karena Direktur memang tidak boleh (dan tidak perlu) mengubah data user.
- * Belum pernah ada yang disetujui = 10.
+ * Belum pernah ada yang disetujui = 20. Angka di bawah 20 dinaikkan ke 20 (semua penerjemah minimal 20).
  */
 export function kapasitasHarian(u, rows) {
   const disetujui = (rows || [])
     .filter((k) => k.user_id === u?.id && k.status === 'disetujui' && Number(k.ke) > 0)
     .sort((a, b) => String(a.diputus_at || a.at || '').localeCompare(String(b.diputus_at || b.at || '')))
-  if (disetujui.length) return Number(disetujui[disetujui.length - 1].ke)
-  return Number(u?.kapasitas_harian) || KAP_DEFAULT
+  if (disetujui.length) return Math.max(KAP_DEFAULT, Number(disetujui[disetujui.length - 1].ke))
+  return Math.max(KAP_DEFAULT, Number(u?.kapasitas_harian) || 0)
+}
+/** Kuota akumulasi sebulan (halaman): kapasitas harian × 30. */
+export const kuotaBulanan = (u, rows) => kapasitasHarian(u, rows) * HARI_BULAN
+const ymWita = (iso) => (iso ? new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Makassar' }).format(new Date(iso)).slice(0, 7) : '')
+const halSub = (x) => (x.docs?.length ? x.docs.reduce((a, d) => a + (Number(d.pages) || 0), 0) : Number(x.pages) || 0) || 1
+/** Halaman yang ditugaskan ke tiap penerjemah dengan DEADLINE di bulan `ym` (YYYY-MM, WITA) — { [userId]: halaman }. */
+export function halamanBulanan(projects, ym = ymWita(new Date().toISOString())) {
+  const out = {}
+  for (const p of projects || []) {
+    if (p.cancelled || ymWita(p.about?.deadline) !== ym) continue
+    for (const x of p.sub_projects || []) { const uid = x.data?.translator; if (!uid || x.cancelled || x.data?.vendor) continue; out[uid] = (out[uid] || 0) + halSub(x) }
+  }
+  return out
 }
 /** Peran yang punya kapasitas harian. */
 export const PUNYA_KAPASITAS = ['penerjemah']
@@ -49,7 +65,9 @@ export function KapasitasSaya({ className }) {
   const pengajuan = useMemo(() => (data.kapasitas || []).filter((k) => k.user_id === user?.id), [data.kapasitas, user])
   const kap = kapasitasHarian(user, data.kapasitas)
   const menunggu = pengajuan.find((k) => k.status === 'diajukan')
+  const bulanIni = useMemo(() => halamanBulanan(data.projects)[user?.id] || 0, [data.projects, user?.id])
   if (!punyaKapasitas(user)) return null
+  const kuota = kap * HARI_BULAN
 
   const kirim = async () => {
     const ke = Number(form.ke)
@@ -72,7 +90,8 @@ export function KapasitasSaya({ className }) {
     <>
       <div className={cx('flex flex-wrap items-center gap-2 rounded-xl bg-white px-3 py-2 ring-1 ring-slate-200', className)} data-kapasitas-saya>
         <Gauge className="h-4 w-4 shrink-0 text-brand" />
-        <span className="text-xs text-ink-soft">Kapasitas harian saya <b className="text-sm text-ink" data-kap-angka>{kap}</b> halaman/hari</span>
+        <span className="text-xs text-ink-soft">Kapasitas harian saya <b className="text-sm text-ink" data-kap-angka>{kap}</b> halaman/hari deadline</span>
+        <span className="text-xs text-ink-soft" data-kap-bulan title={`Akumulasi sebulan: ${kap} halaman × ${HARI_BULAN} hari`}>· Bulan ini <b className={cx('text-sm', bulanIni > kuota ? 'text-rose-600' : 'text-ink')}>{bulanIni.toLocaleString('id-ID')}</b> / {kuota.toLocaleString('id-ID')} halaman</span>
         {menunggu ? (
           <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-800 ring-1 ring-amber-200" data-kap-menunggu>
             <Clock className="h-3 w-3" />Diajukan jadi {menunggu.ke} — menunggu persetujuan

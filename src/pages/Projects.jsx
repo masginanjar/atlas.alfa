@@ -12,6 +12,7 @@ import ProjectSpreadsheet from '../components/ProjectSpreadsheet.jsx'
 import UnduhData from '../components/UnduhData.jsx'
 import { KapasitasSaya } from '../components/Kapasitas.jsx'
 import PesanSiap from '../components/PesanSiap.jsx'
+import { boleh as bolehIzin } from '../lib/izin.js'
 import { DONE, isDone, progressOf, stageLabel, flowOf, totalPengajuan, stageIndex, stagesOf, VENDOR_PAID_STAGES, belumCatatBayar } from '../config/workflows.js'
 import { PengajuanStatus, DownloadBukti } from '../components/Pengajuan.jsx'
 import { SUB_TYPES } from '../config/subtypes.js'
@@ -337,6 +338,7 @@ export default function Projects({ tabAwal }) {
                 {bisaSaring && filterBtn}
                 {bisaSaring && urutan}
                 {adaToolbar && menuTampilan}
+                {(worker || bolehIzin(user, 'pesan-siap.massal')) && <PesanSiap />}
                 {adaToolbar && <button type="button" onClick={() => setPref({ ...pref, toolbar: pref.toolbar === false })} aria-expanded={pref.toolbar !== false} aria-label={pref.toolbar === false ? 'Tampilkan baris jenis & pintasan' : 'Ciutkan toolbar'} title={pref.toolbar === false ? 'Tampilkan baris jenis & pintasan' : 'Ciutkan toolbar'} data-aksi="ciut-toolbar"
                   className={cx(KONTROL, 'hidden w-11 justify-center px-0 sm:inline-flex md:w-8')}><ChevronDown className={cx('h-4 w-4 transition-transform duration-300', pref.toolbar !== false && 'rotate-180')} aria-hidden="true" /></button>}
               </div></KeAtas>
@@ -344,7 +346,6 @@ export default function Projects({ tabAwal }) {
               {!worker && can.editProject(user) && <KeAtas slot="tambah"><TombolTambah label="Project" data="project-baru" onClick={() => go('projects/new')} /></KeAtas>}
             </div>
             {worker && <KapasitasSaya />}
-            {worker && <div className="flex flex-wrap items-center gap-2"><PesanSiap /></div>}
 
             {/* Baris 2: judul · jumlah hasil · Jenis ▾ · pintasan kondisi · filter lain yang aktif */}
             {bisaSaring && !worker && pref.panel !== false && pref.toolbar !== false && (

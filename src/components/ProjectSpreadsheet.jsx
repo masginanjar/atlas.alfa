@@ -7,7 +7,7 @@ import { Button, cx, bisaDitekan } from './ui.jsx'
 import { invoiceLabel } from '../config/access.js'
 import SalinInvoice from './SalinInvoice.jsx'
 import { tanggalJam, tanggal } from '../lib/waktu.js'
-import { projectRow, TABLE_COLS, sortRows, filterOptions, applyFilters, FILTER_LABEL } from '../lib/projectRow.js'
+import { projectRow, TABLE_COLS, sortRows, filterOptions, applyFilters, FILTER_LABEL, RENTANG_JML, rentangTanggal } from '../lib/projectRow.js'
 import { stageLabel, flowOf, isDone } from '../config/workflows.js'
 import { grupOf, garisUrgensi, sisaWaktu, kelasGrup, labelGrup } from '../lib/urgensi.js'
 import { Stepper, StatusVendor } from '../pages/Projects.jsx'
@@ -161,6 +161,48 @@ export default function ProjectSpreadsheet({ list, detailFor, onDetail, onFiles,
 
   const semuaRow = useMemo(() => list.map((p) => projectRow(p, namaUser)), [list, namaUser])
   const opsi = useMemo(() => filterOptions(semuaRow), [semuaRow])
+  // ---------- Filter di SETIAP judul kolom ----------
+  const setF = (patch) => set({ filters: { ...filters, ...patch }, shownN: PAGE })
+  const jmlPer = useMemo(() => {
+    const m = { prioritas: {}, cabang: {}, print: {}, cs: {}, arah: {}, orang: {}, layanan: {} }
+    const tambah = (k, v) => { if (v) m[k][v] = (m[k][v] || 0) + 1 }
+    for (const r of semuaRow) { tambah('prioritas', r.prioritas); tambah('cabang', r.cabang); tambah('print', r.print); tambah('cs', r.cs); r.arahAll.forEach((v) => tambah('arah', v)); r.orangAll.forEach((v) => tambah('orang', v)) }
+    return m
+  }, [semuaRow])
+  const kelasF = (aktif) => cx('mt-1 block h-7 w-full min-w-0 truncate rounded-lg border-0 py-0 pl-2 text-[11px] font-semibold ring-1 focus:ring-2 focus:ring-[#4169E1] max-md:h-9 max-md:text-[13px]', aktif ? 'bg-[#141B34] text-white ring-[#141B34]' : 'bg-white text-ink-soft ring-slate-200')
+  const TGL = { timestamp: ['dibuatDari', 'dibuatSampai', [['hariini', 'Hari ini'], ['kemarin', 'Kemarin'], ['7lalu', '7 hari terakhir'], ['bulanini', 'Bulan ini']]], deadline: ['dlDari', 'dlSampai', [['hariini', 'Hari ini'], ['besok', 'Besok'], ['7depan', '7 hari ke depan'], ['bulanini', 'Bulan ini'], ['lewat', 'Sudah lewat']]] }
+  const filterJudul = (c) => {
+    const stop = { onClick: (e) => e.stopPropagation(), 'data-filter-kolom': c.key }
+    if (['invoice', 'pelanggan', 'layanan'].includes(c.key)) return <input type="search" value={filters[c.key] || ''} onChange={(e) => setF({ [c.key]: e.target.value })} placeholder="Cari…" aria-label={`Saring ${c.label}`} {...stop} className={cx(kelasF(!!filters[c.key]), 'pr-1 placeholder:font-normal placeholder:text-ink-mute', filters[c.key] && 'placeholder:text-white/60')} />
+    if (TGL[c.key]) {
+      const [dari, sampai, opsiTgl] = TGL[c.key]
+      const kini = opsiTgl.find(([k]) => { const [a, b] = rentangTanggal(k); return (filters[dari] || '') === a && (filters[sampai] || '') === b })?.[0] || (filters[dari] || filters[sampai] ? 'kustom' : '')
+      return (
+        <select value={kini} onChange={(e) => { const [a, b] = rentangTanggal(e.target.value); setF({ [dari]: a, [sampai]: b }) }} aria-label={`Saring ${c.label}`} {...stop} className={cx(kelasF(!!kini), 'pr-6')}>
+          <option value="">Semua</option>
+          {opsiTgl.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+          {kini === 'kustom' && <option value="kustom">Rentang khusus</option>}
+        </select>
+      )
+    }
+    if (['jmlDok', 'jmlHal'].includes(c.key)) return (
+      <select value={filters[c.key] || ''} onChange={(e) => setF({ [c.key]: e.target.value })} aria-label={`Saring ${c.label}`} {...stop} className={cx(kelasF(!!filters[c.key]), 'pr-5')}>
+        <option value="">Semua</option>
+        {Object.keys(RENTANG_JML).map((k) => <option key={k} value={k}>{k.replace('-', '–')}</option>)}
+      </select>
+    )
+    const daftar = opsi[c.key]
+    if (!daftar) return null
+    const jml = c.key === 'status' ? jmlStatus : jmlPer[c.key] || {}
+    return (
+      <select value={filters[c.key] || ''} onChange={(e) => setF({ [c.key]: e.target.value })} aria-label={`Saring ${c.label}`} title={c.key === 'status' ? 'Pilih status untuk melihat project di tahap itu' : `Saring menurut ${c.label}`} {...stop} {...(c.key === 'status' ? { 'data-filter-status': true } : {})} className={cx(kelasF(!!filters[c.key]), 'pr-6')}>
+        <option value="">Semua{c.key === 'status' ? ` · ${semuaRow.length}` : ''}</option>
+        {daftar.map((v) => <option key={v} value={v}>{v}{jml[v] ? ` · ${jml[v]}` : ''}</option>)}
+      </select>
+    )
+  }
+  // jumlah project per status (tahap) — untuk filter di judul kolom Status
+  const jmlStatus = useMemo(() => { const m = {}; for (const r of semuaRow) m[r.status] = (m[r.status] || 0) + 1; return m }, [semuaRow])
 
   const hasil = useMemo(() => {
     const s = q.trim().toLowerCase()
@@ -273,7 +315,7 @@ export default function ProjectSpreadsheet({ list, detailFor, onDetail, onFiles,
       )}
 
       {/* ---------- Tabel ---------- */}
-      {hasil.length === 0 ? (
+      {hasil.length === 0 && chips.length === 0 ? (
         <p className="rounded-2xl bg-white px-4 py-10 text-center text-sm text-ink-mute ring-1 ring-slate-200">Tidak ada project yang cocok.</p>
       ) : (
         <div ref={gulirRef} className={cx('min-w-0 max-w-full overflow-x-auto rounded-2xl bg-white ring-1 ring-slate-200', digulir && 'tabel-digulir')} data-digulir={digulir ? '1' : '0'}
@@ -288,7 +330,7 @@ export default function ProjectSpreadsheet({ list, detailFor, onDetail, onFiles,
               <tr>
                 {KOLOM.map((c) => (
                   <th key={c.key} scope="col" style={{ width: lebar[c.key] || c.w, minWidth: lebar[c.key] || c.w }}
-                    className={cx('relative sticky top-0 z-10 whitespace-nowrap border-b border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-bold text-ink-soft',
+                    className={cx('relative sticky top-0 z-10 whitespace-nowrap border-b border-slate-200 bg-slate-50 px-3 py-2 text-left align-top text-xs font-bold text-ink-soft',
                       c.sticky && 'left-0 z-20 shadow-[6px_0_8px_-6px_rgba(15,23,42,.25)] md:shadow-none')}>
                     <span onPointerDown={(e) => mulaiTarik(e, c.key, c.w)} onDoubleClick={() => simpanLebar({ ...lebar, [c.key]: undefined })} title="Tarik untuk mengubah lebar · klik dua kali untuk kembali"
                       className="absolute right-0 top-0 hidden h-full w-2 cursor-col-resize select-none md:block hover:bg-brand/30" aria-hidden="true" data-tarik-kolom />
@@ -298,12 +340,14 @@ export default function ProjectSpreadsheet({ list, detailFor, onDetail, onFiles,
                       {c.label}
                       {sortKey === c.key && (sortDir === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />)}
                     </button>
+                    {filterJudul(c)}
                   </th>
                 ))}
                 <th scope="col" style={{ width: renderAksi ? '250px' : '104px', minWidth: renderAksi ? '250px' : '104px' }} className="sticky top-0 z-20 whitespace-nowrap border-b border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-bold text-ink-soft md:right-0">{kepalaAksi || 'Aksi'}</th>
               </tr>
             </thead>
             <tbody>
+              {hasil.length === 0 && <tr><td colSpan={KOLOM.length + 1} className="px-4 py-10 text-sm text-ink-mute" data-kosong-filter>Tidak ada project yang cocok dengan filter ini — ubah pilihan di judul kolom atau tekan Reset.</td></tr>}
               {tampil.map((r, i) => (
                 <tr key={r.id} onClick={() => toggleBaris(r.id)} {...bisaDitekan(() => toggleBaris(r.id))} aria-expanded={buka.has(r.id)} data-grup={grupOf(r.p)}
                   title="Klik untuk melihat sub project"
