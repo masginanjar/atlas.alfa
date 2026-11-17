@@ -622,6 +622,10 @@ function StagePanelIsi({ project, sub, stage, ringkas }) {
   const isOwnerRole = lewatIzinApostille(user, stage) || stage.roles.includes(user.role) && !(stage.assignee && sub.data?.[stage.assignee] && sub.data[stage.assignee] !== user.id) && !(stage.claimable && user.role !== 'otorisator') && !(stage.printBranch && !branchesOf(user).includes(printBranchOf(project)))
   const [overrideMode, setOverrideMode] = useState(false)
   const [reason, setReason] = useState('')
+  // Otorisasi dilanjutkan oleh selain otorisator → wajib pilih otorisatornya (prestasi dicatat atas nama dia)
+  const perluAtasNama = stage.key === 'otorisasi' && user.role !== 'otorisator'
+  const daftarOto = perluAtasNama ? data.users.filter((u) => u.role === 'otorisator' && u.active !== false) : []
+  const [atasNama, setAtasNama] = useState(() => (daftarOto.some((u) => u.id === activeClaim(sub)?.by) ? activeClaim(sub).by : ''))
   const overriding = canOverride && !isOwnerRole && (overrideMode || normal)
   const allowed = normal || (canOverride && overrideMode)
   const needClaim = stage.claimable && user.role !== 'superadmin' && !overriding && (!claim || claim.by !== user.id)
@@ -681,6 +685,7 @@ function StagePanelIsi({ project, sub, stage, ringkas }) {
     try {
       const clean = Object.fromEntries(Object.entries(vals).map(([k, v]) => [k, stage.fields.find((f) => f.key === k)?.type === 'money' ? Number(v) || '' : v]))
       if (advance && overriding) { if (!reason.trim()) throw new Error('Isi alasan melewati proses'); clean.__override = reason.trim() }
+      if (advance && perluAtasNama) { if (!atasNama) throw new Error('Pilih otorisator yang mengerjakan'); clean.__atas_nama = atasNama }
       await processStage(project, sub.id, clean, advance)
       if (advance && overriding) { setOverrideMode(false); setReason('') }
       notify(advance ? `${sub.title}: ${stage.label} selesai` : 'Tersimpan')
@@ -822,6 +827,15 @@ function StagePanelIsi({ project, sub, stage, ringkas }) {
         {perluLembar && !lembarTercatat && !ringkas && <p className="text-[11px] font-semibold text-amber-800">Catat dulu pemakaian lembar affidavit di atas sebelum menandai sudah dicetak.</p>}
         {overriding && (
           <div className="mb-1 flex flex-wrap items-center gap-2 rounded-xl bg-slate-50 p-2.5 text-[11px] text-ink-soft ring-1 ring-slate-200" data-info-ping><span className="min-w-0 flex-1">Tahap ini milik role lain — Anda bisa mengingatkan PIC-nya tanpa mengubah status.</span><PingButton project={project} sub={sub} stage={stage} /></div>
+        )}
+        {perluAtasNama && allowed && (
+          <label className="block text-xs font-semibold text-ink-soft" data-atas-nama>Otorisator yang mengerjakan <span className="text-rose-600">*</span>
+            <select value={atasNama} onChange={(e) => setAtasNama(e.target.value)} aria-invalid={!atasNama} className="mt-1 block w-full rounded-lg border-0 bg-white px-2.5 py-2 text-sm text-ink ring-1 ring-slate-300 max-md:min-h-11 max-md:text-base">
+              <option value="">— Pilih otorisator —</option>
+              {daftarOto.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+            </select>
+            <span className="mt-1 block text-[11px] font-normal text-ink-mute">Prestasi & Laporan Otorisasi dicatat atas nama otorisator ini, bukan atas nama Anda.</span>
+          </label>
         )}
         {overriding && ringkas && (
           <label className="block" data-alasan-lewati><Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Alasan lanjutkan sendiri (wajib)" title={`Melewati proses role ${stage.roles.filter((r) => r !== 'superadmin').map((r) => ROLES[r].label).join(' / ')} — dicatat di riwayat`} aria-label="Alasan melewati proses" aria-invalid={!reason.trim()} className="!bg-amber-50" /></label>
@@ -1174,7 +1188,7 @@ export function AksiBaris({ project, sub, onPanel, onTugas, kecil }) {
   const fileFields = stage.fields.filter((f) => f.type === 'file')
   const isi = (f) => f.type === 'file' ? fieldFiles(sub.data, f.key).length > 0 : String(sub.data?.[f.key] ?? '').trim() !== ''
   const rumit = stage.fields.some((f) => f.required && !ISIAN_SEDERHANA.has(f.type)) || stage.fields.some((f) => f.required && f.type !== 'file' && !isi(f))
-    || ['siap_kirim', 'cs_final', 'kirim'].includes(stage.key) || stage.key === 'proses_vendor' || (stage.print && perluAffidavit(project, sub))
+    || ['siap_kirim', 'cs_final', 'kirim'].includes(stage.key) || stage.key === 'proses_vendor' || (stage.key === 'otorisasi' && user.role !== 'otorisator') || (stage.print && perluAffidavit(project, sub))
   const kurangFile = fileFields.filter((f) => f.required && !isi(f))
   const [dialog, setDialog] = useState(null) // { f, files } → jendela konfirmasi unggah
   const lanjut = async (e) => {

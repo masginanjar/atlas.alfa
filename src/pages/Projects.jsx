@@ -11,6 +11,7 @@ import { scopeByBranch, can, branchesOf, invoiceLabel, BRANCHES, diKoordinasi, v
 import ProjectSpreadsheet from '../components/ProjectSpreadsheet.jsx'
 import UnduhData from '../components/UnduhData.jsx'
 import { KapasitasSaya } from '../components/Kapasitas.jsx'
+import PesanSiap from '../components/PesanSiap.jsx'
 import { DONE, isDone, progressOf, stageLabel, flowOf, totalPengajuan, stageIndex, stagesOf, VENDOR_PAID_STAGES, belumCatatBayar } from '../config/workflows.js'
 import { PengajuanStatus, DownloadBukti } from '../components/Pengajuan.jsx'
 import { SUB_TYPES } from '../config/subtypes.js'
@@ -54,13 +55,13 @@ export default function Projects({ tabAwal }) {
   const sesi = useMemo(() => { try { return JSON.parse(sessionStorage.getItem('atlas-proj-sesi') || '{}') || {} } catch { return {} } }, [])
   const [tab, setTab] = useState(() => tabAwal || sesi.tab || (user?.role === 'staf_apostille' ? 'apostille' : 'all'))
   const [q, setQ] = useState(() => sesi.q || '')
-  const [status, setStatus] = useState(() => sesi.status || 'aktif')
+  const [status, setStatus] = useState(() => sesi.status || 'semua') // bawaan: Semua — project yang selesai tidak "menghilang" dari daftar
   // Pencarian/filter/urutan tabel disimpan di sini, bukan di dalam tabelnya,
   // supaya tidak hilang saat panel detail dibuka-tutup atau setelah cetak.
   const [tableState, setTableState] = useState(() => { let v = 'deadline'; try { v = localStorage.getItem('atlas-sort') || 'deadline' } catch { /* abaikan */ } return { q: '', sortKey: v === 'baru' ? 'timestamp' : 'deadline', sortDir: v === 'baru' ? 'desc' : 'asc', filters: {}, shownN: 36 } })
   const VIEWS = ['list', 'tabel']
   // Tampilan kartu dihapus; preferensi lama yang masih 'grid' jatuh ke list.
-  const [view, setViewRaw] = useState(() => { try { const v = localStorage.getItem('atlas-view'); return VIEWS.includes(v) ? v : 'list' } catch { return 'list' } })
+  const [view, setViewRaw] = useState(() => { try { const v = localStorage.getItem('atlas-view'); return VIEWS.includes(v) ? v : (window.matchMedia?.('(max-width: 767px)').matches ? 'list' : 'tabel') } catch { return 'tabel' } }) // bawaan: Tabel (pilihan pengguna tetap diingat)
   const setView = (v) => { setViewRaw(v); try { localStorage.setItem('atlas-view', v) } catch { /* abaikan */ } }
   // urutan: 'deadline' (terdekat dulu) atau 'baru' (project terbaru dulu) — tombol saklar, tersimpan per perangkat
   const [sort, setSortRaw] = useState(() => { try { return localStorage.getItem('atlas-sort') || 'deadline' } catch { return 'deadline' } })
@@ -129,8 +130,10 @@ export default function Projects({ tabAwal }) {
         // Terbaru: tanggal input, paling baru dulu
         if (sort === 'baru') return new Date(b.created_at || 0) - new Date(a.created_at || 0)
         // Deadline: hari ini, besok, dst.; yang sudah lewat deadline (dan belum selesai) ditaruh paling akhir
-        const lewat = (p) => (!isDone(p) && daysLeft(p.about?.deadline) < 0 ? 1 : 0)
+        // yang sudah SELESAI ditaruh setelah semua yang masih berjalan (terbaru di atas) supaya pekerjaan aktif tetap di atas saat status "Semua"
+        const lewat = (p) => (isDone(p) ? 2 : daysLeft(p.about?.deadline) < 0 ? 1 : 0)
         const la = lewat(a), lb = lewat(b); if (la !== lb) return la - lb
+        if (la === 2) return new Date(b.about?.deadline || b.created_at || 0) - new Date(a.about?.deadline || a.created_at || 0)
         const da = a.about?.deadline ? new Date(a.about.deadline).getTime() : Infinity, db = b.about?.deadline ? new Date(b.about.deadline).getTime() : Infinity
         return da === db ? new Date(b.created_at || 0) - new Date(a.created_at || 0) : da - db
       })
@@ -192,13 +195,13 @@ export default function Projects({ tabAwal }) {
             cepat && { label: cepat === 'belumbayar' ? 'Belum catat bayar apostille' : cepat === 'hambatan' ? 'Hanya hambatan' : cepat === 'pilih' ? 'Perlu pilih penerjemah' : 'Hanya project saya', clear: () => setCepat('') },
             sort !== 'deadline' && { label: 'Urut: terbaru', clear: () => setSort('deadline') },
             q.trim() && { label: `Cari: "${q.trim()}"`, clear: () => setQ('') },
-            status !== 'aktif' && { label: `Status: ${status === 'selesai' ? 'Selesai' : 'Semua'}`, clear: () => setStatus('aktif') },
+            status !== 'semua' && { label: `Status: ${status === 'selesai' ? 'Selesai' : 'Aktif'}`, clear: () => setStatus('semua') },
             dlFilter && { label: `Deadline: ${dlFilterLabel(dlFilter)}`, clear: () => setDlFilter(null) },
             prFilter && { label: `Prioritas: ${prFilter}`, clear: () => setPrFilter('') },
             branchFilter !== 'Semua' && { label: `Cabang: ${branchFilter}`, clear: () => setBranchFilter('Semua') },
             bpFilter.print && { label: `Print: ${bpFilter.print}`, clear: () => setBpFilter((f) => ({ ...f, print: '' })) },
           ].filter(Boolean)
-  const resetFilter = () => { setTab('all'); setCepat(''); setQ(''); setStatus('aktif'); setSort('deadline'); setDlFilter(null); setPrFilter(''); setBpFilter({ branch: '', print: '' }) }
+  const resetFilter = () => { setTab('all'); setCepat(''); setQ(''); setStatus('semua'); setSort('deadline'); setDlFilter(null); setPrFilter(''); setBpFilter({ branch: '', print: '' }) }
   const bisaSaringTop = !worker // baris chip tampil → filter aktif ikut di baris chip
 
   return (
@@ -341,6 +344,7 @@ export default function Projects({ tabAwal }) {
               {!worker && can.editProject(user) && <KeAtas slot="tambah"><TombolTambah label="Project" data="project-baru" onClick={() => go('projects/new')} /></KeAtas>}
             </div>
             {worker && <KapasitasSaya />}
+            {worker && <div className="flex flex-wrap items-center gap-2"><PesanSiap /></div>}
 
             {/* Baris 2: judul · jumlah hasil · Jenis ▾ · pintasan kondisi · filter lain yang aktif */}
             {bisaSaring && !worker && pref.panel !== false && pref.toolbar !== false && (

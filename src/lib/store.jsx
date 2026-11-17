@@ -387,6 +387,16 @@ export function AppProvider({ children }) {
       }
     }
     if (advance && stage.onAdvance) merged = { ...merged, ...stage.onAdvance(s, user) }
+    // PRESTASI MENGIKUTI PENUGASAN, bukan orang yang menekan tombol: bila tahap dilanjutkan oleh role lain
+    // (Super Admin / Direktur / Admin Pusat / Supervisor), hasil kerja tetap dicatat atas nama pelaksana yang ditugaskan.
+    const atasNama = values?.__atas_nama; delete merged.__atas_nama
+    if (advance && stage.key === 'penerjemahan' && merged.translator && merged.translator !== user.id) merged = { ...merged, translated_by: merged.translator, translated_via: user.id }
+    if (advance && stage.key === 'otorisasi' && user.role !== 'otorisator') {
+      const klaim = s.data?.claim?.by
+      const oto = data.users.find((u) => u.role === 'otorisator' && u.active !== false && u.id === (atasNama || klaim))
+      if (!oto) throw new Error('Pilih otorisator yang mengerjakan — prestasi dicatat atas nama otorisator, bukan yang melanjutkan.')
+      merged = { ...merged, authorized_by: oto.id, authorized_name: oto.name, authorized_via: user.id, authorized_via_name: user.name }
+    }
     // Nomor register DIPESAN OTOMATIS saat Otorisator ACC (1 dokumen = 1 nomor, dicatat ke tabel
     // registrations supaya tidak dipakai dokumen lain). Admin Pusat lalu mengecek & menerbitkan.
     // Hanya terjemahan tersumpah ID ⇄ EN / NL; arah lain melewati tahap "Nomor Registrasi".
@@ -405,7 +415,7 @@ export function AppProvider({ children }) {
       }
     }
     if (advance && stage.printBranch) merged = { ...merged, [`${stage.key}_by`]: user.id }
-    if (advance && stage.key === 'proofread') merged = { ...merged, proofread_at: new Date().toISOString(), proofread_by: user.id }
+    if (advance && stage.key === 'proofread') merged = { ...merged, proofread_at: new Date().toISOString(), proofread_by: merged.proofreader || user.id, ...(merged.proofreader && merged.proofreader !== user.id ? { proofread_via: user.id } : {}) }
     s.data = merged
     const next = advance ? (stages[idx + 1 + lompat]?.key ?? DONE) : s.stage
     const override = values?.__override

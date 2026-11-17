@@ -120,6 +120,8 @@ export const MODUL = [
     f('penugasan-ulang', 'Ulang penugasan dokumen (ganti bahasa / penerjemah / vendor saat alur berjalan)', ['ubah'], { ubah: ['superadmin', 'supervisor', 'direktur', 'admin_pusat'] }),
     // 16 Nov 2026 (keputusan pemilik): order ke biro rekanan (mis. Indotrans) boleh oleh pimpinan DAN CS.
     f('biro-order', 'Order ke biro rekanan (mis. Indotrans)', ['tambah'], { tambah: ['superadmin', 'supervisor', 'direktur', 'admin_pusat', 'cs'] }),
+    f('chat-pelanggan', 'Copy chat WhatsApp ke pelanggan (Draft · Selesai · Review)', ['lihat'], { lihat: ['superadmin', 'supervisor', 'direktur', 'admin_pusat', 'cs'] }),
+    f('pesan-siap', 'Pesan notifikasi Ready to proof / Ready to oto (copy chat WhatsApp)', ['tambah'], { tambah: ['superadmin', 'penerjemah', 'proofreader'] }),
     f('vendor-order', 'Order ke vendor (bahasa selain Indonesia · Inggris · Belanda)', ['tambah'], { tambah: ['superadmin', 'supervisor', 'direktur', 'admin_pusat', 'cs'] }),
     f('apostille-proses', 'Proses Apostille / Legalisasi', ['status', 'setujui'], { status: ['superadmin', 'supervisor', 'staf_apostille'], setujui: ['superadmin', 'direktur'] }),
     f('surat-kuasa', 'Surat Kuasa', ['menu', 'lihat', 'tambah', 'ubah', 'hapus', 'cetak', 'atur'], { lihat: ['staf_apostille'], tambah: ['staf_apostille'], ubah: ['staf_apostille'], cetak: ['staf_apostille'] }),

@@ -13,6 +13,7 @@ import { DONE, flowOf, stagesOf, stageIndex, stageLabel } from '../config/workfl
 import { infoDeadline, warnaKategori } from '../components/BarisCanvas.jsx'
 import ProjectDetail, { SubProject, TabDetailProject } from './ProjectDetail.jsx'
 import { cx } from '../components/ui.jsx'
+import SalinChatOrder from '../components/SalinChatOrder.jsx'
 
 const PELAKSANA = ['penerjemah', 'proofreader', 'otorisator']
 
@@ -121,6 +122,7 @@ export default function LayarKerja({ projectId, subId, daftar = [], onClose }) {
                 </section>
               </div>
             )}
+            <SalinChatOrder project={project} />
             {/* Tab bagian lain project (catatan, file, kurir, portal, riwayat) — sama dengan halaman detail */}
             <section aria-label="Bagian lain project" className="flex flex-col gap-3 rounded-2xl bg-white p-3 sm:p-4 dark:bg-white/5" data-tab-layar-kerja>
               <TabDetailProject key={project.id} project={project} />

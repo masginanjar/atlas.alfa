@@ -167,7 +167,9 @@ export default function ProjectSpreadsheet({ list, detailFor, onDetail, onFiles,
     let r = semuaRow
     if (s) r = r.filter((x) => invoiceLabel(x.invoice).toLowerCase().includes(s) || x.pelanggan.toLowerCase().includes(s))
     r = applyFilters(r, filters)
-    return sortRows(r, sortKey, sortDir) // diurutkan utuh dulu, baru dipotong
+    const urut = sortRows(r, sortKey, sortDir) // diurutkan utuh dulu, baru dipotong
+    // yang masih berjalan selalu di atas; yang SELESAI tetap tampil, di bagian bawah (urutan di dalamnya tidak berubah)
+    return [...urut.filter((x) => !isDone(x.p)), ...urut.filter((x) => isDone(x.p))]
   }, [semuaRow, q, filters, sortKey, sortDir])
 
   const tampil = hasil.slice(0, shownN)
