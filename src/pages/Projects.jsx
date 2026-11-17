@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import SalinChatOrder from '../components/SalinChatOrder.jsx'
+import EmailOtorisasi from '../components/EmailOtorisasi.jsx'
 import { OfficialInvoice } from '../components/NoReg.jsx'
 import { go } from '../lib/router.js'
 import { Plus, Minus, Search, FolderOpen, Banknote, CalendarClock, Layers, LayoutGrid, List, ChevronRight, ChevronDown, Sparkles, StickyNote, Printer, AlertTriangle, Eye, X, Save, Rows2, Rows3, Rows4, Maximize2, Minimize2, Table2, MoreHorizontal, Columns3, Bookmark } from 'lucide-react'
@@ -1179,6 +1180,7 @@ function ProjectExpand({ p: p0, onLangkah, awal }) {
         )
       })}
       <SalinChatOrder project={p} className="border-t border-[rgba(20,27,52,0.08)] px-4 py-2" />
+      <EmailOtorisasi project={p} className="border-t border-[rgba(20,27,52,0.08)] px-4 py-2" />
       {p.about?.notes && <p className="flex items-start gap-2 whitespace-pre-line border-t border-[rgba(20,27,52,0.08)] px-4 py-2 text-[13px]"><StickyNote className="mt-0.5 h-4 w-4 shrink-0" style={{ color: w.fg }} aria-hidden="true" /><span><strong>Catatan:</strong> {p.about.notes}</span></p>}
     </div>
   )

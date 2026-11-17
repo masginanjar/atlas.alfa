@@ -7,7 +7,7 @@ import { useApp } from '../lib/store.jsx'
 import { boleh } from '../lib/izin.js'
 import { go } from '../lib/router.js'
 import { drive } from '../lib/integrations.js'
-import { perluVendor, can, biayaVendorTersembunyi, bolehPajakApostille, PERSON_TYPES, ROLES, scopeByBranch, activeClaim, placeOf, branchesOf, printBranchOf, displayNameFor, seeProofreaderIdentity, proofreaderTeamName, pickProofreader, invoiceLabel, coordinatorFor, foreignLang, bolehItemCeklis, lewatIzinApostille } from '../config/access.js'
+import { perluVendor, can, biayaVendorTersembunyi, bolehPajakApostille, PERSON_TYPES, ROLES, scopeByBranch, activeClaim, placeOf, branchesOf, printBranchOf, displayNameFor, seeProofreaderIdentity, proofreaderTeamName, pickProofreader, invoiceLabel, coordinatorFor, foreignLang, bolehItemCeklis, lewatIzinApostille, rolesOf } from '../config/access.js'
 import TugaskanPenerjemah from '../components/TugaskanPenerjemah.jsx'
 import { saveBlob, dataUrlToBlob } from '../lib/download.js'
 import ResiFields from '../components/ResiFields.jsx'
@@ -626,7 +626,7 @@ function StagePanelIsi({ project, sub, stage, ringkas }) {
   const [reason, setReason] = useState('')
   // Otorisasi dilanjutkan oleh selain otorisator → wajib pilih otorisatornya (prestasi dicatat atas nama dia)
   const perluAtasNama = stage.key === 'otorisasi' && user.role !== 'otorisator'
-  const daftarOto = perluAtasNama ? data.users.filter((u) => u.role === 'otorisator' && u.active !== false) : []
+  const daftarOto = perluAtasNama ? data.users.filter((u) => rolesOf(u).includes('otorisator') && u.active !== false).sort((a, b) => a.name.localeCompare(b.name)) : [] // termasuk yang otorisator sebagai role tambahan
   // Dokumen yang dikirim lewat Email Otorisasi → otorisator tujuan email jadi pilihan awal (tetap bisa diganti)
   const otoEmail = perluAtasNama ? [...(project.email_oto || [])].reverse().find((x) => (x.sub_ids || []).includes(sub.id))?.oto_id || '' : ''
   const [atasNama, setAtasNama] = useState(() => (daftarOto.some((u) => u.id === activeClaim(sub)?.by) ? activeClaim(sub).by : ''))

@@ -90,7 +90,7 @@ export const Select = ({ children, ...p }) => <select {...p} className={cx(input
  * Panel. `side` = panel geser dari kanan (panel kerja, tabel tetap terlihat di belakang);
  * tanpa `side` = modal di tengah (untuk keputusan/form yang butuh fokus).
  */
-export function Sheet({ open, onClose, title, subtitle, children, footer, wide, xwide, tinted, side }) {
+export function Sheet({ open, onClose, title, subtitle, children, footer, wide, xwide, tinted, side, atas }) {
   // Sisi panel mengikuti preferensi pengguna (Tema → Panel detail muncul dari)
   const fromLeft = side && typeof document !== 'undefined' && document.documentElement.dataset.panel === 'left'
   useEffect(() => {
@@ -103,7 +103,7 @@ export function Sheet({ open, onClose, title, subtitle, children, footer, wide, 
   if (!open) return null
   // Dirender ke <body> (portal) agar tidak terkurung kartu/segmen ber-backdrop-blur atau overflow-hidden.
   return createPortal(
-    <div className={cx('fixed inset-0 z-[80] flex',
+    <div className={cx('fixed inset-0 flex', atas ? 'z-[260]' : 'z-[80]', // atas = dibuka dari dalam Layar Kerja (z-200) → harus di depannya
       // panel samping: mulai di bawah bar atas & tidak menghalangi klik, jadi header dan tabel di belakang tetap bisa dipakai
       // panel samping dari kanan berhenti di sebelah KIRI toolbar tegak,
       // supaya toolbar tetap terlihat dan bisa dipakai mengganti panel

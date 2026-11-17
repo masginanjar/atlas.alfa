@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { db, TABLES, MODE } from './db.js'
 import { catatMonitor, jenisError } from './monitor.js'
 import { describe } from './activity.js'
-import { branchesOf, APOSTILLE_FUND, ROLES, roleLabel, displayNameFor, WORKER_ROLES, branchOfInvoice, can, bolehItemCeklis } from '../config/access.js'
+import { branchesOf, APOSTILLE_FUND, ROLES, roleLabel, displayNameFor, WORKER_ROLES, branchOfInvoice, can, bolehItemCeklis, rolesOf } from '../config/access.js'
 import { zoho } from './integrations.js'
 import { startHeartbeat, statusOf } from './presence.js'
 import { threadOf, myMessages, unreadByThread, pingQuota, openChatBus, PING_MAX_24H, PING_GAP_MS } from './chat.js'
@@ -393,7 +393,7 @@ export function AppProvider({ children }) {
     if (advance && stage.key === 'penerjemahan' && merged.translator && merged.translator !== user.id) merged = { ...merged, translated_by: merged.translator, translated_via: user.id }
     if (advance && stage.key === 'otorisasi' && user.role !== 'otorisator') {
       const klaim = s.data?.claim?.by
-      const oto = data.users.find((u) => u.role === 'otorisator' && u.active !== false && u.id === (atasNama || klaim))
+      const oto = data.users.find((u) => rolesOf(u).includes('otorisator') && u.active !== false && u.id === (atasNama || klaim)) // role utama ATAU tambahan (double job)
       if (!oto) throw new Error('Pilih otorisator yang mengerjakan — prestasi dicatat atas nama otorisator, bukan yang melanjutkan.')
       merged = { ...merged, authorized_by: oto.id, authorized_name: oto.name, authorized_via: user.id, authorized_via_name: user.name }
     }
