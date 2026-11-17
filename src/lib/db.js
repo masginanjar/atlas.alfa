@@ -116,6 +116,24 @@ function migrate(m) {
     }
     m.pesan_siap_v1 = true; changed = true
   }
+  // Contoh "Sudah diotorisasi" (17 Nov 2026): tiga dokumen sintetis yang baru di-ACC otorisator pertama
+  if (!m.pesan_acc_v1) {
+    const ot = (m.users || []).find((u) => u.role === 'otorisator' && u.active !== false)
+    const tr = (m.users || []).find((u) => u.role === 'penerjemah' && u.active !== false)?.id
+    const pf = (m.users || []).find((u) => u.role === 'proofreader' && u.active !== false)?.id
+    if (ot && tr && pf) {
+      const now = new Date(); const at = now.toISOString()
+      const dl = (hari, jam) => `${new Date(now.getTime() + 8 * 3600e3 + hari * 864e5).toISOString().slice(0, 10)}T${jam}:00+08:00`
+      const buat = (id, inv, nama, deadline, prio) => ({ id, invoice_no: inv, branch: 'Bali', created_at: at, files: [], payment_status: 'paid', customer: { zoho_id: null, name: nama, ship: {} },
+        about: { print_location: 'Bali', priority: prio, received_at: at.slice(0, 10), deadline, metode_kirim: 'softcopy', courier: '' },
+        sub_projects: [{ id: `${id}-s1`, type: 'terjemahan', title: 'Terjemahan Tersumpah: Dokumen (contoh)', description: '1. Dokumen (contoh)', file_count: 1, pages: 1, docs: [{ desc: 'Dokumen (contoh)', pages: 1 }],
+          lang_from: 'Indonesia', lang_to: 'Inggris', flow: 'tr_int', stage: 'registrasi', stage_at: at, data: { translator: tr, proofreader: pf, authorized_by: ot.id, authorized_name: ot.name, authorized_at: at }, history: [] }] })
+      const baru = [buat('pj-siap-a1', 'INV-990311', '[Contoh Sudah Oto A]', dl(1, '08:00'), 'Normal'), buat('pj-siap-a2', 'INV-990312', '[Contoh Sudah Oto B]', dl(1, '08:00'), 'Normal'), buat('pj-siap-a3', 'INV-990313', '[Contoh Sudah Oto C]', dl(0, '17:00'), 'Sameday')]
+        .filter((p) => !(m.projects || []).some((x) => x.id === p.id))
+      m.projects = [...(m.projects || []), ...baru]
+    }
+    m.pesan_acc_v1 = true; changed = true
+  }
   // Laporan Otorisasi (17 Nov 2026): akun Muhammad Arifin boleh melihat rekap semua otorisator
   if (!m.oto_lihat_semua_v1) {
     const ar = (m.users || []).find((u) => u.role === 'otorisator' && /arifin/i.test(u.name))

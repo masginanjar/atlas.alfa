@@ -18,14 +18,21 @@ const labelTgl = (ymd) => (ymd ? `${Number(ymd.slice(8, 10))} ${BULAN[Number(ymd
 const namaPendek = (n) => String(n || '').replace(/^\s*(ny|tn|nn|bpk|bapak|ibu|sdr|sdri|mr|mrs|ms)\.?\s+/i, '').trim() || '—'
 const cepat = (pr) => (!pr || /^(normal|reguler)$/i.test(pr) ? '' : ` (Speed ${pr})`)
 const MODE = {
-  proof: { judul: 'Ready to proof', kalimat: 'ready to proof', assignee: 'translator', stage: 'proofread', ket: 'Dokumen Anda yang sudah menunggu proofreader' },
-  oto: { judul: 'Ready to oto', kalimat: 'ready to oto', assignee: 'proofreader', stage: 'otorisasi', ket: 'Dokumen Anda yang sudah menunggu otorisator' },
+  proof: { judul: 'Ready to proof', kalimat: 'ready to proof', assignee: 'translator', stage: 'proofread', ket: 'Dokumen Anda yang sudah menunggu proofreader', semua: 'Semua dokumen yang sudah menunggu proofreader', kosong: 'yang menunggu proofreader' },
+  oto: { judul: 'Ready to oto', kalimat: 'ready to oto', assignee: 'proofreader', stage: 'otorisasi', ket: 'Dokumen Anda yang sudah menunggu otorisator', semua: 'Semua dokumen yang sudah menunggu otorisator', kosong: 'yang menunggu otorisator' },
+  // Otorisator: dokumen yang sudah ia ACC dalam 3 hari terakhir
+  acc: { judul: 'Sudah diotorisasi', kalimat: 'sudah diotorisasi', ket: 'Laporkan dokumen yang sudah selesai Anda otorisasi (3 hari terakhir)', semua: 'Semua dokumen yang sudah diotorisasi (3 hari terakhir)', kosong: 'yang sudah diotorisasi dalam 3 hari terakhir' },
+}
+const HARI_ACC = 3
+const milikMode = (s, uid, mode, semuaOrang) => {
+  if (s.cancelled) return false
+  if (mode === 'acc') { const at = s.data?.authorized_at; return !!at && !!s.data?.authorized_by && (semuaOrang || s.data.authorized_by === uid) && Date.now() - new Date(at).getTime() < HARI_ACC * 864e5 }
+  const m = MODE[mode]; return s.stage === m.stage && (semuaOrang || s.data?.[m.assignee] === uid)
 }
 
 /** Project yang punya dokumen milik user di tahap `mode` — satu baris per project. */
 export function daftarSiap(projects, uid, mode, semuaOrang) {
-  const m = MODE[mode]
-  return (projects || []).filter((p) => !p.cancelled && (p.sub_projects || []).some((s) => !s.cancelled && s.stage === m.stage && (semuaOrang || s.data?.[m.assignee] === uid)))
+  return (projects || []).filter((p) => !p.cancelled && (p.sub_projects || []).some((s) => milikMode(s, uid, mode, semuaOrang)))
     .map((p) => ({ id: p.id, inv: invoiceLabel(p.invoice_no), nama: namaPendek(p.customer?.name), tgl: tglWita(p.about?.deadline), prio: p.about?.priority || '' }))
     .sort((a, b) => (a.tgl || '9').localeCompare(b.tgl || '9') || a.inv.localeCompare(b.inv))
 }
@@ -47,9 +54,9 @@ export default function PesanSiap({ className, labelTombol }) {
   const [ok, setOk] = useState(false)
   // izin `pesan-siap.massal` (Admin Pusat / Super Admin): melihat SEMUA dokumen yang menunggu proofreader / otorisator, bukan hanya miliknya
   const lihatSemua = boleh(user, 'pesan-siap.massal')
-  const semua = useMemo(() => ({ proof: daftarSiap(data.projects, user?.id, 'proof', lihatSemua), oto: daftarSiap(data.projects, user?.id, 'oto', lihatSemua) }), [data.projects, user?.id, lihatSemua])
+  const semua = useMemo(() => ({ proof: daftarSiap(data.projects, user?.id, 'proof', lihatSemua), oto: daftarSiap(data.projects, user?.id, 'oto', lihatSemua), acc: daftarSiap(data.projects, user?.id, 'acc', lihatSemua) }), [data.projects, user?.id, lihatSemua])
   if (!boleh(user, 'pesan-siap.tambah')) return null
-  const modeAda = ['proof', 'oto'].filter((k) => semua[k].length)
+  const modeAda = ['proof', 'oto', 'acc'].filter((k) => semua[k].length)
   const buka = () => {
     const m = lihatSemua && modeAda.includes('oto') && !open && mode === 'proof' ? 'oto' : modeAda.includes(mode) ? mode : (modeAda[0] || 'proof')
     setMode(m); setPilih(new Set()); setOk(false); setOpen(true) // tidak ada yang tercentang dulu — pengguna menandai sendiri
@@ -70,16 +77,17 @@ export default function PesanSiap({ className, labelTombol }) {
       // Ready to oto → Admin Pusat mendapat notifikasi di ATLAS (hanya untuk dokumen yang belum pernah dilaporkan)
       const baru = terpilih.filter((r) => !sudah.has(r.id))
       let terkirim = false
-      if (mode === 'oto' && baru.length && !lihatSemua) {
+      const lapor = ['oto', 'acc'].includes(mode) // proofreader (ready to oto) & otorisator (sudah diotorisasi) melapor ke Admin Pusat
+      if (lapor && baru.length && !lihatSemua) {
         try {
           await save('notifications', { to_role: 'admin_pusat', kind: 'task', by: user.name, read_by: [],
-            text: `Ready to oto dari ${user.name} — ${[...new Set(baru.map((r) => `DL ${labelTgl(r.tgl)}`))].join(', ')}: ${baru.map((r) => `${r.inv} (${r.nama})`).join(', ')}` })
+            text: `${mode === 'acc' ? 'Sudah diotorisasi oleh' : 'Ready to oto dari'} ${user.name} — ${[...new Set(baru.map((r) => `DL ${labelTgl(r.tgl)}`))].join(', ')}: ${baru.map((r) => `${r.inv} (${r.nama})`).join(', ')}` })
           terkirim = true
         } catch (e) { notify(`Teks tersalin, tetapi notifikasi ke Admin Pusat gagal: ${e.message}`, 'err') }
       }
-      if (mode !== 'oto' || terkirim || !baru.length || lihatSemua) {
+      if (!lapor || terkirim || !baru.length || lihatSemua) {
         try { localStorage.setItem(kunci(user.id, mode), JSON.stringify([...new Set([...sudah, ...terpilih.map((r) => r.id)])].slice(-400))) } catch { /* abaikan */ }
-        notify(mode === 'oto' && terkirim ? 'Teks tersalin — Admin Pusat sudah diberi notifikasi' : 'Teks tersalin — tempel di WhatsApp')
+        notify(lapor && terkirim ? 'Teks tersalin — Admin Pusat sudah diberi notifikasi' : 'Teks tersalin — tempel di WhatsApp')
       }
       setOk(true); setTimeout(() => setOk(false), 2000)
     } finally { setSibuk(false) }
@@ -90,10 +98,10 @@ export default function PesanSiap({ className, labelTombol }) {
         className={cx(labelTombol ? 'inline-flex h-11 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border px-2.5 text-[13px] font-semibold md:h-8' : 'inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border md:h-8 md:w-8', 'border-[#D9DBE7] bg-white text-[#141B34] transition hover:border-[#B9BDD0] dark:border-white/15 dark:bg-white/5 dark:text-slate-100', className)}>
         <MessageCircle className="h-4 w-4 text-emerald-600" aria-hidden="true" />{labelTombol}
       </button>
-      <Sheet open={open} onClose={() => setOpen(false)} title="Pesan notifikasi (copy chat)" subtitle={lihatSemua ? `Semua dokumen yang sudah menunggu ${mode === 'oto' ? 'otorisator' : 'proofreader'}` : MODE[mode].ket}
+      <Sheet open={open} onClose={() => setOpen(false)} title="Pesan notifikasi (copy chat)" subtitle={lihatSemua ? MODE[mode].semua : MODE[mode].ket}
         footer={(
           <div className="flex w-full flex-col gap-2">
-            {mode === 'oto' && !lihatSemua && <p className="text-[11px] text-[#5E6380]">Saat disalin, Admin Pusat ikut mendapat notifikasi di ATLAS (sekali per dokumen).</p>}
+            {['oto', 'acc'].includes(mode) && !lihatSemua && <p className="text-[11px] text-[#5E6380]">Saat disalin, Admin Pusat ikut mendapat notifikasi di ATLAS (sekali per dokumen).</p>}
             <button type="button" onClick={salin} disabled={!terpilih.length || sibuk} data-aksi="salin-pesan-siap"
               className={cx('inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-4 text-sm font-bold text-white disabled:cursor-not-allowed', !terpilih.length ? 'bg-[#A9AEC4]' : ok ? 'bg-emerald-600' : 'bg-[#141B34]')}>
               {ok ? <Check className="h-4 w-4" aria-hidden="true" /> : <MessageCircle className="h-4 w-4" aria-hidden="true" />}{sibuk ? 'Menyalin…' : ok ? 'Tersalin' : `Copy chat (${terpilih.length})`}
@@ -103,10 +111,10 @@ export default function PesanSiap({ className, labelTombol }) {
         <div className="flex flex-col gap-3" data-pesan-siap>
           {modeAda.length > 1 && (
             <div className="flex gap-1.5" role="tablist" aria-label="Jenis pesan">
-              {modeAda.map((k) => <button key={k} type="button" role="tab" aria-selected={mode === k} onClick={() => ganti(k)} className={cx('min-h-11 flex-1 rounded-xl px-3 text-sm font-bold ring-1', mode === k ? 'bg-[#141B34] text-white ring-[#141B34]' : 'bg-white text-[#141B34] ring-[#D9DBE7]')}>{MODE[k].judul} · {semua[k].length}</button>)}
+              {modeAda.map((k) => <button key={k} type="button" role="tab" aria-selected={mode === k} onClick={() => ganti(k)} className={cx('min-h-11 flex-1 rounded-xl px-2 text-[13px] font-bold ring-1', mode === k ? 'bg-[#141B34] text-white ring-[#141B34]' : 'bg-white text-[#141B34] ring-[#D9DBE7]')}>{MODE[k].judul} · {semua[k].length}</button>)}
             </div>
           )}
-          {!rows.length ? <p className="rounded-xl bg-[#F3F4F9] px-3 py-4 text-sm text-[#5E6380]">Belum ada dokumen{lihatSemua ? '' : ' Anda'} yang menunggu {mode === 'oto' ? 'otorisator' : 'proofreader'}.</p> : (<>
+          {!rows.length ? <p className="rounded-xl bg-[#F3F4F9] px-3 py-4 text-sm text-[#5E6380]">Belum ada dokumen{lihatSemua ? '' : ' Anda'} {MODE[mode].kosong}.</p> : (<>
             <div className="flex items-center justify-between gap-2 text-xs text-[#5E6380]">
               <span>Tandai project yang mau dilaporkan</span>
               <button type="button" onClick={() => setPilih(pilih.size === rows.length ? new Set() : new Set(rows.map((r) => r.id)))} className="min-h-9 font-semibold text-[#0B5C8A] hover:underline">{pilih.size === rows.length ? 'Kosongkan' : 'Tandai semua'}</button>
