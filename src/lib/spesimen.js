@@ -171,7 +171,7 @@ const KEPADA = 'Direktur Jenderal Administrasi Hukum Umum Kementerian Hukum, d/a
 export async function buatDocx(daftar) {
   const { default: JSZip } = await import('jszip')
   const zip = new JSZip(); const rels = []; let n = 0
-  const tanam = (s, maksW, maksH) => { n += 1; const rid = `rImg${n}`; zip.file(`word/media/spesimen${n}.png`, s.url.split(',')[1], { base64: true }); rels.push(`<Relationship Id="${rid}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/spesimen${n}.png"/>`); return gambarXml(rid, n, s.w, s.h, maksW, maksH) }
+  const tanam = (s, maksW, maksH) => { n += 1; const rid = `rImg${n}`; zip.file(`word/media/spesimen${n}.png`, (s.urlBersih || s.url).split(',')[1], { base64: true }); rels.push(`<Relationship Id="${rid}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/spesimen${n}.png"/>`); return gambarXml(rid, n, s.w, s.h, maksW, maksH) }
   const kosong = (t) => par(run(t, { sz: 18, color: '666666', i: true }), { jc: 'center', after: 0 })
   const badan = daftar.map((p, idx) => {
     const pakai = (j) => p.spesimen.filter((s) => s.jenis === j && s.pakai)
@@ -232,3 +232,68 @@ export function unduhBlob(blob, nama) {
   const a = document.createElement('a'); const url = URL.createObjectURL(blob); a.href = url; a.download = nama; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 4000)
 }
 export const namaBerkas = (s) => String(s || 'pejabat').normalize('NFKD').replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, '-').slice(0, 60) || 'pejabat'
+
+// ---------- Hapus latar (kertas → transparan) ----------
+// Bukan AI dan bukan gambar ulang: tiap piksel goresan/cap tetap piksel dari gambar asli; yang dibuang hanya warna kertas.
+// Cara: (1) warna kertas diperkirakan per wilayah (kisi kasar, diinterpolasi) supaya bayangan/kertas tidak rata tetap bersih,
+// (2) tingkat "tinta" tiap piksel = seberapa jauh lebih gelap/berwarna dari kertas → jadi transparansi yang halus (bukan ambang keras),
+// (3) warna tepi dipisahkan dari warna kertas supaya tidak ada pinggiran putih/abu saat ditempel di Word.
+export const TINGKAT_LATAR = { halus: 'Halus', sedang: 'Sedang', kuat: 'Kuat' }
+const FAKTOR_LATAR = { halus: 0.65, sedang: 1, kuat: 1.7 }
+export async function hapusLatar(url, tingkat = 'sedang') {
+  const im = await muatGambar(url); const w = im.naturalWidth, h = im.naturalHeight
+  const c = kanvas(w, h); const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(im, 0, 0)
+  const id = g.getImageData(0, 0, w, h); const d = id.data
+  // (1) kertas per kisi: rata-rata piksel paling terang (persentil ~75–97) di tiap sel
+  const GX = Math.max(2, Math.min(8, Math.round(w / 90))), GY = Math.max(2, Math.min(8, Math.round(h / 90)))
+  const kisi = new Float32Array(GX * GY * 3); const sah = new Uint8Array(GX * GY)
+  const terang = (i) => d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114
+  let globalL = []; const langkah = Math.max(1, Math.round(Math.sqrt((w * h) / 40000)))
+  for (let y = 0; y < h; y += langkah) for (let x = 0; x < w; x += langkah) globalL.push(terang((y * w + x) * 4))
+  globalL.sort((a, b) => a - b); const kertasGlobal = globalL[Math.floor(globalL.length * 0.9)] || 255
+  for (let gy = 0; gy < GY; gy++) for (let gx = 0; gx < GX; gx++) {
+    const x0 = Math.floor((gx * w) / GX), x1 = Math.floor(((gx + 1) * w) / GX), y0 = Math.floor((gy * h) / GY), y1 = Math.floor(((gy + 1) * h) / GY)
+    const L = []; for (let y = y0; y < y1; y += langkah) for (let x = x0; x < x1; x += langkah) L.push(terang((y * w + x) * 4))
+    L.sort((a, b) => a - b); const lo = L[Math.floor(L.length * 0.75)] ?? 255, hi = L[Math.floor(L.length * 0.97)] ?? 255
+    let r = 0, gg = 0, b = 0, n = 0
+    for (let y = y0; y < y1; y += langkah) for (let x = x0; x < x1; x += langkah) { const i = (y * w + x) * 4, t = terang(i); if (t >= lo && t <= hi) { r += d[i]; gg += d[i + 1]; b += d[i + 2]; n++ } }
+    const k = (gy * GX + gx) * 3
+    // sel yang hampir seluruhnya tertutup tinta (jauh lebih gelap dari kertas umum) tidak dipercaya → diisi dari tetangga
+    if (n && lo >= kertasGlobal * 0.8) { kisi[k] = r / n; kisi[k + 1] = gg / n; kisi[k + 2] = b / n; sah[gy * GX + gx] = 1 }
+  }
+  let sr = 0, sg = 0, sb = 0, sn = 0
+  for (let i = 0; i < GX * GY; i++) if (sah[i]) { sr += kisi[i * 3]; sg += kisi[i * 3 + 1]; sb += kisi[i * 3 + 2]; sn++ }
+  if (!sn) { sr = sg = sb = kertasGlobal; sn = 1 }
+  for (let i = 0; i < GX * GY; i++) if (!sah[i]) { kisi[i * 3] = sr / sn; kisi[i * 3 + 1] = sg / sn; kisi[i * 3 + 2] = sb / sn }
+  const B = new Float32Array(w * h * 3)
+  for (let y = 0; y < h; y++) {
+    const fy = Math.min(GY - 1, Math.max(0, ((y + 0.5) * GY) / h - 0.5)), y0 = Math.floor(fy), y1 = Math.min(GY - 1, y0 + 1), ty = fy - y0
+    for (let x = 0; x < w; x++) {
+      const fx = Math.min(GX - 1, Math.max(0, ((x + 0.5) * GX) / w - 0.5)), x0 = Math.floor(fx), x1 = Math.min(GX - 1, x0 + 1), tx = fx - x0
+      const a = (y0 * GX + x0) * 3, b2 = (y0 * GX + x1) * 3, c2 = (y1 * GX + x0) * 3, e = (y1 * GX + x1) * 3, o = (y * w + x) * 3
+      for (let k = 0; k < 3; k++) B[o + k] = (kisi[a + k] * (1 - tx) + kisi[b2 + k] * tx) * (1 - ty) + (kisi[c2 + k] * (1 - tx) + kisi[e + k] * tx) * ty
+    }
+  }
+  // (2) tingkat tinta & derau kertas
+  const T = new Float32Array(w * h)
+  for (let p = 0; p < w * h; p++) { const i = p * 4, o = p * 3; let m = 0; for (let k = 0; k < 3; k++) { const v = (B[o + k] - d[i + k]) / Math.max(40, B[o + k]); if (v > m) m = v } T[p] = m }
+  const contoh = []; for (let p = 0; p < w * h; p += langkah * 3 + 1) contoh.push(T[p]); contoh.sort((a, b) => a - b)
+  const derau = contoh[Math.floor(contoh.length * 0.6)] || 0 // lebih dari separuh potongan biasanya kertas
+  const f = FAKTOR_LATAR[tingkat] || 1
+  const t0 = Math.min(0.22, Math.max(0.035, derau * 2.2 + 0.02) * f), t1 = t0 + 0.2 / Math.sqrt(f)
+  const A = new Float32Array(w * h)
+  for (let p = 0; p < w * h; p++) { const u = Math.min(1, Math.max(0, (T[p] - t0) / (t1 - t0))); A[p] = u * u * (3 - 2 * u) }
+  // bintik lepas (debu / butir kertas): piksel samar tanpa tetangga bertinta dibuang
+  const A2 = new Float32Array(A)
+  for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) { const p = y * w + x; if (A[p] > 0 && A[p] < 0.6) { const s = A[p - 1] + A[p + 1] + A[p - w] + A[p + w] + A[p - w - 1] + A[p - w + 1] + A[p + w - 1] + A[p + w + 1]; if (s < 0.35) A2[p] = 0 } }
+  // (3) pisahkan warna tinta dari warna kertas di tepi yang setengah transparan
+  let isi = 0
+  for (let p = 0; p < w * h; p++) {
+    const i = p * 4, o = p * 3, a = A2[p]
+    if (a <= 0.004) { d[i + 3] = 0; continue }
+    if (a < 0.995) for (let k = 0; k < 3; k++) d[i + k] = Math.max(0, Math.min(255, Math.round((d[i + k] - (1 - a) * B[o + k]) / a)))
+    d[i + 3] = Math.round(a * 255); isi++
+  }
+  g.putImageData(id, 0, 0)
+  return { url: c.toDataURL('image/png'), w, h, kosong: isi < w * h * 0.002 }
+}

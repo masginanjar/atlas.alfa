@@ -114,7 +114,7 @@ export const MODUL = [
   { id: 'alat', label: 'Alat', fitur: [
     f('smart-translator', 'Smart Translator', ['menu', 'lihat']),
     // 17 Nov 2026: Pemisah Data & Spesimen Pejabat (baca data pejabat, potong tanda tangan/paraf/stempel, ekspor Word). Default deny.
-    f('pemisah-spesimen', 'Pemisah Spesimen Pejabat', ['menu', 'lihat']),
+    f('pemisah-spesimen', 'Pemisah Spesimen Pejabat', ['menu', 'lihat', 'kelola']),
     // 15 Nov 2026 (keputusan pemilik): Staf Apostille/Legalisasi membuat surat kuasa dari baris pekerjaannya → lihat, tambah, ubah, cetak. Menu, hapus, atur tetap hanya Superadmin.
     // 16 Nov 2026 (keputusan pemilik): mengerjakan tahap Apostille/Legalisasi bisa diberikan PER PENGGUNA (mis. satu CS tertentu) lewat pengecualian.
     // status = Mulai Proses, centang to-do, unggah hasil, Selesai · setujui = mencentang langkah "Bayar Pajak".

@@ -7,12 +7,15 @@
 // ============================================================
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Upload, FileText, Image as ImageIcon, AlertTriangle, Check, Trash2, RotateCw, Crop, Search, Plus, Download, ArrowUp, ArrowDown, Loader2, X, ExternalLink, Eye } from 'lucide-react'
+import { Upload, FileText, Image as ImageIcon, AlertTriangle, Check, Trash2, RotateCw, Crop, Search, Plus, Download, ArrowUp, ArrowDown, Loader2, X, ExternalLink, Eye, Eraser, Undo2, History } from 'lucide-react'
 import { useApp } from '../lib/store.jsx'
 import { boleh } from '../lib/izin.js'
 import { cx } from '../components/ui.jsx'
 import { AI_LIVE, aiSpesimen, aiCariAlamat } from '../lib/ai.js'
-import { JENIS_SPESIMEN, JENIS_NOMOR, STATUS_PNS, idBaru, bacaBerkas, potongGambar, pejabatDariAi, pejabatKosong, saranGabung, kekurangan, statusPejabat, barisNomor, buatDocx, buatCatatanDocx, unduhBlob, namaBerkas, tumpang } from '../lib/spesimen.js'
+import { RIWAYAT_LIVE, riwayatSimpan, riwayatDaftar, riwayatBerkas, riwayatHapus } from '../lib/spesimenRiwayat.js'
+
+const CATUR = { backgroundImage: 'linear-gradient(45deg,#E4E6EF 25%,transparent 25%,transparent 75%,#E4E6EF 75%),linear-gradient(45deg,#E4E6EF 25%,transparent 25%,transparent 75%,#E4E6EF 75%)', backgroundSize: '12px 12px', backgroundPosition: '0 0,6px 6px' }
+import { JENIS_SPESIMEN, JENIS_NOMOR, STATUS_PNS, idBaru, bacaBerkas, potongGambar, pejabatDariAi, pejabatKosong, saranGabung, kekurangan, statusPejabat, barisNomor, buatDocx, buatCatatanDocx, unduhBlob, namaBerkas, tumpang, hapusLatar, TINGKAT_LATAR } from '../lib/spesimen.js'
 
 const ST = { belum: ['Belum diperiksa', 'bg-slate-100 text-slate-700'], kurang: ['Perlu dilengkapi', 'bg-orange-100 text-orange-900'], sudah: ['Sudah diperiksa', 'bg-emerald-100 text-emerald-800'] }
 const Pil = ({ k }) => <span className={cx('inline-flex min-h-6 items-center gap-1 whitespace-nowrap rounded-full px-2.5 text-xs font-bold', ST[k][1])}>{k === 'sudah' && <Check className="h-3 w-3" aria-hidden="true" />}{k === 'kurang' && <AlertTriangle className="h-3 w-3" aria-hidden="true" />}{ST[k][0]}</span>
@@ -96,7 +99,7 @@ function Formulir({ p }) {
   const ttd = pakai('ttd').slice(0, 2), prf = pakai('paraf').slice(0, 2), cap = pakai('stempel')[0]
   const data = [['Nama Pejabat', p.nama.trim() || '-'], ...barisNomor(p), ['Jabatan', p.jabatan.trim() || '-'], ['Alamat Instansi', [p.instansi.trim(), p.alamat.trim()].filter(Boolean).join(' — ') || '-']]
   const kosong = (t) => <span className="text-center text-[10.5px] italic text-[#666]">{t}</span>
-  const gbr = (s, kelas) => <img src={s.url} alt={JENIS_SPESIMEN[s.jenis]} className={cx('max-w-full object-contain', kelas)} />
+  const gbr = (s, kelas) => <img src={s.urlBersih || s.url} alt={JENIS_SPESIMEN[s.jenis]} className={cx('max-w-full object-contain', kelas)} />
   const baris = (label, ket, isi) => <div className="flex border-t border-black"><div className="flex w-[21%] shrink-0 flex-col justify-between p-2 text-[11px]"><span>{label}</span>{ket && <span className="text-[9.5px]">{ket}</span>}</div>{isi}</div>
   const selK = (isi, k) => <div key={k} className="grid min-h-[112px] flex-1 place-items-center border-l border-black p-2">{isi}</div>
   return (
@@ -129,8 +132,11 @@ export default function PemisahSpesimen() {
   const [cari, setCari] = useState({})          // pid → { sibuk, hasil, galat }
   const [sibukUnduh, setSibukUnduh] = useState('')
   const [pratinjau, setPratinjau] = useState(0)
+  const [sibukLatar, setSibukLatar] = useState('')
+  const [riwayat, setRiwayat] = useState({ muat: false, data: null, galat: '', sibuk: '' })
   const inputRef = useRef(null); const antre = useRef(Promise.resolve())
-  const izin = boleh(user, 'pemisah-spesimen.lihat')
+  const izin = boleh(user, 'pemisah-spesimen.lihat'); const kelola = boleh(user, 'pemisah-spesimen.kelola')
+  useEffect(() => { if (langkah === 'riwayat' && izin && !riwayat.data && !riwayat.muat && !riwayat.galat) muatRiwayat() }, [langkah, riwayat.data]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const ubahFile = (id, patch) => setFiles((f) => f.map((x) => (x.id === id ? { ...x, ...patch } : x)))
   const ubah = (pid, patch) => setList((l) => l.map((p) => (p.id === pid ? { ...p, ...(typeof patch === 'function' ? patch(p) : patch), ...(patch.diperiksa === undefined && typeof patch !== 'function' ? { diperiksa: false } : {}) } : p)))
@@ -185,17 +191,29 @@ export default function PemisahSpesimen() {
   const saran = useMemo(() => saranGabung(list).filter(([a, b]) => !abaikanGabung.includes(`${a}|${b}`)), [list, abaikanGabung])
 
   const simpanPotongan = (h) => {
-    const { pageId, pid, sid } = potong; const pg = hal[pageId]
+    const { pageId, pid, sid } = potong; const pg = hal[pageId]; const idSp = sid || idBaru('s')
+    const lama = sid ? list.find((x) => x.id === pid)?.spesimen.find((y) => y.id === sid) : null
     setList((l) => l.map((x) => { if (x.id !== pid) return x
       const lain = x.spesimen.filter((s) => s.id !== sid && s.pageId === pageId && s.jenis !== h.jenis && s.jenis !== 'paraf' && h.jenis !== 'paraf')
       const tumpuk = lain.some((s) => tumpang(s.kotak, h.kotak))
-      const baru = { id: sid || idBaru('s'), pageId, fileName: pg.fileName, no: pg.no, pakai: true, asal: 'manual', bertumpuk: tumpuk, tinjau: tumpuk, ...h }
+      const baru = { id: idSp, pageId, fileName: pg.fileName, no: pg.no, pakai: true, asal: 'manual', bertumpuk: tumpuk, tinjau: tumpuk, ...h, urlBersih: null, latar: '' }
       const kena = new Set(lain.filter((s) => tumpang(s.kotak, h.kotak)).map((s) => s.id)) // pasangan yang ditimpa ikut ditandai
       const tandai = (arr) => arr.map((s) => (kena.has(s.id) ? { ...s, bertumpuk: true, tinjau: true } : s))
       return { ...x, diperiksa: false, spesimen: tandai(sid ? x.spesimen.map((s) => (s.id === sid ? { ...s, ...baru, pakai: s.pakai } : s)) : [...x.spesimen, baru]), sumber: x.sumber.some((s) => s.pageId === pageId) ? x.sumber : [...x.sumber, { fileName: pg.fileName, no: pg.no, pageId }] }
     }))
     setPotong(null)
+    if (lama?.latar) terapLatar(pid, idSp, lama.latar, h.url) // potongan diperbaiki → latar dihapus ulang dari potongan baru
   }
+  // Hapus latar: kertas dijadikan transparan di perangkat ini (bukan AI, tidak menggambar ulang). Potongan asli tetap disimpan.
+  const terapLatar = async (pid, sid, tingkat, url) => {
+    setSibukLatar(sid)
+    try {
+      const r = await hapusLatar(url, tingkat)
+      if (r.kosong) { notify('Hasilnya kosong — goresan terlalu tipis. Coba tingkat “Halus” atau pakai potongan asli.', 'err'); return false }
+      ubahSp(pid, sid, { urlBersih: r.url, latar: tingkat }); return true
+    } catch { notify('Gagal menghapus latar gambar ini', 'err'); return false } finally { setSibukLatar('') }
+  }
+  const latarSemua = async (x) => { let n = 0; for (const s of x.spesimen) if (!s.latar && await terapLatar(x.id, s.id, 'sedang', s.url)) n += 1; notify(n ? `Latar ${n} potongan dihapus — periksa hasilnya` : 'Tidak ada potongan yang perlu diproses') }
   const ubahSp = (pid, sid, patch) => ubah(pid, (x) => ({ spesimen: x.spesimen.map((s) => (s.id === sid ? { ...s, ...patch } : s)), diperiksa: false }))
 
   const cariAlamat = async (x) => {
@@ -210,13 +228,20 @@ export default function PemisahSpesimen() {
     const kur = daftar.map((x) => [x, kekurangan(x)]).filter(([, k]) => k.length)
     if (kur.length && !(await ask(`Masih ada kekurangan — ${kur.map(([x, k]) => `${x.nama.trim() || '(tanpa nama)'}: ${k.join(', ')}`).join(' · ')}. Bagian yang kosong ditulis apa adanya di Word. Tetap unduh?`))) return
     setSibukUnduh(kunci)
-    try { unduhBlob(await buatDocx(daftar), nama); notify('Word (.docx) diunduh') } catch (e) { notify(`Gagal membuat Word: ${e?.message || 'kesalahan tak dikenal'}`, 'err') } finally { setSibukUnduh('') }
+    try {
+      const blob = await buatDocx(daftar); unduhBlob(blob, nama)
+      const r = await riwayatSimpan({ blob, nama_file: nama, daftar, user })
+      if (r.ok) { notify('Word diunduh & tersimpan di Riwayat'); setRiwayat((v) => ({ ...v, data: null })) } else notify(`Word diunduh, tetapi TIDAK tersimpan di Riwayat: ${r.alasan || 'gagal'}`, 'err')
+    } catch (e) { notify(`Gagal membuat Word: ${e?.message || 'kesalahan tak dikenal'}`, 'err') } finally { setSibukUnduh('') }
   }
+  const muatRiwayat = async () => { setRiwayat((v) => ({ ...v, muat: true, galat: '' })); const r = await riwayatDaftar(user, kelola); setRiwayat((v) => ({ ...v, muat: false, data: r.ok ? r.data : v.data, galat: r.ok ? '' : r.alasan || 'Gagal memuat riwayat' })) }
+  const unduhRiwayat = async (x) => { setRiwayat((v) => ({ ...v, sibuk: x.id })); const r = await riwayatBerkas(x.id); setRiwayat((v) => ({ ...v, sibuk: '' })); if (r.ok) { unduhBlob(r.blob, r.nama_file || x.nama_file); notify('Word diunduh dari Riwayat') } else notify(r.alasan || 'Gagal mengunduh', 'err') }
+  const hapusRiwayat = async (x) => { if (!(await ask(`Hapus “${x.nama_file}” dari Riwayat? File yang sudah diunduh tidak ikut terhapus.`))) return; setRiwayat((v) => ({ ...v, sibuk: x.id })); const r = await riwayatHapus(x.id); setRiwayat((v) => ({ ...v, sibuk: '' })); if (r.ok) { notify('Dihapus dari Riwayat'); muatRiwayat() } else notify(r.alasan || 'Gagal menghapus', 'err') }
   const unduhCatatan = async () => { setSibukUnduh('catatan'); try { unduhBlob(await buatCatatanDocx(list, user?.name || ''), 'Catatan-pemeriksaan-spesimen.docx') } catch (e) { notify(`Gagal: ${e?.message || ''}`, 'err') } finally { setSibukUnduh('') } }
 
   if (!izin) return <div className="rounded-2xl bg-white p-8 text-center ring-1 ring-[#E7E8F0]"><p className="text-[17px] font-bold">Tidak ada akses</p><p className="mt-1 text-sm text-[#5E6380]">Minta Super Admin mengaktifkan “Pemisah Spesimen” di Role &amp; Hak Akses.</p></div>
 
-  const LANGKAH = [['upload', 'Upload'], ['periksa', 'Pemeriksaan'], ['ekspor', 'Unduh Word']]
+  const LANGKAH = [['upload', 'Upload'], ['periksa', 'Pemeriksaan'], ['ekspor', 'Unduh Word'], ['riwayat', 'Riwayat']]
   const sedang = files.some((f) => ['antre', 'baca', 'ai'].includes(f.status))
   const nama = (x) => x.nama.trim() || '(nama belum diisi)'
   const daftarHal = Object.values(hal)
@@ -227,10 +252,10 @@ export default function PemisahSpesimen() {
         <div className="mr-auto flex min-w-0 flex-col"><span className="text-xs text-[#5E6380]">Alat · Toolkit</span><h1 className="text-xl font-extrabold tracking-tight">Pemisah Data &amp; Spesimen Pejabat</h1></div>
         <ol className="flex flex-wrap items-center gap-1.5" aria-label="Langkah">
           {LANGKAH.map(([k, l], i) => <li key={k}><button type="button" onClick={() => setLangkah(k)} aria-current={langkah === k ? 'step' : undefined} data-langkah={k}
-            className={cx('inline-flex min-h-11 items-center gap-2 rounded-xl px-3 text-[13px] font-bold ring-1 md:min-h-9', langkah === k ? 'bg-[#141B34] text-white ring-[#141B34]' : 'bg-white text-[#141B34] ring-[#D9DBE7]')}><span className={cx('grid h-5 w-5 place-items-center rounded-full text-[11px]', langkah === k ? 'bg-white text-[#141B34]' : 'bg-[#EEF0F5]')}>{i + 1}</span>{l}{k === 'periksa' && list.length > 0 && <span className="opacity-70">· {list.length}</span>}</button></li>)}
+            className={cx('inline-flex min-h-11 items-center gap-2 rounded-xl px-3 text-[13px] font-bold ring-1 md:min-h-9', langkah === k ? 'bg-[#141B34] text-white ring-[#141B34]' : 'bg-white text-[#141B34] ring-[#D9DBE7]')}><span className={cx('grid h-5 w-5 place-items-center rounded-full text-[11px]', langkah === k ? 'bg-white text-[#141B34]' : 'bg-[#EEF0F5]')}>{k === 'riwayat' ? <History className="h-3 w-3" aria-hidden="true" /> : i + 1}</span>{l}{k === 'periksa' && list.length > 0 && <span className="opacity-70">· {list.length}</span>}</button></li>)}
         </ol>
       </header>
-      <p className="rounded-xl bg-[#EEF3FF] px-3 py-2 text-xs text-[#23408F]">Data sesi ini hanya ada di perangkat ini dan tidak disimpan ke server — unduh Word sebelum menutup halaman. {AI_LIVE ? 'Saat dibaca, gambar halaman dikirim ke pembaca AI (Gemini) lewat server ATLAS; isinya tidak disimpan di log.' : 'Demo: pembaca AI dan pencarian alamat tidak berjalan (tidak ada server) — data diisi dan dipotong manual.'}</p>
+      <p className="rounded-xl bg-[#EEF3FF] px-3 py-2 text-xs text-[#23408F]">Data yang sedang diperiksa hanya ada di perangkat ini — unduh Word sebelum menutup halaman. File Word yang sudah diunduh tersimpan di tab Riwayat{RIWAYAT_LIVE ? ' (server ATLAS)' : ' (demo: hanya di perangkat ini)'}. {AI_LIVE ? 'Saat dibaca, gambar halaman dikirim ke pembaca AI (Gemini) lewat server ATLAS; isinya tidak disimpan di log.' : 'Demo: pembaca AI dan pencarian alamat tidak berjalan (tidak ada server) — data diisi dan dipotong manual.'}</p>
 
       {langkah === 'upload' && (<>
         <Kartu judul="1 · Upload dokumen" kanan={<span className="text-xs text-[#5E6380]">PDF multipage · JPG · JPEG · PNG · DOCX</span>}>
@@ -279,7 +304,7 @@ export default function PemisahSpesimen() {
                     <span className="grid h-6 w-6 shrink-0 place-items-center rounded-lg bg-[#141B34] text-xs font-extrabold text-white">{i + 1}</span>
                     <span className="flex min-w-0 flex-1 flex-col gap-0.5"><strong className="break-words text-[13px]">{nama(x)}</strong><span className="truncate text-[11.5px] text-[#5E6380]">{x.sumber.length ? `${x.sumber[0].fileName} · hal. ${x.sumber[0].no}${x.sumber.length > 1 ? ` +${x.sumber.length - 1}` : ''}` : 'diisi manual'}</span><Pil k={statusPejabat(x)} /></span>
                   </button>
-                  <span className="flex flex-col justify-center gap-0.5"><button type="button" onClick={() => geser(i, -1)} disabled={i === 0} aria-label={`Naikkan urutan ${nama(x)}`} className="grid h-7 w-8 place-items-center rounded-md text-[#5E6380] hover:bg-[#F3F4F9] disabled:opacity-30"><ArrowUp className="h-3.5 w-3.5" /></button><button type="button" onClick={() => geser(i, 1)} disabled={i === list.length - 1} aria-label={`Turunkan urutan ${nama(x)}`} className="grid h-7 w-8 place-items-center rounded-md text-[#5E6380] hover:bg-[#F3F4F9] disabled:opacity-30"><ArrowDown className="h-3.5 w-3.5" /></button></span>
+                  <span className="flex flex-col justify-center gap-0.5"><button type="button" onClick={() => geser(i, -1)} disabled={i === 0} aria-label={`Naikkan urutan ${nama(x)}`} className="grid h-7 w-8 place-items-center rounded-md text-[#5E6380] hover:bg-[#F3F4F9] disabled:opacity-30 max-md:h-11 max-md:w-11"><ArrowUp className="h-3.5 w-3.5" /></button><button type="button" onClick={() => geser(i, 1)} disabled={i === list.length - 1} aria-label={`Turunkan urutan ${nama(x)}`} className="grid h-7 w-8 place-items-center rounded-md text-[#5E6380] hover:bg-[#F3F4F9] disabled:opacity-30 max-md:h-11 max-md:w-11"><ArrowDown className="h-3.5 w-3.5" /></button></span>
                 </li>
               ))}</ol>
               <button type="button" onClick={tambahPejabat} className={cx(tbKecil, 'justify-center')} data-aksi="tambah-pejabat"><Plus className="h-3.5 w-3.5" />Tambah pejabat manual</button>
@@ -287,7 +312,7 @@ export default function PemisahSpesimen() {
 
             <section aria-label="Dokumen asli" className="flex min-w-0 flex-[2_1_340px] flex-col gap-2.5 rounded-2xl bg-white p-3 ring-1 ring-[#E7E8F0]">
               <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="text-xs font-bold uppercase tracking-wider text-[#5E6380]">Dokumen asli</h2>
-                {daftarHal.length > 0 && <select value={halAktif?.id || ''} onChange={(e) => setLihatHal(e.target.value)} aria-label="Pilih halaman dokumen" className={cx(inputCls, '!min-h-9 !w-auto max-w-[260px] !text-xs')} data-pilih-halaman>{daftarHal.map((h) => <option key={h.id} value={h.id}>{h.fileName} · hal. {h.no}{h.ket ? ` (${h.ket})` : ''}</option>)}</select>}</div>
+                {daftarHal.length > 0 && <select value={halAktif?.id || ''} onChange={(e) => setLihatHal(e.target.value)} aria-label="Pilih halaman dokumen" className={cx(inputCls, 'md:!min-h-9 !w-auto max-w-[260px] md:!text-xs')} data-pilih-halaman>{daftarHal.map((h) => <option key={h.id} value={h.id}>{h.fileName} · hal. {h.no}{h.ket ? ` (${h.ket})` : ''}</option>)}</select>}</div>
               {halAktif ? (<>
                 <div className="relative overflow-hidden rounded-xl border border-[#E7E8F0] bg-[#FBFBFD]"><img src={halAktif.url} alt={`Halaman ${halAktif.no} dari ${halAktif.fileName}`} className="block w-full" />
                   {p?.spesimen.filter((s) => s.pageId === halAktif.id).map((s) => <div key={s.id} className={cx('pointer-events-none absolute rounded border-2', { ttd: 'border-[#3457D5]', paraf: 'border-emerald-600', stempel: 'border-orange-600' }[s.jenis])} style={{ left: `${(s.kotak.x / halAktif.w) * 100}%`, top: `${(s.kotak.y / halAktif.h) * 100}%`, width: `${(s.kotak.w / halAktif.w) * 100}%`, height: `${(s.kotak.h / halAktif.h) * 100}%` }}><span className={cx('absolute -top-5 left-[-2px] whitespace-nowrap rounded px-1.5 text-[10px] font-bold text-white', { ttd: 'bg-[#3457D5]', paraf: 'bg-emerald-600', stempel: 'bg-orange-600' }[s.jenis])}>{JENIS_SPESIMEN[s.jenis].split(' ')[0]}</span></div>)}
@@ -322,7 +347,7 @@ export default function PemisahSpesimen() {
                 </div>}
               </Kartu>
 
-              <Kartu judul="Spesimen · potongan dari gambar asli" kanan={halAktif && <button type="button" onClick={() => setPotong({ pageId: halAktif.id, pid: p.id })} className={tbKecil}><Plus className="h-3.5 w-3.5" />Tambah potongan</button>}>
+              <Kartu judul="Spesimen · potongan dari gambar asli" kanan={<span className="flex flex-wrap gap-1.5">{p.spesimen.some((s) => !s.latar) && <button type="button" onClick={() => latarSemua(p)} disabled={!!sibukLatar} className={tbKecil} data-aksi="latar-semua">{sibukLatar ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Eraser className="h-3.5 w-3.5" />}Hapus latar semua</button>}{halAktif && <button type="button" onClick={() => setPotong({ pageId: halAktif.id, pid: p.id })} className={tbKecil}><Plus className="h-3.5 w-3.5" />Tambah potongan</button>}</span>}>
                 <div className="flex flex-wrap gap-2.5">{Object.entries(JENIS_SPESIMEN).map(([j, l]) => { const sp = p.spesimen.filter((s) => s.jenis === j); const maks = j === 'stempel' ? 1 : 2; const dipakai = sp.filter((s) => s.pakai).length
                   return (
                     <div key={j} className="flex min-w-0 flex-[1_1_230px] flex-col gap-2 rounded-xl border border-[#E7E8F0] p-2.5" data-kategori={j}>
@@ -331,9 +356,16 @@ export default function PemisahSpesimen() {
                       {j === 'paraf' && !sp.length && <span className="text-[11.5px] text-[#5E6380]">Tidak dibuat dari tanda tangan. Di Word kolom paraf ditulis “Paraf tidak tersedia”.</span>}
                       {sp.map((s) => (
                         <div key={s.id} className={cx('flex flex-col gap-1.5 rounded-lg p-1.5', s.tinjau ? 'bg-orange-50 ring-1 ring-orange-200' : 'bg-[#F8F9FD]')} data-spesimen={s.jenis}>
-                          <div className="grid min-h-[72px] place-items-center rounded bg-white p-1"><img src={s.url} alt={`${l} dari ${s.fileName} hal. ${s.no}`} className="max-h-24 max-w-full object-contain" /></div>
+                          <div className="grid min-h-[72px] place-items-center rounded bg-white p-1" style={s.urlBersih ? CATUR : undefined} data-latar={s.latar || 'asli'}><img src={s.urlBersih || s.url} alt={`${l} dari ${s.fileName} hal. ${s.no}`} className="max-h-24 max-w-full object-contain" /></div>
                           <span className="break-words text-[11px] text-[#5E6380]">{s.fileName} · hal. {s.no} · {s.asal === 'ai' ? 'deteksi AI' : 'dipotong manual'}</span>
                           {s.bertumpuk && <span className="inline-flex items-start gap-1 text-[11.5px] font-semibold text-orange-900"><AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />Bertumpuk dengan goresan/cap lain — potongan apa adanya, tidak dinyatakan bersih.</span>}
+                          {s.latar
+                            ? <div className="flex flex-wrap items-center gap-1.5" data-kontrol-latar>
+                                <span className="text-[11.5px] font-semibold text-emerald-800">Latar dihapus (kotak-kotak = transparan)</span>
+                                <select aria-label="Kekuatan hapus latar" value={s.latar} disabled={sibukLatar === s.id} onChange={(e) => terapLatar(p.id, s.id, e.target.value, s.url)} className="min-h-9 rounded-lg border border-[#D9DBE7] bg-white px-2 text-xs font-semibold max-md:min-h-11 max-md:text-base" data-isi="tingkat-latar">{Object.entries(TINGKAT_LATAR).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
+                                <button type="button" onClick={() => ubahSp(p.id, s.id, { urlBersih: null, latar: '' })} className={tbKecil} data-aksi="latar-asli"><Undo2 className="h-3.5 w-3.5" />Kembalikan asli</button>
+                              </div>
+                            : <button type="button" onClick={() => terapLatar(p.id, s.id, 'sedang', s.url)} disabled={sibukLatar === s.id} className={cx(tbKecil, 'self-start')} data-aksi="hapus-latar">{sibukLatar === s.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Eraser className="h-3.5 w-3.5" />}Hapus latar</button>}
                           <label className="flex min-h-8 items-center gap-2 text-xs font-semibold"><input type="checkbox" checked={s.pakai} onChange={(e) => { if (e.target.checked && dipakai >= maks) return notify(`Maksimal ${maks} ${l.toLowerCase()} di Word`, 'err'); ubahSp(p.id, s.id, { pakai: e.target.checked }) }} className="h-[18px] w-[18px]" />Masukkan ke Word</label>
                           {s.tinjau && <label className="flex min-h-8 items-center gap-2 text-xs font-semibold text-orange-900"><input type="checkbox" checked={false} onChange={() => ubahSp(p.id, s.id, { tinjau: false })} className="h-[18px] w-[18px]" data-isi="tinjau" />Sudah saya tinjau</label>}
                           <div className="flex flex-wrap gap-1"><button type="button" onClick={() => hal[s.pageId] ? setPotong({ pageId: s.pageId, pid: p.id, sid: s.id }) : notify('Halaman sumbernya sudah dihapus', 'err')} className={tbKecil}><Crop className="h-3.5 w-3.5" />Perbaiki</button><button type="button" onClick={() => ubah(p.id, (x) => ({ spesimen: x.spesimen.filter((y) => y.id !== s.id), diperiksa: false }))} className={tbKecil}><Trash2 className="h-3.5 w-3.5" />Hapus</button></div>
@@ -378,6 +410,24 @@ export default function PemisahSpesimen() {
           </section>
         </div>
       ))}
+
+      {langkah === 'riwayat' && (
+        <Kartu judul={`Riwayat dokumen${kelola ? ' · semua pengguna' : ' · buatan saya'}`} kanan={<button type="button" onClick={muatRiwayat} disabled={riwayat.muat} className={tbKecil}>{riwayat.muat ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCw className="h-3.5 w-3.5" />}Muat ulang</button>}>
+          <span className="text-xs text-[#5E6380]">{RIWAYAT_LIVE ? 'File Word yang pernah dibuat tersimpan di server ATLAS sampai dihapus. Isinya memuat spesimen tanda tangan/cap — unduh hanya bila perlu.' : 'Demo: riwayat disimpan di perangkat ini saja (maksimal 8 dokumen) dan tidak terlihat di perangkat lain.'}</span>
+          {riwayat.galat && <p className="rounded-xl bg-red-50 px-3 py-2 text-[13px] font-semibold text-red-800" role="alert">{riwayat.galat}</p>}
+          {riwayat.muat && !riwayat.data && <p className="flex items-center gap-2 py-6 text-sm text-[#5E6380]"><Loader2 className="h-4 w-4 animate-spin" />Memuat riwayat…</p>}
+          {riwayat.data && !riwayat.data.length && <p className="rounded-xl bg-[#F3F4F9] px-3 py-6 text-center text-sm text-[#5E6380]">Belum ada dokumen. Setiap Word yang diunduh dari langkah 3 otomatis tercatat di sini.</p>}
+          {riwayat.data?.length > 0 && <ul className="flex flex-col gap-2" data-daftar-riwayat>{riwayat.data.map((x) => (
+            <li key={x.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-[#E7E8F0] px-3 py-2.5" data-riwayat>
+              <FileText className="h-5 w-5 shrink-0 text-[#4169E1]" aria-hidden="true" />
+              <span className="flex min-w-0 flex-[1_1_220px] flex-col gap-0.5"><strong className="break-words text-[13.5px]">{x.nama_file}</strong>
+                <span className="text-xs text-[#5E6380]">{new Date(x.dibuat_at).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}{x.user_nama ? ` · ${x.user_nama}` : ''} · {(x.pejabat || []).length} pejabat · {Math.max(1, Math.round((x.ukuran || 0) / 1024))} KB</span>
+                {(x.pejabat || []).length > 0 && <span className="break-words text-xs text-[#4A4F6A]">{x.pejabat.slice(0, 4).map((q) => q.nama || '(tanpa nama)').join(' · ')}{x.pejabat.length > 4 ? ` · +${x.pejabat.length - 4}` : ''}</span>}</span>
+              <span className="flex flex-wrap gap-1.5"><button type="button" onClick={() => unduhRiwayat(x)} disabled={!!riwayat.sibuk} className={tbKecil} data-aksi="unduh-riwayat">{riwayat.sibuk === x.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}Unduh lagi</button>
+                <button type="button" onClick={() => hapusRiwayat(x)} disabled={!!riwayat.sibuk} className={tbKecil} data-aksi="hapus-riwayat"><Trash2 className="h-3.5 w-3.5" />Hapus</button></span>
+            </li>))}</ul>}
+        </Kartu>
+      )}
 
       {potong && hal[potong.pageId] && <AlatPotong halaman={hal[potong.pageId]} awal={potong.sid ? list.find((x) => x.id === potong.pid)?.spesimen.find((s) => s.id === potong.sid) : null} onSimpan={simpanPotongan} onClose={() => setPotong(null)} />}
     </div>
