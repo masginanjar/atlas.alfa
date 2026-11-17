@@ -3,7 +3,7 @@ import { Trash2, Upload, Paperclip, X, IdCard } from 'lucide-react'
 import { useApp } from '../lib/store.jsx'
 import { SUB_TYPES, COUNTRIES, OBJEK_APOSTILLE, points } from '../config/subtypes.js'
 import { FieldError, cx } from './ui.jsx'
-import { placeOf } from '../config/access.js'
+import { placeOf, perluVendor } from '../config/access.js'
 import PilihCari from './PilihCari.jsx'
 import { newSub, usesDocs, isTerjemahan, docsOf, fromDocs, docFileName, safeName, MAKS_DOK, hitungHalaman } from './SubProjectEditor.jsx'
 
@@ -278,8 +278,8 @@ export default function SubBaris({ n, sub, onChange, onRemove, branch, error, on
             onChange={(v) => { const [kind, id] = String(v).split(':'); set({ translator_kind: id ? (kind || '') : '', translator: id || '' }) }}
             options={[
               { value: '', label: 'Ditentukan Direktur', note: 'Biarkan kosong' },
-              ...data.users.filter((u) => u.role === 'penerjemah' && u.active !== false).map((u) => ({ value: `translator:${u.id}`, label: u.name, note: `Penerjemah internal · ${placeOf(u)}` })),
-              ...of('vendor').map((p) => ({ value: `vendor:${p.id}`, label: p.name, note: p.biro ? 'Biro rekanan' : 'Vendor eksternal' })),
+              ...(perluVendor(sub) ? [] : data.users.filter((u) => u.role === 'penerjemah' && u.active !== false)).map((u) => ({ value: `translator:${u.id}`, label: u.name, note: `Penerjemah internal · ${placeOf(u)}` })),
+              ...of('vendor').filter((p) => (perluVendor(sub) ? !p.biro : !!p.biro)).map((p) => ({ value: `vendor:${p.id}`, label: p.name, note: p.biro ? 'Biro rekanan' : 'Vendor eksternal' })),
             ]} kosong="Penerjemah / vendor tidak ditemukan" />
         </Kol>
       )}

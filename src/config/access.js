@@ -15,6 +15,12 @@ export function pettyAccountsOf(u) {
   return branchesOf(u)
 }
 /** Bahasa asing sebuah sub project terjemahan (selain Indonesia). */
+/**
+ * Aturan penugasan terjemahan (17 Nov 2026): Indonesia · Inggris · Belanda dikerjakan penerjemah INTERNAL atau BIRO REKANAN.
+ * Bahasa lain dibeli ke vendor (order ke vendor) — bukan penerjemah internal, bukan biro.
+ */
+export const BAHASA_INTERNAL = ['Indonesia', 'Inggris', 'Belanda']
+export const perluVendor = (s) => ['terjemahan', 'terjemahan_nt'].includes(s?.type) && [s?.lang_from, s?.lang_to].some((l) => l && !BAHASA_INTERNAL.includes(l))
 export const foreignLang = (s) => [s?.lang_from, s?.lang_to].find((l) => l && l !== 'Indonesia') || ''
 /** Koordinator bahasa: semua order bahasa ini lewat 1 pintu (mis. Emma = Jepang). */
 export const coordinatorFor = (users, lang) => (lang ? users.find((u) => u.coordinator_lang === lang && u.active !== false) : null)

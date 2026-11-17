@@ -6,7 +6,7 @@ import { useApp } from '../lib/store.jsx'
 import { boleh } from '../lib/izin.js'
 import { go } from '../lib/router.js'
 import { drive } from '../lib/integrations.js'
-import { can, biayaVendorTersembunyi, bolehPajakApostille, PERSON_TYPES, ROLES, scopeByBranch, activeClaim, placeOf, branchesOf, printBranchOf, displayNameFor, seeProofreaderIdentity, proofreaderTeamName, pickProofreader, invoiceLabel, coordinatorFor, foreignLang, bolehItemCeklis, lewatIzinApostille } from '../config/access.js'
+import { perluVendor, can, biayaVendorTersembunyi, bolehPajakApostille, PERSON_TYPES, ROLES, scopeByBranch, activeClaim, placeOf, branchesOf, printBranchOf, displayNameFor, seeProofreaderIdentity, proofreaderTeamName, pickProofreader, invoiceLabel, coordinatorFor, foreignLang, bolehItemCeklis, lewatIzinApostille } from '../config/access.js'
 import TugaskanPenerjemah from '../components/TugaskanPenerjemah.jsx'
 import { saveBlob, dataUrlToBlob } from '../lib/download.js'
 import ResiFields from '../components/ResiFields.jsx'
@@ -338,7 +338,7 @@ function OrderBiro({ project, sub }) {
   const [id, setId] = useState('')
   const [sibuk, setSibuk] = useState(false)
   const biro = (data.people || []).filter((x) => x.type === 'vendor' && x.biro && x.active !== false && (x.branch === project.branch || x.branch === 'Semua' || !x.branch))
-  if (sub.type !== 'terjemahan' || sub.stage !== 'pilih_penerjemah' || !biro.length || !boleh(user, 'biro-order.tambah')) return null
+  if (sub.type !== 'terjemahan' || perluVendor(sub) || sub.stage !== 'pilih_penerjemah' || !biro.length || !boleh(user, 'biro-order.tambah')) return null
   const kirim = async () => {
     if (!id || sibuk) return
     setSibuk(true)
@@ -388,6 +388,9 @@ function CatatBayarSusulan({ project, sub }) {
   )
 }
 
+/** Bahasa selain Indonesia · Inggris · Belanda: order ke vendor — tampil untuk siapa pun yang berizin `vendor-order.tambah` (termasuk CS). */
+export const bisaOrderVendor = (user, sub) => perluVendor(sub) && sub.stage === 'pilih_penerjemah' && boleh(user, 'vendor-order.tambah')
+
 export function SubProject({ n, project, sub, compact, tanpaTahap, ringkas }) {
   const { user, data } = useApp()
   const [pakaiForm, setPakaiForm] = useState(false)
@@ -397,7 +400,12 @@ export function SubProject({ n, project, sub, compact, tanpaTahap, ringkas }) {
   const [showLog, setShowLog] = useState(false)
   const done = sub.stage === DONE
 
-  if (ringkas && !pakaiForm && sub.stage === 'pilih_penerjemah' && can.processStage(user, stages[idx], sub, project) && !coordinatorFor(data.users, foreignLang(sub))) return (
+  const orderVendor = bisaOrderVendor(user, sub)
+  const bolehProses = can.processStage(user, stages[idx], sub, project)
+  if (ringkas && !pakaiForm && orderVendor) return (
+    <div data-sub-card={sub.id} data-panel-ringkas><TugaskanPenerjemah inline p={project} sub={sub} onLainnya={bolehProses ? () => setPakaiForm(true) : undefined} /></div>
+  )
+  if (ringkas && !pakaiForm && sub.stage === 'pilih_penerjemah' && bolehProses && !coordinatorFor(data.users, foreignLang(sub))) return (
     <div data-sub-card={sub.id} data-panel-ringkas><TugaskanPenerjemah inline p={project} sub={sub} onLainnya={() => setPakaiForm(true)} /><OrderBiro project={project} sub={sub} /></div>
   )
   if (ringkas) return (
@@ -457,7 +465,7 @@ export function SubProject({ n, project, sub, compact, tanpaTahap, ringkas }) {
       {['ap_int', 'lg_int'].includes(flow) && <BiayaPanel project={project} sub={sub} />}
       <SambungSuratKuasa project={project} sub={sub} />
       <Collected project={project} sub={sub} />
-      {!done && <StagePanel project={project} sub={sub} stage={stages[idx]} />}
+      {orderVendor && !pakaiForm ? <TugaskanPenerjemah inline p={project} sub={sub} onLainnya={bolehProses ? () => setPakaiForm(true) : undefined} /> : !done && <StagePanel project={project} sub={sub} stage={stages[idx]} />}
       {['ap_int', 'lg_int'].includes(flow) && done && <BiayaPanel project={project} sub={sub} ringkas />}
       <CatatBayarSusulan project={project} sub={sub} />
       <OrderBiro project={project} sub={sub} />
@@ -1147,11 +1155,14 @@ export function AksiBaris({ project, sub, onPanel, onTugas, kecil }) {
   const { user, data, processStage, claimSub, notify } = useApp()
   const [busy, setBusy] = useState('')
   const flow = flowOf(sub, project); const stages = stagesOf(flow); const stage = stages[stageIndex(flow, sub.stage)]
-  if (!stage || sub.stage === DONE || !can.processStage(user, stage, sub, project)) return null
+  const keVendor = bisaOrderVendor(user, sub)
+  if (!stage || sub.stage === DONE || (!keVendor && !can.processStage(user, stage, sub, project))) return null
   const tombol = cx('inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-[10px] px-3 text-[13px] font-bold transition disabled:opacity-60', kecil ? 'h-8' : 'min-h-11')
   const utama = cx(tombol, 'bg-[#141B34] text-white hover:opacity-90')
   const biru = cx(tombol, 'bg-[#DFF1FB] text-[#0B5C8A] hover:bg-[#cbe7f7]')
   // Pilih penerjemah → popup kapasitas
+  if (keVendor && (onTugas || onPanel)) return <button type="button" onClick={(e) => { e.stopPropagation(); (onTugas || onPanel)() }} className={utama} data-aksi="baris-order-vendor">Order Vendor</button>
+  if (keVendor && !can.processStage(user, stage, sub, project)) return null
   if (sub.stage === 'pilih_penerjemah' && onTugas && !coordinatorFor(data.users, foreignLang(sub))) {
     return <button type="button" onClick={(e) => { e.stopPropagation(); onTugas() }} className={utama} data-aksi="baris-tetapkan">Tetapkan</button>
   }

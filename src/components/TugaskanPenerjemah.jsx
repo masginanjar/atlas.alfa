@@ -6,11 +6,13 @@
 // ============================================================
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { X } from 'lucide-react'
+import { X, MessageCircle } from 'lucide-react'
 import { cx } from './ui.jsx'
 import { useApp } from '../lib/store.jsx'
 import { flowOf } from '../config/workflows.js'
-import { invoiceLabel } from '../config/access.js'
+import { invoiceLabel, perluVendor, BAHASA_INTERNAL, can } from '../config/access.js'
+import { stagesOf, stageIndex } from '../config/workflows.js'
+import { teksOrderVendor, tautanWa } from './SalinChatOrder.jsx'
 import { kapasitasHarian } from './Kapasitas.jsx'
 import { halamanSub } from '../pages/Dashboard.jsx'
 
@@ -19,7 +21,7 @@ const muatPin = () => { try { return JSON.parse(localStorage.getItem(KUNCI_PIN) 
 const BULAN = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des']
 
 export default function TugaskanPenerjemah({ p, sub, onClose = () => {}, onLainnya, inline }) {
-  const { data, assignTranslator, notify } = useApp()
+  const { user, data, assignTranslator, notify, nameOf } = useApp()
   const [pilih, setPilih] = useState('')
   const [pin, setPin] = useState(muatPin)
   const [sibuk, setSibuk] = useState(false)
@@ -61,6 +63,53 @@ export default function TugaskanPenerjemah({ p, sub, onClose = () => {}, onLainn
   }
 
   const arah = [sub.lang_from, sub.lang_to].filter(Boolean).join(' → ')
+  // Bahasa selain Indonesia · Inggris · Belanda → order ke VENDOR (bukan penerjemah internal / biro).
+  const keVendor = perluVendor(sub)
+  const bahasaAsing = [sub.lang_from, sub.lang_to].find((l) => l && !BAHASA_INTERNAL.includes(l)) || ''
+  const cocokBahasa = (v) => (v.languages || []).some((l) => String(l).toLowerCase() === bahasaAsing.toLowerCase())
+  const vendors = keVendor ? (data.people || []).filter((v) => v.type === 'vendor' && !v.biro && v.active !== false && (v.branch === p.branch || v.branch === 'Semua' || !v.branch))
+    .sort((x, y) => (cocokBahasa(y) ? 1 : 0) - (cocokBahasa(x) ? 1 : 0) || String(x.name).localeCompare(String(y.name))) : []
+  const [vendorId, setVendorId] = useState('')
+  const vendorPilih = vendors.find((v) => v.id === vendorId)
+  const alur = flowOf(sub, p)
+  const bolehProses = can.processStage(user, stagesOf(alur)[stageIndex(alur, sub.stage)], sub, p)
+  const orderVendor = async () => {
+    if (!vendorId) return
+    setSibuk(true)
+    try {
+      await assignTranslator(p, sub.id, { kind: 'vendor', id: vendorId })
+      notify(`${invoiceLabel(p.invoice_no)}: diorder ke vendor ${vendors.find((v) => v.id === vendorId)?.name || ''}`)
+      onClose?.()
+    } catch (e) { notify(e.message, 'err') } finally { setSibuk(false) }
+  }
+  const isiVendor = (
+    <div className="flex flex-col gap-2.5" data-order-vendor>
+      <div className="flex items-baseline justify-between gap-2.5">
+        <strong id="tg-judul" className="text-[13px] font-semibold">Order ke vendor · {arah}</strong>
+        <span className="flex-none text-xs text-[#5E6380]">Deadline {tglTeks}</span>
+      </div>
+      <p className="rounded-xl bg-[#FFF3C4] px-3 py-2 text-xs text-[#6B4E00]">Bahasa {bahasaAsing} tidak dikerjakan penerjemah internal maupun biro rekanan — dibeli ke vendor. Pilih vendornya, lalu tekan WhatsApp Fix Order.</p>
+      <div className="flex flex-wrap items-end gap-2">
+        <label className="min-w-0 flex-1 basis-56 text-xs font-semibold text-[#5E6380]">Vendor
+          <select value={vendorId} onChange={(e) => setVendorId(e.target.value)} data-pilih-vendor className="mt-1 block min-h-[44px] w-full rounded-[10px] border border-[#D9DBE7] bg-white px-2.5 text-sm text-[#141B34] max-md:text-base">
+            <option value="">— Pilih vendor —</option>
+            {vendors.map((v) => <option key={v.id} value={v.id}>{v.name}{cocokBahasa(v) ? ` · ${bahasaAsing}` : ''}</option>)}
+          </select>
+        </label>
+        <a href={vendorId ? tautanWa(vendorPilih?.phone, teksOrderVendor(p, [sub], vendorPilih?.name || 'Penerjemah', { sapaan: vendorPilih?.sapaan, namaCs: nameOf?.(p.about?.cs_id || p.created_by) || p.about?.cs_name || '' })) : undefined} target="_blank" rel="noreferrer" aria-disabled={!vendorId || sibuk || undefined} data-aksi="order-vendor" data-wa-fix-order
+          onClick={(e) => { e.stopPropagation(); e.preventDefault(); if (!vendorId || sibuk) return; window.open(e.currentTarget.href, '_blank', 'noopener'); orderVendor() }}
+          title="Mencatat order ke vendor ini, lalu membuka WhatsApp dengan teks Fix Order — pesan baru terkirim setelah Anda menekan kirim"
+          className={cx('inline-flex min-h-[44px] items-center gap-1.5 rounded-[10px] px-4 text-[13px] font-bold text-white', vendorId && !sibuk ? 'bg-emerald-600 hover:bg-emerald-700' : 'cursor-not-allowed bg-[#A9AEC4]')}>
+          <MessageCircle className="h-4 w-4" aria-hidden="true" />{sibuk ? 'Menyimpan…' : 'WhatsApp Fix Order'}</a>
+      </div>
+      {vendorId && <p className="text-xs text-[#5E6380]">Satu tombol: order tercatat ke {vendorPilih?.name}, lalu WhatsApp terbuka dengan teks Fix Order{vendorPilih?.phone ? '' : ' (nomor vendor belum diisi — pilih kontaknya di WhatsApp)'}.</p>}
+      {!vendors.length && <p className="rounded-xl bg-[#F3F4F9] px-3 py-3 text-[13px] text-[#5E6380]">Belum ada vendor aktif untuk cabang ini — tambahkan di menu Vendor.</p>}
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        {onLainnya && bolehProses && <button type="button" onClick={onLainnya} className="mr-auto min-h-[44px] rounded-[10px] px-2 text-[13px] font-semibold text-[#0B5C8A] hover:underline">Isi pengajuan lengkap / koordinator…</button>}
+        {!inline && <button type="button" onClick={onClose} className="min-h-[44px] rounded-[10px] border border-[#D9DBE7] bg-white px-4 text-[13px] font-semibold">Batal</button>}
+      </div>
+    </div>
+  )
   const isi = (
     <>
         <div className="flex items-baseline justify-between gap-2.5">
@@ -98,18 +147,18 @@ export default function TugaskanPenerjemah({ p, sub, onClose = () => {}, onLainn
         </div>
     </>
   )
-  if (inline) return <div className="flex flex-col gap-2 p-3" data-tugaskan-inline>{isi}</div>
+  if (inline) return <div className="flex flex-col gap-2 p-3" data-tugaskan-inline>{keVendor ? isiVendor : isi}</div>
   return createPortal(
     <div className="fixed inset-0 z-[200] flex items-end justify-center bg-[#141B34]/30 p-2 sm:items-center" onMouseDown={(e) => e.target === e.currentTarget && onClose()} data-tugaskan-penerjemah>
       <div role="dialog" aria-modal="true" aria-labelledby="tg-judul" className="flex max-h-[90vh] w-[500px] max-w-full flex-col gap-3 overflow-y-auto rounded-2xl border border-[#DADDE8] bg-white p-[18px] text-[#141B34] shadow-[0_18px_48px_rgba(20,27,52,0.28)]">
         <div className="flex items-start justify-between gap-2.5">
           <div className="flex min-w-0 flex-col gap-0.5">
-            <h2 id="tg-judul" className="text-base font-medium">Tugaskan penerjemah</h2>
+            <h2 id={keVendor ? undefined : 'tg-judul'} className="text-base font-medium">{keVendor ? 'Order ke vendor' : 'Tugaskan penerjemah'}</h2>
             <span className="break-words text-[13px] text-[#5E6380]">{invoiceLabel(p.invoice_no)} · {p.customer?.name || '—'}{arah && ` · ${arah}`}{sub.title && ` · ${sub.title}`}</span>
           </div>
           <button type="button" aria-label="Tutup" onClick={onClose} className="grid h-11 w-11 shrink-0 place-items-center rounded-[10px] text-[#5E6380] hover:bg-[#F3F4F9]"><X className="h-[18px] w-[18px]" /></button>
         </div>
-        {isi}
+        {keVendor ? isiVendor : isi}
       </div>
     </div>, document.body)
 }
