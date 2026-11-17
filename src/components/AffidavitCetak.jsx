@@ -17,8 +17,7 @@ import {
  */
 export default function AffidavitCetak({ project, sub }) {
   const { user, data, notify, pakaiAffidavit } = useApp()
-  const [salinan, setSalinan] = useState('1')
-  const [perSalinan, setPerSalinan] = useState('1')
+  const [jumlah, setJumlah] = useState('1') // satu isian saja: jumlah lembar yang dipakai
   const [busy, setBusy] = useState(false)
   const [tercatat, setTercatat] = useState(null) // { lembar, sisa }
   // Kunci idempoten: dibuat sekali per percobaan. Klik dua kali atau koneksi
@@ -37,7 +36,7 @@ export default function AffidavitCetak({ project, sub }) {
   const cabang = cabangCetak(project)
   const sisa = sisaStok(data.affidavit_stok, cabang, arah)
   const dikirim = sisaDikirim(data.affidavit_kirim, cabang, arah)
-  const lembar = hitungLembar(salinan, perSalinan)
+  const lembar = hitungLembar(jumlah, 1)
   const pra = pratinjauCetak(sisa, lembar)
 
   const catat = async () => {
@@ -84,15 +83,10 @@ export default function AffidavitCetak({ project, sub }) {
       ) : (
         <>
           <div className="mt-2 flex flex-wrap items-end gap-2" data-affidavit-isi>
-            <label className="min-w-0 basis-28">
-              <span className="block text-[11px] font-semibold text-indigo-900">Jumlah salinan</span>
-              <Input type="number" min="1" value={salinan} onChange={(e) => setSalinan(e.target.value)}
-                aria-label="Jumlah salinan yang dicetak" className="mt-0.5" />
-            </label>
-            <label className="min-w-0 basis-36">
-              <span className="block text-[11px] font-semibold text-indigo-900">Lembar / salinan</span>
-              <Input type="number" min="1" value={perSalinan} onChange={(e) => setPerSalinan(e.target.value)}
-                aria-label="Lembar affidavit per salinan" className="mt-0.5" />
+            <label className="min-w-0 basis-40">
+              <span className="block text-[11px] font-semibold text-indigo-900">Jumlah lembar dipakai</span>
+              <Input type="number" inputMode="numeric" min="1" value={jumlah} onChange={(e) => setJumlah(e.target.value)}
+                aria-label="Jumlah lembar affidavit yang dipakai" className="mt-0.5" data-isi="lembar-dipakai" />
             </label>
             <Button size="sm" variant="dark" loading={busy} disabled={!pra.bisa} onClick={catat} className="mb-0.5">
               <Check className="h-3.5 w-3.5" />Catat Pemakaian Lembar

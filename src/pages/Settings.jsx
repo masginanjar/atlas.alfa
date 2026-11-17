@@ -199,14 +199,14 @@ const WORK_LANGS = ['Inggris', 'Mandarin', 'Jepang', 'Korea', 'Arab', 'Belanda',
 function ProfilData() {
   const { user, data, updateProfile, notify } = useApp()
   const row = data.users.find((u) => u.id === user.id) || user
-  const [f, setF] = useState({ name: row.name || '', display_name: row.display_name || '', phone: row.phone || '', languages: row.languages || [] })
+  const [f, setF] = useState({ name: row.name || '', nama_lengkap: row.nama_lengkap || '', display_name: row.display_name || '', phone: row.phone || '', languages: row.languages || [] })
   const [busy, setBusy] = useState(false)
-  const dirty = JSON.stringify(f) !== JSON.stringify({ name: row.name || '', display_name: row.display_name || '', phone: row.phone || '', languages: row.languages || [] })
+  const dirty = JSON.stringify(f) !== JSON.stringify({ name: row.name || '', nama_lengkap: row.nama_lengkap || '', display_name: row.display_name || '', phone: row.phone || '', languages: row.languages || [] })
   const isTr = ['penerjemah', 'proofreader'].includes(user.role) || (user.extra_roles || []).some((r) => ['penerjemah', 'proofreader'].includes(r))
   const save = async () => {
-    if (!f.name.trim()) return notify('Nama lengkap wajib diisi', 'err')
+    if (!f.name.trim()) return notify('Nama panggilan wajib diisi', 'err')
     setBusy(true)
-    try { await updateProfile({ ...f, name: f.name.trim(), display_name: f.display_name.trim(), phone: f.phone.trim() }); notify('Profil disimpan') }
+    try { await updateProfile({ ...f, name: f.name.trim(), nama_lengkap: f.nama_lengkap.trim(), display_name: f.display_name.trim(), phone: f.phone.trim() }); notify('Profil disimpan') }
     catch (e) { notify(e.message, 'err') } finally { setBusy(false) }
   }
   const toggleLang = (l) => setF((x) => ({ ...x, languages: x.languages.includes(l) ? x.languages.filter((y) => y !== l) : [...x.languages, l] }))
@@ -218,10 +218,16 @@ function ProfilData() {
       <Card className="space-y-4 p-5">
         <p className="text-xs font-bold uppercase tracking-wide text-ink-mute">Data pribadi</p>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Nama lengkap" required><Input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} autoComplete="name" /></Field>
-          <Field label="Nama tampilan" hint="Dipakai pada sapaan & daftar tugas. Kosongkan untuk memakai nama lengkap.">
-            <Input value={f.display_name} onChange={(e) => setF({ ...f, display_name: e.target.value })} placeholder={f.name} autoComplete="nickname" />
-          </Field>
+          {/* Nama panggilan = `name` (yang tampil di seluruh ATLAS: tugas, laporan, notifikasi). Nama lengkap = data pribadi, tidak dipakai sebagai tampilan. */}
+          <Field label="Nama panggilan" required hint="Nama inilah yang tampil di ATLAS — tugas, laporan, dan notifikasi.">
+            <Input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} autoComplete="nickname" data-isi="nama-panggilan" /></Field>
+          <Field label="Nama lengkap" hint="Sesuai identitas. Hanya tersimpan di profil — tidak menggantikan nama panggilan di tampilan.">
+            <Input value={f.nama_lengkap} onChange={(e) => setF({ ...f, nama_lengkap: e.target.value })} autoComplete="name" maxLength={120} data-isi="nama-lengkap" /></Field>
+          {row.display_name ? (
+            <Field label="Nama tampilan di pojok atas" hint="Isian lama. Kosongkan agar pojok atas memakai nama panggilan.">
+              <Input value={f.display_name} onChange={(e) => setF({ ...f, display_name: e.target.value })} placeholder={f.name} />
+            </Field>
+          ) : null}
           <Field label="No. telepon / WhatsApp"><Input value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} inputMode="tel" autoComplete="tel" placeholder="08xx…" /></Field>
           <Field label="Email akun" hint="Diubah lewat admin — email dipakai untuk login.">
             <Input value={user.email || ''} readOnly disabled tabIndex={-1} />
@@ -241,7 +247,7 @@ function ProfilData() {
         )}
         <div className="flex items-center gap-2 border-t border-slate-100 pt-4">
           <Button size="sm" loading={busy} disabled={!dirty} onClick={save}>Simpan perubahan</Button>
-          {dirty && <button type="button" onClick={() => setF({ name: row.name || '', display_name: row.display_name || '', phone: row.phone || '', languages: row.languages || [] })} className="text-xs font-semibold text-ink-mute hover:text-ink">Batalkan</button>}
+          {dirty && <button type="button" onClick={() => setF({ name: row.name || '', nama_lengkap: row.nama_lengkap || '', display_name: row.display_name || '', phone: row.phone || '', languages: row.languages || [] })} className="text-xs font-semibold text-ink-mute hover:text-ink">Batalkan</button>}
         </div>
       </Card>
 

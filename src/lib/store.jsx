@@ -905,7 +905,7 @@ export function AppProvider({ children }) {
   const updateProfile = async (patch) => {
     const row = data.users.find((u) => u.id === user.id) || user
     // "Tersedia 24 jam" hanya untuk Direktur — tampilan ketersediaan, tidak mengubah aturan keluar otomatis
-    const allowed = ['name', 'display_name', 'phone', 'languages', 'about', 'status_text', 'mute_until', ...(user?.role === 'direktur' ? ['available_24h'] : [])]
+    const allowed = ['name', 'nama_lengkap', 'display_name', 'phone', 'languages', 'about', 'status_text', 'mute_until', ...(user?.role === 'direktur' ? ['available_24h'] : [])]
     const clean = Object.fromEntries(Object.entries(patch).filter(([k]) => allowed.includes(k)))
     const saved = await save('users', { ...row, ...clean })
     setUser((b) => (b ? { ...b, ...clean } : b))

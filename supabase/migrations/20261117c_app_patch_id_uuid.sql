@@ -1,0 +1,4 @@
+-- app_patch: tabel ber-id UUID (mis. kapasitas) gagal diubah dengan "operator does not exist: uuid = text"
+-- karena row_id dikirim sebagai teks. Perbandingan kini memakai id::text (untuk kolom id bertipe text hasilnya sama).
+-- Selain itu tidak ada yang berubah; RLS tetap berlaku (bukan SECURITY DEFINER). Definisi lengkap ada di database (17 Nov 2026).
+-- Diterapkan lewat migrasi `app_patch_id_uuid`: dua pernyataan `where id = $n` di dalam fungsi menjadi `where id::text = $n`.
