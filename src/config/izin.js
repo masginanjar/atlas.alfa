@@ -123,6 +123,7 @@ export const MODUL = [
     // 16 Nov 2026 (keputusan pemilik): order ke biro rekanan (mis. Indotrans) boleh oleh pimpinan DAN CS.
     f('biro-order', 'Order ke biro rekanan (mis. Indotrans)', ['tambah'], { tambah: ['superadmin', 'supervisor', 'direktur', 'admin_pusat', 'cs'] }),
     f('chat-pelanggan', 'Copy chat WhatsApp ke pelanggan (Draft · Selesai · Review)', ['lihat'], { lihat: ['superadmin', 'supervisor', 'direktur', 'admin_pusat', 'cs'] }),
+    f('inbox-otorisasi', 'Inbox Otorisasi — balasan email dari otorisator & simpan lampirannya ke project', ['menu', 'lihat', 'tambah'], { menu: ['superadmin', 'admin_pusat'], lihat: ['superadmin', 'admin_pusat'], tambah: ['superadmin', 'admin_pusat'] }),
     f('email-otorisasi', 'Email otorisasi — kirim dokumen sumber & hasil proofread ke otorisator lewat email (1 invoice 1 email)', ['tambah', 'atur'], { tambah: ['superadmin', 'admin_pusat'] }),
     f('pesan-siap', 'Pesan notifikasi Ready to proof / Ready to oto / Sudah diotorisasi (copy chat WhatsApp)', ['tambah', 'massal'], { tambah: ['superadmin', 'penerjemah', 'proofreader', 'otorisator', 'admin_pusat'], massal: ['superadmin', 'admin_pusat'] }),
     f('vendor-order', 'Order ke vendor (bahasa selain Indonesia · Inggris · Belanda)', ['tambah'], { tambah: ['superadmin', 'supervisor', 'direktur', 'admin_pusat', 'cs'] }),
@@ -202,7 +203,7 @@ export const RUTE_FITUR = {
   beranda: 'beranda', dashboard: 'dashboard', faktur: 'faktur', pelanggan: 'pelanggan', mitra: 'mitra', 'daftar-harga': 'katalog',
   projects: 'project', penugasan: 'penugasan', register: 'register', otorisasi: 'otorisasi', dokumen: 'dokumen', affidavit: 'affidavit',
   keuangan: 'keuangan', vendor: 'vendor', agenda: 'agenda', jadwal: 'jadwal', notes: 'notes', perusahaan: 'perusahaan', faq: 'faq', settings: 'settings',
-  kehadiran: 'kehadiran', 'smart-translator': 'smart-translator', 'pemisah-spesimen': 'pemisah-spesimen', 'surat-kuasa': 'surat-kuasa', monitoring: 'monitoring', 'status-server': 'status-server', 'rilis-fitur': 'rilis-fitur', aktivitas: 'aktivitas',
+  kehadiran: 'kehadiran', 'smart-translator': 'smart-translator', 'pemisah-spesimen': 'pemisah-spesimen', 'inbox-otorisasi': 'inbox-otorisasi', 'surat-kuasa': 'surat-kuasa', monitoring: 'monitoring', 'status-server': 'status-server', 'rilis-fitur': 'rilis-fitur', aktivitas: 'aktivitas',
   'pengiriman': 'pengiriman.ringkasan', 'pengiriman/daftar': 'pengiriman.daftar', 'pengiriman/buat': 'pengiriman.buat', 'pengiriman/ongkir': 'pengiriman.ongkir',
   'pengiriman/draft': 'pengiriman.draft', 'pengiriman/alamat': 'pengiriman.alamat', 'pengiriman/label': 'pengiriman.label', 'pengiriman/kendala': 'pengiriman.kendala',
   'pengiriman/saldo': 'pengiriman.saldo', 'pengiriman/laporan': 'pengiriman.laporan', 'pengiriman/pengaturan': 'pengiriman.pengaturan',

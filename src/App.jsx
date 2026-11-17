@@ -5,7 +5,7 @@ import SidebarMenu from './components/SidebarMenu.jsx'
 import PanelDummy from './components/PanelDummy.jsx'
 import { useApp } from './lib/store.jsx'
 import { MODE, storageError, db } from './lib/db.js'
-import { AlertTriangle, Calculator } from 'lucide-react'
+import { AlertTriangle, Calculator, Inbox as InboxIkon } from 'lucide-react'
 import { BRANCHES, ROLES, can, branchesOf, isMultiBranch, roleLabel, rolesOf, isFreelance, placeOf } from './config/access.js'
 import { go } from './lib/router.js'
 import { boleh, menuTampil, halamanBoleh } from './lib/izin.js'
@@ -42,6 +42,7 @@ const StatusServer = lazy(() => import('./pages/StatusServer.jsx'))
 const Affidavit = lazy(() => import('./pages/Affidavit.jsx'))
 const Register = lazy(() => import('./pages/Register.jsx'))
 const LaporanOtorisasi = lazy(() => import('./pages/LaporanOtorisasi.jsx'))
+const InboxOtorisasi = lazy(() => import('./pages/InboxOtorisasi.jsx'))
 const Jadwal = lazy(() => import('./pages/Jadwal.jsx'))
 const ProjectForm = lazy(() => import('./pages/ProjectForm.jsx'))
 const Pelanggan = lazy(() => import('./pages/Pelanggan.jsx'))
@@ -118,6 +119,7 @@ const MENU = [
     { key: 'penugasan', label: 'Penugasan', icon: Users, show: canSeePenugasan },
     { key: 'register', label: 'Nomor Register', icon: Hash, show: canSeeRegister },
     { key: 'otorisasi', label: 'Laporan Otorisasi', icon: ClipboardList, show: canSeeLaporanOto },
+    { key: 'inbox-otorisasi', label: 'Inbox Otorisasi', icon: InboxIkon },
     { key: 'dokumen', label: 'Dokumen', icon: HardDrive },
     { key: 'affidavit', label: 'Affidavit', icon: FileStack, show: canSeeAffidavit },
   ] },
@@ -271,6 +273,7 @@ export default function App() {
     : page === 'penugasan' ? <Penugasan />
     : page === 'affidavit' ? <Affidavit />
     : page === 'register' && canSeeRegister(user) ? <Register />
+    : page === 'inbox-otorisasi' ? <InboxOtorisasi />
     : page === 'otorisasi' && canSeeLaporanOto(user) ? <LaporanOtorisasi />
     : page === 'jadwal' ? <Jadwal />
     : page === 'pesan' && CHAT_ENABLED ? <Pesan peerParam={param} />
