@@ -121,9 +121,9 @@ const TUGAS: Record<string, { prompt: string; skema: unknown; maksKeluar: number
       "Elemen bukan teks ditulis sebagai blok tersendiri dengan sel dan en yang sama: (Logo), (Emblem), (Photograph), (Signature), (Stamp), (Signature and stamp), (Duty stamp), (QR Code). Teks pada cap yang terbaca disalin sebagai blok setelahnya. " +
       "Bagian yang tidak terbaca dengan yakin: salin yang terlihat saja, tulis [illegible] untuk bagian yang hilang, dan masukkan nomor urut bloknya (mulai 1, sebagai teks) ke ragu. Jangan mengarang. " +
       "jenis (di luar blok) = nama jenis dokumen dalam bahasa Indonesia seperti tertulis (mis. SURAT KETERANGAN DOMISILI). judul_en = nama jenis dokumen itu dalam bahasa Inggris, singkat (mis. Certificate of Domicile). nama = nama orang/pihak utama yang diterangkan dokumen (kosong bila tidak ada). orientasi = MENDATAR atau TEGAK sesuai bentuk kertas.",
-    skema: { type: "OBJECT", properties: { jenis: S("nama jenis dokumen (Indonesia)"), judul_en: S("nama jenis dokumen (Inggris), singkat"), nama: S("nama orang/pihak utama, boleh kosong"), orientasi: S("MENDATAR atau TEGAK"),
+    skema: { type: "OBJECT", properties: { bahasa: S("bahasa utama teks sumber halaman ini: ID atau EN"), jenis: S("nama jenis dokumen (Indonesia)"), judul_en: S("nama jenis dokumen (Inggris), singkat"), nama: S("nama orang/pihak utama, boleh kosong"), orientasi: S("MENDATAR atau TEGAK"),
       blok: { type: "ARRAY", items: { type: "OBJECT", properties: { jenis: S("judul | sub | paragraf | tabel_kepala | tabel | ttd"), rata: S("kiri | tengah | kanan | rata"), sel: { type: "ARRAY", items: { type: "STRING" } }, en: { type: "ARRAY", items: { type: "STRING" } }, kolom: S("0, 1, 2, atau 3") }, required: ["jenis", "rata", "sel", "en", "kolom"] } },
-      ragu: { type: "ARRAY", items: { type: "STRING" } } }, required: ["jenis", "judul_en", "nama", "orientasi", "blok", "ragu"] },
+      ragu: { type: "ARRAY", items: { type: "STRING" } } }, required: ["bahasa", "jenis", "judul_en", "nama", "orientasi", "blok", "ragu"] },
     maksKeluar: 16000, batasMs: 100000,
   },
   bukti: {
@@ -134,15 +134,33 @@ const TUGAS: Record<string, { prompt: string; skema: unknown; maksKeluar: number
   },
 };
 
+/** Dokumen non-reguler — ARAH TERJEMAHAN (17 Nov 2026). Dulu prompt selalu meminta "bahasa Inggris": dokumen sumber berbahasa Inggris
+ *  hasilnya tidak menentu (sebagian halaman diterjemahkan ke Indonesia, sebagian disalin apa adanya). Sekarang arah ditentukan sekali
+ *  (halaman pertama: otomatis; halaman berikutnya: dikirim pemanggil lewat "arah") sehingga seluruh halaman satu dokumen searah. */
+const NR_EN_ID = "teks sumber berbahasa INGGRIS, maka en diisi terjemahan ke BAHASA INDONESIA hukum yang baku, setia, dan lengkap — DILARANG menyalin teks Inggris ke en. " +
+  "judul_en = nama jenis dokumen dalam bahasa Indonesia (mis. Perjanjian Jual Beli Kapal). Elemen bukan teks ditulis dalam bahasa Indonesia: (Logo), (Lambang), (Foto), (Tanda tangan), (Paraf), (Cap), (Tanda tangan dan cap), (Meterai), (Kode QR); paraf di kaki halaman ditulis (Paraf), bukan (Tanda tangan). Bagian tak terbaca: [tidak terbaca]. " +
+  "Nama lembaga, konvensi, dan badan asing dipertahankan dalam bahasa aslinya; istilah teknis asing boleh diberi aslinya dalam kurung, mis. akta jual beli (Bill of Sale). Salah ketik dan penomoran ganda pada sumber dipertahankan apa adanya. " +
+  "Istilah baku: execution/executed = penandatanganan/ditandatangani (bukan pelaksanaan); herein = dalam Perjanjian ini; hereunder = berdasarkan Perjanjian ini; subject matter = objek perjanjian; cure period = masa tenggang; binding effect = kekuatan mengikat; govern and prevail = berlaku dan diutamakan; reputable = bereputasi baik; itemized = terperinci; " +
+  "maritime lien = piutang maritim yang didahulukan (maritime lien); willful misconduct = kesalahan yang disengaja; shall (kewajiban) = wajib; (the \"X\") = (selanjutnya disebut \"X\"); Parties = Para Pihak (konsisten). Frasa 'by the Buyer/Seller' dilekatkan ke kata kerja yang benar (siapa yang membayar vs siapa yang menunjuk) sesuai kalimat sumber.";
+function arahNonreg(arah: string, konteks: string) {
+  let t = "";
+  if (arah === "en-id") t = " ARAH TERJEMAHAN (mengalahkan kata 'bahasa Inggris' di atas): Inggris → Indonesia. bahasa = EN; " + NR_EN_ID;
+  else if (arah === "id-en") t = " ARAH TERJEMAHAN: Indonesia → Inggris untuk SELURUH halaman dokumen ini (walaupun halaman ini memuat kutipan bahasa lain). bahasa = ID.";
+  else t = " ARAH TERJEMAHAN: tentukan dulu bahasa utama teks sumber dan isi bahasa = ID atau EN. Bila ID: en berisi terjemahan bahasa Inggris seperti aturan di atas. Bila EN (aturan ini mengalahkan kata 'bahasa Inggris' di atas): " + NR_EN_ID;
+  const k = konteks.replace(/\s+/g, " ").trim().slice(-500);
+  if (k) t += " KONTEKS — akhir teks halaman SEBELUMNYA (JANGAN disalin dan JANGAN diterjemahkan lagi; hanya supaya kalimat yang bersambung di awal halaman ini diterjemahkan sebagai lanjutan yang menyambung, tanpa menambah kata pembuka): «" + k + "»";
+  return t;
+}
+
 /** Panggil Gemini. Ulang 1× untuk gangguan sementara. Pesan galat tanpa isi dokumen. */
-async function panggilGemini(kunci: string, model: string, tugas: string, b64: string, mime: string) {
+async function panggilGemini(kunci: string, model: string, tugas: string, b64: string, mime: string, tambahan = "") {
   const T = TUGAS[tugas];
   // deno-lint-ignore no-explicit-any
   const cfg: any = { temperature: 0, responseMimeType: "application/json", responseSchema: T.skema, maxOutputTokens: T.maksKeluar };
   // Model yang "berpikir" (bukan Flash-Lite): sisakan ruang token berpikir, dan batasi berpikir ke "low" — menyalin dokumen tidak butuh penalaran panjang;
   // bawaan Gemini 3 Flash adalah "high" (jawaban 20–30 detik, sering putus di HP, dan lebih mahal).
   if (!/flash-lite/.test(model)) { cfg.maxOutputTokens = T.maksKeluar + 6000; cfg.thinkingConfig = { thinkingLevel: "low" }; }
-  const buat = () => JSON.stringify({ contents: [{ role: "user", parts: [{ inlineData: { mimeType: mime, data: b64 } }, { text: T.prompt }] }], generationConfig: cfg });
+  const buat = () => JSON.stringify({ contents: [{ role: "user", parts: [{ inlineData: { mimeType: mime, data: b64 } }, { text: T.prompt + tambahan }] }], generationConfig: cfg });
   let body = buat();
   let terakhir = "";
   for (let i = 0; i < 2; i++) {
@@ -243,7 +261,7 @@ Deno.serve(async (req: Request) => {
   }
 
   /** Satu panggilan AI dengan batas biaya, batas laju, dan log metadata. */
-  async function satu(fitur: string, model: string, tugas: string, b64: string, mime: string) {
+  async function satu(fitur: string, model: string, tugas: string, b64: string, mime: string, tambahan = "") {
     if (!kunci) return { ok: false, cadangan: true, alasan: "Kunci Gemini belum dipasang di server" };
     const { count } = await admin.from("ai_pakai_log").select("id", { count: "exact", head: true }).eq("user_id", user!.id).gte("at", new Date(Date.now() - 5 * 60e3).toISOString());
     if ((count ?? 0) >= 60) return { ok: false, cadangan: true, alasan: "Terlalu banyak permintaan dalam 5 menit — tunggu sebentar" };
@@ -251,7 +269,7 @@ Deno.serve(async (req: Request) => {
     const terpakai = ((await pakaiBulan())[fitur]?.usd ?? 0) * setelan.kurs;
     if (terpakai >= batas) return { ok: false, cadangan: true, habis: true, alasan: `Batas biaya AI bulan ini untuk ${FITUR[fitur]?.label ?? fitur} sudah tercapai` };
     const t0 = Date.now();
-    const r = await panggilGemini(kunci, model, tugas, b64, mime);
+    const r = await panggilGemini(kunci, model, tugas, b64, mime, tambahan);
     const usd = biayaUsd(KAT, model, r.pakai);
     await admin.from("ai_pakai_log").insert({ bulan: bulanIni(), fitur, model, user_id: user!.id, branch: user!.branch, token_masuk: r.pakai.masuk, token_keluar: r.pakai.keluar, biaya_usd: usd, hasil: r.ok ? "ok" : "gagal", ms: Date.now() - t0 });
     // deno-lint-ignore no-explicit-any
@@ -271,7 +289,8 @@ Deno.serve(async (req: Request) => {
     if (m[2].length * 0.75 > MAKS_BYTE) return json({ ok: false, alasan: "gambar terlalu besar (maks 8 MB)" }, 400);
     // Smart Translator: jenis dokumen boleh dipilih pemanggil (akta kelahiran / kartu keluarga / ijazah / transkrip / non-reguler); selain itu tugas bawaan fitur.
     const tugasJalan = fitur === "penerjemah" && ["akta", "kk", "ijazah", "transkrip", "nonreg"].includes(String(b.tugas ?? "")) ? String(b.tugas) : F.tugas;
-    return json(await satu(fitur, model, tugasJalan, m[2], m[1]));
+    const tambahan = tugasJalan === "nonreg" ? arahNonreg(String(b.arah ?? ""), String(b.konteks ?? "")) : "";
+    return json(await satu(fitur, model, tugasJalan, m[2], m[1], tambahan));
   }
 
   if (aksi === "uji") {
