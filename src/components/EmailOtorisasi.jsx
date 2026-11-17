@@ -8,14 +8,14 @@
 //  • Izin: email-otorisasi.tambah (kirim), email-otorisasi.atur (nyalakan/matikan mode tes).
 // ============================================================
 import { useMemo, useState } from 'react'
-import { Mail, Loader2, Paperclip, CheckCircle2, FlaskConical, Send, X } from 'lucide-react'
+import { Mail, Loader2, Paperclip, CheckCircle2, FlaskConical, Send, X, Plus, Upload, Pencil } from 'lucide-react'
 import { useApp } from '../lib/store.jsx'
 import { boleh } from '../lib/izin.js'
 import { invoiceLabel } from '../config/access.js'
 import { db, MODE } from '../lib/db.js'
 import { SUPABASE_URL } from '../lib/supabase.js'
 import { drive } from '../lib/integrations.js'
-import { fieldFiles } from './FileManager.jsx'
+import { fieldFiles, collect } from './FileManager.jsx'
 import { Sheet, cx } from './ui.jsx'
 
 const LIVE = MODE === 'supabase'
@@ -70,24 +70,31 @@ export default function EmailOtorisasi({ project, className }) {
   const [oto, setOto] = useState('')
   const [tgl, setTgl] = useState(''); const [jam, setJam] = useState('16:00')
   const [isi, setIsi] = useState(''); const [isiManual, setIsiManual] = useState(false)
+  const [judulTulis, setJudulTulis] = useState(''); const [judulManual, setJudulManual] = useState(false)
+  const [tambahan, setTambahan] = useState([]) // lampiran yang ditambahkan sendiri: file project lain / unggahan dari perangkat (hanya untuk email ini)
+  const [pilihFile, setPilihFile] = useState(false)
   const [pilih, setPilih] = useState(new Set())
   const [sibuk, setSibuk] = useState('')
   const [terkirim, setTerkirim] = useState(null) // { teks, ket } → layar "Email terkirim" di dalam popup
   const [galat, setGalat] = useState('') // pesan gagal ditampilkan DI DALAM layar ini (toast bisa tertutup Layar Kerja)
   const subs = useMemo(() => subSiapOto(project), [project])
-  const berkas = useMemo(() => lampiranOto(subs), [subs])
+  const bawaan = useMemo(() => lampiranOto(subs), [subs])
+  const berkas = useMemo(() => [...bawaan, ...tambahan], [bawaan, tambahan])
+  // file project lain yang belum ada di daftar lampiran (bisa ditambahkan)
+  const lainnya = useMemo(() => { const ada = new Set(berkas.map((f) => f._id)); return open ? collect(project, { user }).map((f) => ({ ...f, _id: f.drive_id || `${f.name}:${f.size}`, _jenis: 'File project' })).filter((f) => !ada.has(f._id)) : [] }, [open, project, user, berkas])
   const riwayat = project?.email_oto || []
   if (!boleh(user, 'email-otorisasi.tambah') || (!subs.length && !riwayat.length)) return null
 
   const penerima = info?.penerima || []
   const sapaan = penerima.find((x) => x.id === oto)?.sapaan || 'Bapak/Ibu'
-  const judul = judulEmailOto(subs, tgl, jam)
+  const judulOtomatis = judulEmailOto(subs, tgl, jam)
+  const judul = (judulManual ? judulTulis : judulOtomatis).replace(/[\r\n]+/g, ' ')
   const isiOtomatis = isiEmailOto(project, subs, sapaan, wita().jam)
   const isiPakai = isiManual ? isi : isiOtomatis
   const terpilih = berkas.filter((f) => pilih.has(f._id)); const total = terpilih.reduce((a, f) => a + (f.size || 0), 0)
 
   const buka = async () => {
-    setOpen(true); setGalat(''); setTerkirim(null); setIsiManual(false); setPilih(new Set(berkas.map((f) => f._id))) // layar dibuka dulu — apa pun yang terjadi di bawah, pengguna melihat sesuatu
+    setOpen(true); setGalat(''); setTerkirim(null); setIsiManual(false); setJudulManual(false); setTambahan([]); setPilihFile(false); setPilih(new Set(bawaan.map((f) => f._id))) // layar dibuka dulu — apa pun yang terjadi di bawah, pengguna melihat sesuatu
     try {
       const mentah = project.about?.deadline; const d = mentah ? new Date(mentah) : null; const sah = d && !Number.isNaN(+d)
       const dl = wita(sah ? d : new Date())
@@ -109,6 +116,8 @@ export default function EmailOtorisasi({ project, className }) {
     const salah = (m) => { setGalat(m); notify(m, 'err') }
     setGalat('')
     if (!oto) return salah('Pilih otorisator tujuan')
+    if (judul.trim().length < 5) return salah('Judul email masih kosong')
+    if (isiPakai.trim().length < 10) return salah('Isi email masih kosong')
     if (!terpilih.length) return salah(berkas.length ? 'Pilih minimal satu lampiran' : 'Invoice ini belum punya file dokumen sumber / hasil proofread — email tidak bisa dikirim')
     if (total > MAKS_BYTE) return salah(`Lampiran ${kb(total)} — melebihi batas 18 MB. Kurangi lampiran.`)
     const tes = !!info?.mode_tes
@@ -116,7 +125,7 @@ export default function EmailOtorisasi({ project, className }) {
     setSibuk('kirim')
     try {
       const lampiran = []
-      for (const f of terpilih) { const blob = await drive.blob(f); lampiran.push({ nama: f.name, mime: blob.type || 'application/octet-stream', b64: await keB64(blob) }) }
+      for (const f of terpilih) { const blob = f._blob || await drive.blob(f); lampiran.push({ nama: f.name, mime: blob.type || 'application/octet-stream', b64: await keB64(blob) }) }
       let r = { ok: true, simulasi: true }
       if (LIVE) r = await panggil('kirim', { project_id: project.id, oto_id: oto, subjek: judul, isi: isiPakai, lampiran })
       if (!r.ok) { salah(r.alasan || 'Email gagal dikirim'); return }
@@ -127,9 +136,13 @@ export default function EmailOtorisasi({ project, className }) {
       setTerkirim({ teks, ket, judul: (LIVE && r.tes ? '[TES] ' : '') + judul, n: terpilih.length }); notify(teks)
     } catch (e) { salah(e.message || 'Gagal menyiapkan lampiran') } finally { setSibuk('') }
   }
+  const tambahFile = (f) => { setTambahan((v) => [...v, f]); setPilih((v) => new Set(v).add(f._id)) }
+  const unggah = (files) => { for (const x of files) { const id = `lokal:${x.name}:${x.size}:${x.lastModified}`; if (!berkas.some((f) => f._id === id)) tambahFile({ _id: id, name: x.name, size: x.size, _jenis: 'Dari perangkat', _blob: x }) } }
   const akhir = riwayat[riwayat.length - 1]
   const baris = 'flex items-center gap-3 border-b border-slate-100 py-1'
   const lbl = 'w-[76px] shrink-0 text-[13px] text-ink-mute'
+  const tulis = 'rounded-lg border-0 bg-transparent px-2 py-1.5 text-sm text-ink ring-1 ring-transparent hover:ring-slate-200 focus:bg-white focus:ring-2 focus:ring-[#0B57D0] max-md:text-base'
+  const tbl = 'inline-flex min-h-9 items-center gap-1.5 rounded-full px-3 text-[13px] font-semibold text-[#0B57D0] ring-1 ring-slate-300 hover:bg-[#EEF3FE] max-md:min-h-11'
 
   return (
     <section className={cx('flex flex-wrap items-center gap-2', className || 'rounded-xl bg-white p-3 ring-1 ring-slate-200')} onClick={(e) => e.stopPropagation()} data-email-oto>
@@ -177,8 +190,13 @@ export default function EmailOtorisasi({ project, className }) {
           <div className={cx(baris, 'flex-wrap')}><span className={lbl}>Dibutuhkan</span>
             <input type="date" value={tgl} onChange={(e) => setTgl(e.target.value)} aria-label="Dibutuhkan tanggal" className="min-h-9 min-w-0 border-0 bg-transparent px-0 text-sm text-ink focus:ring-0 max-md:h-11 max-md:text-base" data-isi="tgl" />
             <input type="time" value={jam} onChange={(e) => setJam(e.target.value)} aria-label="Pukul (WITA)" className="min-h-9 min-w-0 border-0 bg-transparent px-0 text-sm text-ink focus:ring-0 max-md:h-11 max-md:text-base" data-isi="jam" /><span className="text-xs text-ink-mute">WITA</span></div>
-          <div className={baris}><span className={lbl}>Judul</span><p className="min-w-0 flex-1 break-words py-1.5 text-sm font-semibold text-ink" data-judul-email>{info?.mode_tes && LIVE ? '[TES] ' : ''}{judul}</p></div>
-          <textarea value={isiPakai} onChange={(e) => { setIsi(e.target.value); setIsiManual(true) }} rows={8} aria-label="Isi email" className="mt-2 block w-full resize-y rounded-lg border-0 bg-transparent px-0 text-sm leading-relaxed text-ink ring-0 focus:ring-0 max-md:text-base" data-isi="isi" />
+          <label className={baris}><span className={lbl}>Judul</span>
+            {info?.mode_tes && LIVE && <span className="shrink-0 rounded bg-sky-100 px-1.5 py-0.5 text-[11px] font-bold text-sky-900" title="Awalan ini ditambahkan otomatis selama mode tes">[TES]</span>}
+            <input type="text" value={judul} onChange={(e) => { setJudulTulis(e.target.value); setJudulManual(true) }} maxLength={190} aria-label="Judul email" className={cx(tulis, 'min-h-9 min-w-0 flex-1 font-semibold max-md:min-h-11')} data-judul-email data-isi="judul" />
+            <Pencil className="h-3.5 w-3.5 shrink-0 text-ink-mute" aria-hidden="true" /></label>
+          {judulManual && <button type="button" onClick={() => setJudulManual(false)} className="self-start py-1 text-xs font-semibold text-[#0B57D0] underline max-md:min-h-11">Kembalikan judul bawaan</button>}
+          <textarea value={isiPakai} onChange={(e) => { setIsi(e.target.value); setIsiManual(true) }} rows={8} aria-label="Isi email" className={cx(tulis, 'mt-2 block w-full resize-y leading-relaxed')} data-isi="isi" />
+          <span className="mt-0.5 flex items-center gap-1 text-[11px] text-ink-mute"><Pencil className="h-3 w-3" aria-hidden="true" />Judul dan isi bisa diubah langsung sebelum dikirim.</span>
           {isiManual && <button type="button" onClick={() => setIsiManual(false)} className="self-start text-xs font-semibold text-[#0B57D0] underline max-md:min-h-11">Kembalikan ke teks bawaan</button>}
           <div className="mt-2 flex flex-col gap-1.5 border-t border-slate-100 pt-3" data-daftar-lampiran>
             {!berkas.length && <p className="rounded-lg bg-rose-50 px-3 py-2 text-[13px] font-semibold text-rose-800">Belum ada dokumen sumber / hasil proofread pada invoice ini.</p>}
@@ -190,6 +208,23 @@ export default function EmailOtorisasi({ project, className }) {
                 <button type="button" onClick={ganti} aria-label={on ? `Lepas lampiran ${f.name}` : `Lampirkan lagi ${f.name}`} className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-ink-soft hover:bg-slate-200 max-md:h-11 max-md:w-11">{on ? <X className="h-4 w-4" /> : <Paperclip className="h-4 w-4" />}</button>
               </div>) })}
           </div>
+          <div className="mt-2 flex flex-wrap items-center gap-2" data-tambah-lampiran>
+            <button type="button" onClick={() => setPilihFile((v) => !v)} className={tbl} aria-expanded={pilihFile} data-aksi="tambah-file-project"><Plus className="h-4 w-4" aria-hidden="true" />Tambah dari file project{lainnya.length ? ` (${lainnya.length})` : ''}</button>
+            <label className={cx(tbl, 'cursor-pointer')} data-aksi="unggah-lampiran"><Upload className="h-4 w-4" aria-hidden="true" />Unggah dari perangkat
+              <input type="file" multiple className="sr-only" onChange={(e) => { const fl = [...e.target.files]; e.target.value = ''; if (fl.length) unggah(fl) }} aria-label="Unggah lampiran dari perangkat" /></label>
+          </div>
+          {pilihFile && (
+            <div className="mt-2 flex max-h-56 flex-col gap-1 overflow-y-auto rounded-xl bg-slate-50 p-2 ring-1 ring-slate-200" data-daftar-file-project>
+              {!lainnya.length && <p className="px-2 py-2 text-[13px] text-ink-mute">Tidak ada file project lain yang bisa ditambahkan.</p>}
+              {lainnya.map((f) => (
+                <button key={f._id} type="button" onClick={() => tambahFile(f)} className="flex min-h-11 items-center gap-2.5 rounded-lg bg-white px-3 py-1.5 text-left text-sm ring-1 ring-slate-200 hover:bg-[#EEF3FE]" data-file-project>
+                  <Plus className="h-4 w-4 shrink-0 text-[#0B57D0]" aria-hidden="true" />
+                  <span className="min-w-0 flex-1 break-words">{f.name} <span className="text-ink-mute">({kb(f.size)})</span></span>
+                  {f.source && <span className="shrink-0 text-[11px] text-ink-mute">{f.source}</span>}
+                </button>))}
+            </div>
+          )}
+          <span className="mt-1 text-[11px] text-ink-mute">File yang diunggah dari perangkat hanya ikut di email ini — tidak tersimpan ke project.</span>
           {galat && <p className="mt-2 rounded-xl bg-rose-50 px-3 py-2 text-[13px] font-semibold text-rose-800" role="alert" data-galat-email>{galat}</p>}
           <p className="mt-2 flex items-start gap-1.5 text-[11.5px] text-ink-mute"><CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />Setelah otorisator membalas email, unggah hasilnya di tahap Otorisasi dan pilih namanya di “Otorisator yang mengerjakan” — status berubah menjadi sudah diotorisasi atas nama beliau.</p>
         </div>
