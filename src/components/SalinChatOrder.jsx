@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { MessageCircle, Check } from 'lucide-react'
+import { MessageCircle, Check, Copy } from 'lucide-react'
 import { useApp } from '../lib/store.jsx'
 import { invoiceLabel } from '../config/access.js'
 import { flowOf } from '../config/workflows.js'
@@ -119,10 +119,29 @@ export function batasDraft(cabang, now = new Date()) {
   return `${jamDi(batas, wita ? 'Asia/Makassar' : 'Asia/Jakarta')} ${wita ? 'WITA' : 'WIB'}`
 }
 const salamWaktu = (cabang, now = new Date()) => { const j = Number(new Intl.DateTimeFormat('en-GB', { timeZone: ZONA_WITA.includes(cabang) ? 'Asia/Makassar' : 'Asia/Jakarta', hour: '2-digit', hour12: false }).format(now)); return j < 11 ? 'pagi' : j < 15 ? 'siang' : j < 18 ? 'sore' : 'malam' }
-export const teksDraftPelanggan = (p, now = new Date()) => [
-  `Selamat ${salamWaktu(p.branch, now)} kak 😊🙏🏻`,
+/** Sapaan pelanggan dari awalan namanya: Tn./Bpk → Bapak, Ny./Nn./Ibu → Ibu, selain itu Bapak/Ibu. */
+export const sapaanPelanggan = (nama) => (/^\s*(tn|bpk|bapak|mr)\b\.?/i.test(nama || '') ? 'Bapak' : /^\s*(ny|nn|ibu|mrs|ms|miss)\b\.?/i.test(nama || '') ? 'Ibu' : 'Bapak/Ibu')
+/** Daftar dokumen per layanan untuk chat pelanggan. `hanyaTerjemahan` = untuk Draft (yang dikonfirmasi hanya hasil terjemahan). */
+export function rincianPelanggan(p, hanyaTerjemahan) {
+  const subs = (p.sub_projects || []).filter((sb) => !sb.cancelled && (!hanyaTerjemahan || ['terjemahan', 'terjemahan_nt'].includes(sb.type)))
+  const pakai = subs.length ? subs : (p.sub_projects || []).filter((sb) => !sb.cancelled)
+  const out = []
+  for (const sb of pakai) {
+    const jenis = SUB_TYPES[sb.type]?.label || 'Layanan'
+    const ket = sb.lang_from && sb.lang_to ? ` ${sb.lang_from} → ${sb.lang_to}` : (sb.country || sb.data?.country) ? ` — tujuan ${sb.country || sb.data?.country}` : ''
+    out.push(`*${jenis}${ket}*`, ...daftarDokChat(sb, false).map((d, i) => `${i + 1}. ${d}`), '')
+  }
+  if (out[out.length - 1] === '') out.pop()
+  return out
+}
+const kepalaPelanggan = (p) => [`🧾 *${invoiceLabel(p.invoice_no)} - ${p.customer?.name || ''}*`.replace(' - *', '*')]
+export const teksDraftPelanggan = (p, now = new Date()) => { const S = sapaanPelanggan(p.customer?.name); return [
+  `Selamat ${salamWaktu(p.branch, now)} ${S} 😊🙏🏻`,
   '',
-  '📄 Berikut kami kirimkan *draft hasil terjemahannya*.',
+  ...kepalaPelanggan(p),
+  '',
+  '📄 Berikut kami kirimkan *draft hasil terjemahannya*:',
+  ...rincianPelanggan(p, true),
   '',
   '🔎 Mohon dibantu *konfirmasi kesesuaian* untuk bagian:',
   '• *nama-nama*',
@@ -136,38 +155,39 @@ export const teksDraftPelanggan = (p, now = new Date()) => [
   '⚠️ *Catatan:* kami *tidak bisa mengganti/menambahkan kata dan kalimat* di hasil terjemahan yang *tidak ada di dalam dokumen sumber* 🙏🏻',
   '',
   `⏰ *Maksimal konfirmasi draft: pukul ${batasDraft(p.branch, now)}*`,
-  'Jika lebih dari jam tersebut, akan kami cetak keesokan harinya ya kak 🙏🏻😊',
-].join('\n')
-export const teksSelesaiPelanggan = () => [
+  `Jika lebih dari jam tersebut, akan kami cetak keesokan harinya ya ${S} 🙏🏻😊`,
+].join('\n') }
+export const teksSelesaiPelanggan = (p) => { const S = sapaanPelanggan(p?.customer?.name); return [
   '✅ *DOKUMEN TELAH SELESAI* 🎉',
   '',
-  'Halo kak 😊',
+  `Halo ${S} 😊`,
   'Kami ingin memberitahukan bahwa *dokumen sudah selesai*.',
   '',
-  '🔎 Mohon diperiksa kembali dan pastikan dokumen tersebut *akurat serta sesuai dengan kebutuhan kakak*.',
+  ...(p ? [...kepalaPelanggan(p), '', '📑 Dokumen yang diproses:', ...rincianPelanggan(p, false), ''] : []),
+  `🔎 Mohon diperiksa kembali dan pastikan dokumen tersebut *akurat serta sesuai dengan kebutuhan ${S}*.`,
   '',
-  '✏️ Jika menemukan kesalahan atau ada hal yang ingin dikoreksi, silakan *segera hubungi kami* ya kak.',
+  `✏️ Jika menemukan kesalahan atau ada hal yang ingin dikoreksi, silakan *segera hubungi kami* ya ${S}.`,
   '',
-  '📦 _Dokumen yang lebih dari 2 bulan tidak diambil akan masuk arsip kantor kami ya kak._',
+  `📦 _Dokumen yang lebih dari 2 bulan tidak diambil akan masuk arsip kantor kami ya ${S}._`,
   '',
   'Terima kasih atas kerja samanya 🙏🏻',
   '',
   '*Salam hangat,*',
   '*247 Sworn Translator*',
-].join('\n')
-export const teksReviewPelanggan = () => [
-  'Halo kak 😊🙏🏻',
+].join('\n') }
+export const teksReviewPelanggan = (p) => { const S = sapaanPelanggan(p?.customer?.name); return [
+  `Halo ${S} 😊🙏🏻`,
   '',
   'Terima kasih sudah mempercayakan dokumennya kepada *247 Sworn Translator*.',
   '',
-  '⭐ Jika berkenan, mohon bantu berikan *review* di Google Maps kami ya kak:',
+  `⭐ Jika berkenan, mohon bantu berikan *review* di Google Maps kami ya ${S}:`,
   REVIEW_URL,
   '',
-  'Ulasan kakak sangat berarti untuk kami 🙏🏻✨',
+  `Ulasan ${S} sangat berarti untuk kami 🙏🏻✨`,
   '',
   '*Salam hangat,*',
   '*247 Sworn Translator*',
-].join('\n')
+].join('\n') }
 
 async function salin(teks) {
   try { await navigator.clipboard.writeText(teks) } catch {
@@ -176,15 +196,22 @@ async function salin(teks) {
   }
 }
 
-function Tombol({ label, teks, jenis }) {
+// Penanda "sudah diklik" — disimpan di perangkat ini (tidak mengubah data project), supaya tombol berubah warna & ada jamnya.
+const KUNCI_SUDAH = 'atlas-chat-sudah'
+const muatSudah = () => { try { return JSON.parse(localStorage.getItem(KUNCI_SUDAH) || '{}') || {} } catch { return {} } }
+const tandaiSudah = (k) => { if (!k) return ''; const at = new Date().toISOString(); try { const m = muatSudah(); m[k] = at; const e = Object.entries(m).sort((a, b) => (a[1] < b[1] ? 1 : -1)).slice(0, 600); localStorage.setItem(KUNCI_SUDAH, JSON.stringify(Object.fromEntries(e))) } catch { /* abaikan */ } return at }
+const jamSudah = (iso) => { const d = new Date(iso); return Number.isNaN(d.getTime()) ? '' : `${d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })} ${d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }).replace(':', '.')}` }
+
+function Tombol({ label, teks, jenis, judul, kunci }) {
   const { notify } = useApp()
   const [ok, setOk] = useState(false)
+  const [sudah, setSudah] = useState(() => (kunci ? muatSudah()[kunci] || '' : ''))
   return (
-    <button type="button" data-salin-chat={jenis} title="Salin teks pesan WhatsApp — tinggal tempel di chat"
-      onClick={async (e) => { e.stopPropagation(); await salin(typeof teks === 'function' ? teks() : teks); setOk(true); notify?.('Teks pesan tersalin — tempel di WhatsApp'); setTimeout(() => setOk(false), 1800) }}
-      className={cx('inline-flex min-h-9 items-center gap-1.5 rounded-xl px-3 text-xs font-semibold ring-1 transition max-md:min-h-11',
-        ok ? 'bg-emerald-600 text-white ring-emerald-600' : 'bg-white text-[#141B34] ring-[#D9DBE7] hover:ring-[#141B34]')}>
-      {ok ? <Check className="h-4 w-4" aria-hidden="true" /> : <MessageCircle className="h-4 w-4 text-emerald-600" aria-hidden="true" />}
+    <button type="button" data-salin-chat={jenis} title={`${judul || 'Salin teks pesan WhatsApp — tinggal tempel di chat'}${sudah ? ` · sudah disalin ${jamSudah(sudah)} (di perangkat ini)` : ''}`} aria-label={judul ? `${judul}${sudah ? ' (sudah disalin)' : ''}` : undefined} data-sudah={sudah ? '1' : undefined}
+      onClick={async (e) => { e.stopPropagation(); await salin(typeof teks === 'function' ? teks() : teks); setOk(true); if (kunci) setSudah(tandaiSudah(kunci)); notify?.('Teks pesan tersalin — tempel di WhatsApp'); setTimeout(() => setOk(false), 1800) }}
+      className={cx('inline-flex h-8 items-center gap-1 whitespace-nowrap rounded-lg px-2.5 text-xs font-semibold ring-1 transition max-md:h-11 max-md:px-3',
+        ok ? 'bg-emerald-600 text-white ring-emerald-600' : sudah ? 'bg-[#DFF1FB] text-[#0B5C8A] ring-[#9CCFEA] hover:ring-[#0B5C8A]' : 'bg-white text-[#141B34] ring-[#D9DBE7] hover:ring-[#141B34]')}>
+      {ok || sudah ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : <Copy className="h-3.5 w-3.5 text-[#5E6380]" aria-hidden="true" />}
       {ok ? 'Tersalin' : label}
       <span className="sr-only" aria-live="polite">{ok ? 'Teks pesan tersalin' : ''}</span>
     </button>
@@ -194,12 +221,13 @@ function Tombol({ label, teks, jenis }) {
 export const nomorWa = (t) => { const d = String(t || '').replace(/\D/g, ''); return d.startsWith('0') ? `62${d.slice(1)}` : d }
 /** Tautan WhatsApp berisi teks Fix Order — hanya MEMBUKA WhatsApp; pesan baru terkirim setelah pengguna menekan kirim. Tanpa nomor → pengguna memilih kontaknya sendiri. */
 export const tautanWa = (telp, teks) => `https://wa.me/${nomorWa(telp)}?text=${encodeURIComponent(teks)}`
-export function TombolWa({ telp, teks, label = 'WhatsApp Fix Order', disabled, className }) {
+export function TombolWa({ telp, teks, label = 'WhatsApp Fix Order', disabled, className, ikon, kunci }) {
+  const [sudah, setSudah] = useState(() => (kunci ? muatSudah()[kunci] || '' : ''))
   return (
-    <a href={disabled ? undefined : tautanWa(telp, teks)} target="_blank" rel="noreferrer" aria-disabled={disabled || undefined} data-wa-fix-order onClick={(e) => { e.stopPropagation(); if (disabled) e.preventDefault() }}
-      title={nomorWa(telp) ? 'Buka WhatsApp ke nomor ini — teks Fix Order sudah terisi' : 'Buka WhatsApp — pilih kontaknya, teks Fix Order sudah terisi'}
-      className={cx('inline-flex min-h-9 items-center gap-1.5 rounded-xl px-3 text-xs font-semibold text-white transition max-md:min-h-11', disabled ? 'cursor-not-allowed bg-[#A9AEC4]' : 'bg-emerald-600 hover:bg-emerald-700', className)}>
-      <MessageCircle className="h-4 w-4" aria-hidden="true" />{label}
+    <a href={disabled ? undefined : tautanWa(telp, teks)} target="_blank" rel="noreferrer" aria-disabled={disabled || undefined} aria-label={ikon ? label : undefined} data-wa-fix-order data-sudah={sudah ? '1' : undefined} onClick={(e) => { e.stopPropagation(); if (disabled) { e.preventDefault(); return } if (kunci) setSudah(tandaiSudah(kunci)) }}
+      title={`${ikon ? `${label} — ` : ''}${nomorWa(telp) ? 'buka WhatsApp ke nomor ini, teks sudah terisi' : 'buka WhatsApp, pilih kontaknya, teks sudah terisi'}${sudah ? ` · sudah dibuka ${jamSudah(sudah)} (di perangkat ini)` : ''}`}
+      className={cx(ikon ? 'inline-grid h-8 w-8 place-items-center rounded-lg text-white transition max-md:h-11 max-md:w-11' : 'inline-flex min-h-9 items-center gap-1.5 rounded-xl px-3 text-xs font-semibold text-white transition max-md:min-h-11', disabled ? 'cursor-not-allowed bg-[#A9AEC4]' : sudah ? 'bg-[#0B5C8A] hover:bg-[#094a70]' : 'bg-emerald-600 hover:bg-emerald-700', className)}>
+      {sudah && ikon ? <Check className="h-4 w-4" aria-hidden="true" /> : <MessageCircle className="h-4 w-4" aria-hidden="true" />}{!ikon && label}
     </a>
   )
 }
@@ -227,17 +255,30 @@ export default function SalinChatOrder({ project: p, className }) {
   }
   const vendorRec = (id) => (data.people || []).find((x) => x.id === id)
   const tautanPortal = (id) => { const l = (data.share_links || []).find((x) => x.kind === 'vendor' && x.vendor_id === id && !x.revoked_at && (!x.expires_at || new Date(x.expires_at) > new Date())); return l ? portalUrl(l.token) : '' }
+  // Ringkas: satu baris "Fix Order:" (nama tujuan = salin teks, ikon hijau = buka WhatsApp) + "Pelanggan:" Draft · Selesai · Review
+  const pendek = (n) => String(n || '').replace(/\s*\(.*\)\s*$/, '').split(/\s+/).slice(0, 2).join(' ')
+  const pasangan = (key, jenis, nama, telp, teks) => (
+    <span key={key} className="inline-flex items-center gap-1">
+      <Tombol jenis={jenis} label={pendek(nama)} judul={`Salin chat Fix Order ke ${nama}`} teks={teks} kunci={`${p.id}:salin:${key}`} />
+      <TombolWa ikon telp={telp} label={`WhatsApp Fix Order ke ${nama}`} teks={teks} kunci={`${p.id}:wa:${key}`} />
+    </span>
+  )
   const tombol = [
-    ...(vendorBoleh ? [...perVendor.entries()].map(([id, list]) => <Tombol key={id} jenis="vendor" label={`Copy chat: Fix Order ke ${perVendor.size > 1 ? namaVendor(id) : 'Penerjemah (vendor)'}`} teks={teksOrderVendor(p, list, namaVendor(id), { sapaan: vendorRec(id)?.sapaan, namaCs, portal: tautanPortal(id) })} />).concat([...perVendor.entries()].map(([id, list]) => <TombolWa key={`wa-${id}`} telp={vendorRec(id)?.phone} label={`WhatsApp Fix Order${perVendor.size > 1 ? ` · ${namaVendor(id)}` : ''}`} teks={teksOrderVendor(p, list, namaVendor(id), { sapaan: vendorRec(id)?.sapaan, namaCs, portal: tautanPortal(id) })} />)) : []),
-    ...(boleh(user, 'project.tugaskan') || vendorBoleh ? [...perPenerjemah.entries()].map(([id, list]) => <Tombol key={`tr-${id}`} jenis="penerjemah" label={`Copy chat: Fix Order ke ${nameOf?.(id) || 'Penerjemah'}`} teks={teksOrderVendor(p, list, nameOf?.(id) || 'Penerjemah', { namaCs })} />).concat([...perPenerjemah.entries()].map(([id, list]) => <TombolWa key={`wa-tr-${id}`} telp={(data.users || []).find((u) => u.id === id)?.phone} label={`WhatsApp Fix Order${perPenerjemah.size > 1 ? ` · ${nameOf?.(id) || ''}` : ''}`} teks={teksOrderVendor(p, list, nameOf?.(id) || 'Penerjemah', { namaCs })} />)) : []),
-    ...(apostilleBoleh && apostille.length ? [<Tombol key="ap" jenis="apostille" label="Copy chat: Order Fix ke Tim Apostille" teks={teksOrderApostille(p, apostille, namaCs, data.people || [])} />] : []),
+    ...(vendorBoleh ? [...perVendor.entries()].map(([id, list]) => pasangan(id, 'vendor', namaVendor(id), vendorRec(id)?.phone, teksOrderVendor(p, list, namaVendor(id), { sapaan: vendorRec(id)?.sapaan, namaCs, portal: tautanPortal(id) }))) : []),
+    ...(boleh(user, 'project.tugaskan') || vendorBoleh ? [...perPenerjemah.entries()].map(([id, list]) => pasangan(`tr-${id}`, 'penerjemah', nameOf?.(id) || 'Penerjemah', (data.users || []).find((u) => u.id === id)?.phone, teksOrderVendor(p, list, nameOf?.(id) || 'Penerjemah', { namaCs }))) : []),
+    ...(apostilleBoleh && apostille.length ? [<Tombol key="ap" jenis="apostille" label="Apostille" kunci={`${p.id}:salin:apostille`} judul="Salin chat Order Fix ke Tim Apostille" teks={teksOrderApostille(p, apostille, namaCs, data.people || [])} />] : []),
   ]
   const pelanggan = boleh(user, 'chat-pelanggan.lihat') ? [
-    <span key="pl-label" className="text-xs font-semibold text-[#5E6380]">Chat pelanggan:</span>,
-    <Tombol key="pl-draft" jenis="pelanggan-draft" label="Draft" teks={() => teksDraftPelanggan(p)} />,
-    <Tombol key="pl-selesai" jenis="pelanggan-selesai" label="Selesai" teks={teksSelesaiPelanggan} />,
-    <Tombol key="pl-review" jenis="pelanggan-review" label="Review" teks={teksReviewPelanggan} />,
+    <span key="pl-label" className="text-[11px] font-semibold text-[#5E6380]">Pelanggan:</span>,
+    <Tombol key="pl-draft" jenis="pelanggan-draft" label="Draft" kunci={`${p.id}:pelanggan:draft`} judul="Salin chat Draft untuk pelanggan" teks={() => teksDraftPelanggan(p)} />,
+    <Tombol key="pl-selesai" jenis="pelanggan-selesai" label="Selesai" kunci={`${p.id}:pelanggan:selesai`} judul="Salin chat Selesai untuk pelanggan" teks={() => teksSelesaiPelanggan(p)} />,
+    <Tombol key="pl-review" jenis="pelanggan-review" label="Review" kunci={`${p.id}:pelanggan:review`} judul="Salin chat Review untuk pelanggan" teks={() => teksReviewPelanggan(p)} />,
   ] : []
   if (!tombol.length && !pelanggan.length) return null
-  return <div className={cx('flex flex-wrap items-center gap-2', className)} data-salin-chat-order>{tombol}{pelanggan.length > 0 && <span className="flex flex-wrap items-center gap-2" data-salin-chat-pelanggan>{pelanggan}</span>}</div>
+  return (
+    <div className={cx('flex flex-wrap items-center gap-x-3 gap-y-1.5', className)} data-salin-chat-order>
+      {tombol.length > 0 && <span className="flex flex-wrap items-center gap-1.5"><span className="text-[11px] font-semibold text-[#5E6380]">Fix Order:</span>{tombol}</span>}
+      {pelanggan.length > 0 && <span className="flex flex-wrap items-center gap-1.5" data-salin-chat-pelanggan>{pelanggan}</span>}
+    </div>
+  )
 }
