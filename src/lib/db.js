@@ -116,6 +116,12 @@ function migrate(m) {
     }
     m.pesan_siap_v1 = true; changed = true
   }
+  // Laporan Otorisasi (17 Nov 2026): akun Muhammad Arifin boleh melihat rekap semua otorisator
+  if (!m.oto_lihat_semua_v1) {
+    const ar = (m.users || []).find((u) => u.role === 'otorisator' && /arifin/i.test(u.name))
+    if (ar && !(m.app_settings || []).some((r) => r.key === 'oto_lihat_semua')) m.app_settings = [...(m.app_settings || []), { id: 'as-oto-lihat', key: 'oto_lihat_semua', users: [ar.id] }]
+    m.oto_lihat_semua_v1 = true; changed = true
+  }
   // Koordinator vendor (10 Nov 2026): Emma → Pak Zenzia, Debby → Pak Dedi (Jerman)
   if (!m.koordinator_v1) {
     let dedi = (m.people || []).find((x) => x.type === 'vendor' && /dedi/i.test(x.name))

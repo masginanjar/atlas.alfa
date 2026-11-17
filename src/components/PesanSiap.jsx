@@ -86,10 +86,9 @@ export default function PesanSiap({ className }) {
   }
   return (
     <>
-      <button type="button" onClick={buka} data-aksi="pesan-siap"
-        title="Buat pesan notifikasi ready to proof / ready to oto (copy chat WhatsApp)"
-        className={cx('inline-flex h-11 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border border-[#D9DBE7] bg-white px-2.5 text-[13px] font-semibold text-[#141B34] transition hover:border-[#B9BDD0] md:h-8 dark:border-white/15 dark:bg-white/5 dark:text-slate-100', className)}>
-        <MessageCircle className="h-4 w-4 text-emerald-600" aria-hidden="true" />Chat Notifikasi
+      <button type="button" onClick={buka} data-aksi="pesan-siap" aria-label="Chat Notifikasi" title="Chat Notifikasi — pesan ready to proof / ready to oto (copy chat WhatsApp)"
+        className={cx('inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-[#D9DBE7] bg-white text-[#141B34] transition hover:border-[#B9BDD0] md:h-8 md:w-8 dark:border-white/15 dark:bg-white/5 dark:text-slate-100', className)}>
+        <MessageCircle className="h-4 w-4 text-emerald-600" aria-hidden="true" />
       </button>
       <Sheet open={open} onClose={() => setOpen(false)} title="Pesan notifikasi (copy chat)" subtitle={lihatSemua ? `Semua dokumen yang sudah menunggu ${mode === 'oto' ? 'otorisator' : 'proofreader'}` : MODE[mode].ket}
         footer={(

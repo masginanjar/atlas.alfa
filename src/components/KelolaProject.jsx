@@ -79,9 +79,9 @@ export function ArsipSampah() {
   }
   return (
     <>
-      <button type="button" onClick={() => setBuka(true)} data-aksi="arsip-sampah" title="Arsip & Sampah project"
-        className="inline-flex min-h-9 items-center gap-1.5 rounded-xl bg-white px-3 text-xs font-semibold text-ink-soft ring-1 ring-[#D9DBE7] hover:text-ink hover:ring-ink max-md:min-h-11 dark:bg-white/5 dark:ring-white/10">
-        <Archive className="h-4 w-4" aria-hidden="true" />Arsip & Sampah{semua.length ? ` (${semua.length})` : ''}
+      <button type="button" onClick={() => setBuka(true)} data-aksi="arsip-sampah" aria-label={`Arsip & Sampah project${semua.length ? ` (${semua.length})` : ''}`} title="Arsip & Sampah project"
+        className="relative inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-[#D9DBE7] bg-white text-[#141B34] transition hover:border-[#B9BDD0] md:h-8 md:w-8 dark:border-white/15 dark:bg-white/5 dark:text-slate-100">
+        <Archive className="h-4 w-4" aria-hidden="true" />{semua.length > 0 && <span className="absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-[#141B34] px-1 text-[10px] font-bold leading-none text-white">{semua.length}</span>}
       </button>
       {buka && (
         <Sheet open side onClose={() => setBuka(false)} title="Arsip & Sampah project" subtitle="Hanya Super Admin">

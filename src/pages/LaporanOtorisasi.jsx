@@ -19,7 +19,11 @@ const angka = (n) => Number(n || 0).toLocaleString('id-ID')
 
 export default function LaporanOtorisasi() {
   const { user, data, nameOf, save, notify } = useApp()
-  const semuaOrang = lihatSemuaOto(user)
+  const kelolaSemua = lihatSemuaOto(user)
+  // Otorisator tertentu (dipilih Super Admin / Direktur) boleh ikut melihat rekap otorisator lain — tanpa tarif/biaya & tanpa tombol Kirim
+  const aksesRow = (data.app_settings || []).find((r) => r.key === 'oto_lihat_semua')
+  const aksesIds = aksesRow?.users || []
+  const semuaOrang = kelolaSemua || aksesIds.includes(user?._actor || user?.id) || aksesIds.includes(user?.id)
   const bolehTarif = ['superadmin', 'direktur'].includes(user?.role)
   const [ym, setYm] = useState(() => kunciBulan(new Date().toISOString()))
   const [pilih, setPilih] = useState(null)
@@ -33,6 +37,11 @@ export default function LaporanOtorisasi() {
     try { await save('app_settings', { ...(tarifRow || { key: 'tarif_otorisasi' }), key: 'tarif_otorisasi', tarif: { ...tarif, [`${oto}|${grup}`]: n } }); notify(`Tarif ${grup} ${nama} disimpan`) } catch (e) { notify(e.message, 'err') }
   }
 
+  const daftarOto = (data.users || []).filter((u) => u.role === 'otorisator' && u.active !== false)
+  const tukarAkses = async (id) => {
+    const next = aksesIds.includes(id) ? aksesIds.filter((x) => x !== id) : [...aksesIds, id]
+    try { await save('app_settings', { ...(aksesRow || { key: 'oto_lihat_semua' }), key: 'oto_lihat_semua', users: next }); notify(next.includes(id) ? 'Akses rekap semua otorisator diberikan' : 'Akses rekap semua otorisator dicabut') } catch (e) { notify(e.message, 'err') }
+  }
   const rows = useMemo(() => barisOtorisasi(data.projects, ym, nameOf).filter((r) => semuaOrang || r.oto === (user._actor || user.id) || r.oto === user.id), [data.projects, ym, nameOf, semuaOrang, user])
   const grup = rekap(rows) // per otorisator × Inggris/Belanda (dipakai untuk unduhan)
   // rekap per otorisator
@@ -115,7 +124,7 @@ export default function LaporanOtorisasi() {
                         <span className="flex justify-end gap-1">
                           <button type="button" disabled={!!sibuk} onClick={() => jalan(`pdf:${o.oto}`, () => unduhPdf(grupOrang(o), ym, bolehTarif ? tarifOf : null))} data-aksi="pdf" className={cx(tombol, 'bg-slate-100 text-ink')}>{ikon(`pdf:${o.oto}`, FileText)}PDF</button>
                           <button type="button" disabled={!!sibuk} onClick={() => jalan(`xls:${o.oto}`, () => unduhExcel(grupOrang(o), ym, bolehTarif ? tarifOf : null))} data-aksi="excel" className={cx(tombol, 'bg-slate-100 text-ink')}>{ikon(`xls:${o.oto}`, Download)}Excel</button>
-                          {semuaOrang && <button type="button" disabled={!!sibuk} onClick={() => kirim(o)} data-aksi="kirim-staf" className={cx(tombol, 'bg-emerald-600 text-white')}>{ikon(`kirim:${o.oto}`, Send)}Kirim</button>}
+                          {kelolaSemua && <button type="button" disabled={!!sibuk} onClick={() => kirim(o)} data-aksi="kirim-staf" className={cx(tombol, 'bg-emerald-600 text-white')}>{ikon(`kirim:${o.oto}`, Send)}Kirim</button>}
                         </span>
                       </td>
                     </tr>
@@ -134,6 +143,16 @@ export default function LaporanOtorisasi() {
             </table>
           </div>
 
+          {bolehTarif && daftarOto.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2 border-t border-slate-200 px-3 py-2.5" data-akses-oto>
+              <span className="text-xs font-semibold text-ink-soft">Otorisator yang boleh melihat rekap semua otorisator:</span>
+              {daftarOto.map((u) => { const on = aksesIds.includes(u.id); return (
+                <button key={u.id} type="button" aria-pressed={on} onClick={() => tukarAkses(u.id)} data-akses-oto-item={u.id}
+                  className={cx('inline-flex min-h-9 items-center gap-1.5 rounded-full px-3 text-xs font-bold ring-1 transition max-md:min-h-11', on ? 'bg-[#141B34] text-white ring-[#141B34]' : 'bg-white text-ink-soft ring-slate-200 hover:ring-slate-400')}>{on ? '✓ ' : ''}{String(u.name).replace(/\s*\(.*\)\s*$/, '')}</button>
+              ) })}
+              <span className="text-[11px] text-ink-mute">Tanpa tarif/biaya dan tanpa tombol Kirim.</span>
+            </div>
+          )}
           {/* RINCIAN OTORISATOR TERPILIH */}
           {aktif && (
             <div className="border-t-4 border-[var(--klasik-luar,#e9edf5)]">

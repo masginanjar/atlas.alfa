@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { OfficialInvoice } from './NoReg.jsx'
 import { InvoiceNo } from './badges.jsx'
-import { Eye, MoreHorizontal, Search, SlidersHorizontal, X, ArrowUp, ArrowDown, FolderOpen, Printer } from 'lucide-react'
+import { Eye, MoreHorizontal, Search, SlidersHorizontal, X, ArrowUp, ArrowDown, FolderOpen, Printer, ChevronDown } from 'lucide-react'
 import { useApp } from '../lib/store.jsx'
-import { Button, cx, bisaDitekan } from './ui.jsx'
+import { Button, Sheet, cx, bisaDitekan } from './ui.jsx'
 import { invoiceLabel } from '../config/access.js'
 import SalinInvoice from './SalinInvoice.jsx'
 import { tanggalJam, tanggal } from '../lib/waktu.js'
@@ -169,38 +169,53 @@ export default function ProjectSpreadsheet({ list, detailFor, onDetail, onFiles,
     for (const r of semuaRow) { tambah('prioritas', r.prioritas); tambah('cabang', r.cabang); tambah('print', r.print); tambah('cs', r.cs); r.arahAll.forEach((v) => tambah('arah', v)); r.orangAll.forEach((v) => tambah('orang', v)) }
     return m
   }, [semuaRow])
-  const kelasF = (aktif) => cx('mt-1 block h-7 w-full min-w-0 truncate rounded-lg border-0 py-0 pl-2 text-[11px] font-semibold ring-1 focus:ring-2 focus:ring-[#4169E1] max-md:h-9 max-md:text-[13px]', aktif ? 'bg-[#141B34] text-white ring-[#141B34]' : 'bg-white text-ink-soft ring-slate-200')
   const TGL = { timestamp: ['dibuatDari', 'dibuatSampai', [['hariini', 'Hari ini'], ['kemarin', 'Kemarin'], ['7lalu', '7 hari terakhir'], ['bulanini', 'Bulan ini']]], deadline: ['dlDari', 'dlSampai', [['hariini', 'Hari ini'], ['besok', 'Besok'], ['7depan', '7 hari ke depan'], ['bulanini', 'Bulan ini'], ['lewat', 'Sudah lewat']]] }
-  const filterJudul = (c) => {
-    const stop = { onClick: (e) => e.stopPropagation(), 'data-filter-kolom': c.key }
-    if (['invoice', 'pelanggan', 'layanan'].includes(c.key)) return <input type="search" value={filters[c.key] || ''} onChange={(e) => setF({ [c.key]: e.target.value })} placeholder="Cari…" aria-label={`Saring ${c.label}`} {...stop} className={cx(kelasF(!!filters[c.key]), 'pr-1 placeholder:font-normal placeholder:text-ink-mute', filters[c.key] && 'placeholder:text-white/60')} />
+  const KOLOM_TEKS = ['invoice', 'pelanggan', 'layanan']
+  const KOLOM_JML = ['jmlDok', 'jmlHal']
+  const bisaFilter = (c) => KOLOM_TEKS.includes(c.key) || KOLOM_JML.includes(c.key) || !!TGL[c.key] || !!opsi[c.key]
+  const filterAktif = (c) => (TGL[c.key] ? !!(filters[TGL[c.key][0]] || filters[TGL[c.key][1]]) : !!filters[c.key])
+  const [fOpen, setFOpen] = useState(null) // kolom yang popup filternya sedang terbuka
+  // Judul kolom: tombol kecil ▾ (sama dengan tampilan Kartu) → popup filter baru muncul saat diklik
+  const filterJudul = (c) => bisaFilter(c) && (
+    <button type="button" onClick={(e) => { e.stopPropagation(); setFOpen(c.key) }} aria-label={`Filter ${c.label}${filterAktif(c) ? ' (aktif)' : ''}`} title={`Filter ${c.label}`} data-filter-kolom={c.key} aria-haspopup="dialog"
+      className={cx('ml-1 inline-grid h-6 w-6 shrink-0 place-items-center rounded-md align-middle max-md:h-9 max-md:w-9', filterAktif(c) ? 'bg-[#4169E1] text-white' : 'text-[#5E6380] hover:bg-white')}><ChevronDown className="h-3.5 w-3.5" aria-hidden="true" /></button>
+  )
+  const kolomF = fOpen ? TABLE_COLS.find((c) => c.key === fOpen) : null
+  const isiFilter = () => {
+    const c = kolomF; if (!c) return null
+    const pilih = (patch) => { setF(patch); setFOpen(null) }
+    const tbl = (aktif) => cx('flex min-h-11 w-full items-center justify-between gap-2 rounded-xl px-3 text-left text-sm font-semibold ring-1 transition', aktif ? 'bg-[#141B34] text-white ring-[#141B34]' : 'bg-white text-ink ring-slate-200 hover:ring-slate-400')
+    if (KOLOM_TEKS.includes(c.key)) return (
+      <label className="block text-xs font-semibold text-ink-soft">Ketik sebagian {c.label.toLowerCase()}
+        <input type="search" autoFocus value={filters[c.key] || ''} onChange={(e) => setF({ [c.key]: e.target.value })} onKeyDown={(e) => e.key === 'Enter' && setFOpen(null)} placeholder="Cari…" data-isi-filter
+          className="mt-1 block min-h-11 w-full rounded-xl border-0 bg-white px-3 text-base text-ink ring-1 ring-slate-300 focus:ring-2 focus:ring-[#4169E1] md:text-sm" />
+      </label>
+    )
     if (TGL[c.key]) {
       const [dari, sampai, opsiTgl] = TGL[c.key]
-      const kini = opsiTgl.find(([k]) => { const [a, b] = rentangTanggal(k); return (filters[dari] || '') === a && (filters[sampai] || '') === b })?.[0] || (filters[dari] || filters[sampai] ? 'kustom' : '')
+      const cocok = (k) => { const [a, b] = rentangTanggal(k); return (filters[dari] || '') === a && (filters[sampai] || '') === b }
       return (
-        <select value={kini} onChange={(e) => { const [a, b] = rentangTanggal(e.target.value); setF({ [dari]: a, [sampai]: b }) }} aria-label={`Saring ${c.label}`} {...stop} className={cx(kelasF(!!kini), 'pr-6')}>
-          <option value="">Semua</option>
-          {opsiTgl.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
-          {kini === 'kustom' && <option value="kustom">Rentang khusus</option>}
-        </select>
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-2">{opsiTgl.map(([k, l]) => <button key={k} type="button" onClick={() => { const [a, b] = rentangTanggal(k); pilih({ [dari]: a, [sampai]: b }) }} className={tbl(cocok(k))} data-opsi-filter={k}>{l}</button>)}</div>
+          <div>
+            <p className="mb-1 text-xs font-semibold text-ink-soft">Rentang tanggal</p>
+            <div className="grid grid-cols-2 gap-2">
+              <label className="text-xs text-ink-mute">Dari<input type="date" value={filters[dari] || ''} onChange={(e) => setF({ [dari]: e.target.value })} className="mt-1 block min-h-11 w-full rounded-xl border-0 bg-white px-2.5 text-base ring-1 ring-slate-300 md:text-sm" /></label>
+              <label className="text-xs text-ink-mute">Sampai<input type="date" value={filters[sampai] || ''} onChange={(e) => setF({ [sampai]: e.target.value })} className="mt-1 block min-h-11 w-full rounded-xl border-0 bg-white px-2.5 text-base ring-1 ring-slate-300 md:text-sm" /></label>
+            </div>
+          </div>
+        </div>
       )
     }
-    if (['jmlDok', 'jmlHal'].includes(c.key)) return (
-      <select value={filters[c.key] || ''} onChange={(e) => setF({ [c.key]: e.target.value })} aria-label={`Saring ${c.label}`} {...stop} className={cx(kelasF(!!filters[c.key]), 'pr-5')}>
-        <option value="">Semua</option>
-        {Object.keys(RENTANG_JML).map((k) => <option key={k} value={k}>{k.replace('-', '–')}</option>)}
-      </select>
-    )
-    const daftar = opsi[c.key]
-    if (!daftar) return null
+    const daftar = KOLOM_JML.includes(c.key) ? Object.keys(RENTANG_JML) : (opsi[c.key] || [])
     const jml = c.key === 'status' ? jmlStatus : jmlPer[c.key] || {}
     return (
-      <select value={filters[c.key] || ''} onChange={(e) => setF({ [c.key]: e.target.value })} aria-label={`Saring ${c.label}`} title={c.key === 'status' ? 'Pilih status untuk melihat project di tahap itu' : `Saring menurut ${c.label}`} {...stop} {...(c.key === 'status' ? { 'data-filter-status': true } : {})} className={cx(kelasF(!!filters[c.key]), 'pr-6')}>
-        <option value="">Semua{c.key === 'status' ? ` · ${semuaRow.length}` : ''}</option>
-        {daftar.map((v) => <option key={v} value={v}>{v}{jml[v] ? ` · ${jml[v]}` : ''}</option>)}
-      </select>
+      <div className={cx('grid gap-2', daftar.length > 6 ? 'sm:grid-cols-2' : 'grid-cols-2')}>
+        {daftar.map((v) => <button key={v} type="button" onClick={() => pilih({ [c.key]: v })} className={tbl(filters[c.key] === v)} data-opsi-filter={v}><span className="min-w-0 truncate">{KOLOM_JML.includes(c.key) ? v.replace('-', '–') : v}</span>{jml[v] ? <span className="shrink-0 text-xs font-medium opacity-60">{jml[v]}</span> : null}</button>)}
+      </div>
     )
   }
+  const kosongkanF = () => { const c = kolomF; if (!c) return; setF(TGL[c.key] ? { [TGL[c.key][0]]: '', [TGL[c.key][1]]: '' } : { [c.key]: '' }); setFOpen(null) }
   // jumlah project per status (tahap) — untuk filter di judul kolom Status
   const jmlStatus = useMemo(() => { const m = {}; for (const r of semuaRow) m[r.status] = (m[r.status] || 0) + 1; return m }, [semuaRow])
 
@@ -314,6 +329,10 @@ export default function ProjectSpreadsheet({ list, detailFor, onDetail, onFiles,
         </div>
       )}
 
+      <Sheet open={!!kolomF} onClose={() => setFOpen(null)} title={kolomF ? `Filter ${kolomF.label}` : ''}
+        footer={<><Button variant="outline" className="flex-1" onClick={kosongkanF} data-aksi="filter-semua">Tampilkan semua</Button><Button className="flex-[2]" onClick={() => setFOpen(null)}>Selesai</Button></>}>
+        <div data-popup-filter={fOpen || ''}>{isiFilter()}</div>
+      </Sheet>
       {/* ---------- Tabel ---------- */}
       {hasil.length === 0 && chips.length === 0 ? (
         <p className="rounded-2xl bg-white px-4 py-10 text-center text-sm text-ink-mute ring-1 ring-slate-200">Tidak ada project yang cocok.</p>
@@ -330,7 +349,7 @@ export default function ProjectSpreadsheet({ list, detailFor, onDetail, onFiles,
               <tr>
                 {KOLOM.map((c) => (
                   <th key={c.key} scope="col" style={{ width: lebar[c.key] || c.w, minWidth: lebar[c.key] || c.w }}
-                    className={cx('relative sticky top-0 z-10 whitespace-nowrap border-b border-slate-200 bg-slate-50 px-3 py-2 text-left align-top text-xs font-bold text-ink-soft',
+                    className={cx('relative sticky top-0 z-10 whitespace-nowrap border-b border-slate-200 bg-slate-50 px-3 py-2 text-left text-xs font-bold text-ink-soft',
                       c.sticky && 'left-0 z-20 shadow-[6px_0_8px_-6px_rgba(15,23,42,.25)] md:shadow-none')}>
                     <span onPointerDown={(e) => mulaiTarik(e, c.key, c.w)} onDoubleClick={() => simpanLebar({ ...lebar, [c.key]: undefined })} title="Tarik untuk mengubah lebar · klik dua kali untuk kembali"
                       className="absolute right-0 top-0 hidden h-full w-2 cursor-col-resize select-none md:block hover:bg-brand/30" aria-hidden="true" data-tarik-kolom />

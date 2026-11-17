@@ -339,10 +339,10 @@ export default function Projects({ tabAwal }) {
                 {bisaSaring && urutan}
                 {adaToolbar && menuTampilan}
                 {(worker || bolehIzin(user, 'pesan-siap.massal')) && <PesanSiap />}
+                <ArsipSampah />
                 {adaToolbar && <button type="button" onClick={() => setPref({ ...pref, toolbar: pref.toolbar === false })} aria-expanded={pref.toolbar !== false} aria-label={pref.toolbar === false ? 'Tampilkan baris jenis & pintasan' : 'Ciutkan toolbar'} title={pref.toolbar === false ? 'Tampilkan baris jenis & pintasan' : 'Ciutkan toolbar'} data-aksi="ciut-toolbar"
                   className={cx(KONTROL, 'hidden w-11 justify-center px-0 sm:inline-flex md:w-8')}><ChevronDown className={cx('h-4 w-4 transition-transform duration-300', pref.toolbar !== false && 'rotate-180')} aria-hidden="true" /></button>}
               </div></KeAtas>
-              <ArsipSampah />
               {!worker && can.editProject(user) && <KeAtas slot="tambah"><TombolTambah label="Project" data="project-baru" onClick={() => go('projects/new')} /></KeAtas>}
             </div>
             {worker && <KapasitasSaya />}
