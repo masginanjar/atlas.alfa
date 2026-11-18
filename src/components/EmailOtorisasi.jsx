@@ -144,8 +144,8 @@ export default function EmailOtorisasi({ project, className }) {
         if (LIVE) r = await panggil('kirim', { project_id: tugas.id, oto_id: tugas.oto, subjek: tugas.subjek, isi: tugas.isi, lampiran })
         else await new Promise((ok) => setTimeout(ok, 1500))
         if (!r.ok) throw new Error(r.alasan || 'Email gagal dikirim')
-        const catat = { at: new Date().toISOString(), by: user.id, by_name: user.name, oto_id: tugas.oto, oto_nama: tugas.oto_nama, tes: LIVE ? !!r.tes : tugas.tes, simulasi: !LIVE, subjek: tugas.subjek, berkas: tugas.berkas.map((f) => f.name), sub_ids: tugas.sub_ids }
-        try { await save('projects', { id: tugas.id, email_oto: [...tugas.lama, catat].slice(-20) }) } catch { notify(`Email ${tugas.inv} terkirim, tetapi catatannya gagal disimpan di project`, 'err') }
+        const catat = { at: new Date().toISOString(), by: user.id, by_name: user.name, oto_id: tugas.oto, oto_nama: tugas.oto_nama, tes: LIVE ? !!r.tes : tugas.tes, simulasi: !LIVE, subjek: tugas.subjek, isi: String(tugas.isi || '').slice(0, 2000), berkas: tugas.berkas.map((f) => f.name), sub_ids: tugas.sub_ids }
+        try { await save('projects', { id: tugas.id, email_oto: [...tugas.lama, catat].slice(-30) }) } catch { notify(`Email ${tugas.inv} terkirim, tetapi catatannya gagal disimpan di project`, 'err') }
         setProses(tugas.id, null)
         notify(!LIVE ? `Demo: simulasi kirim ${tugas.inv} selesai (tidak ada email sungguhan)` : r.tes ? `Email TES ${tugas.inv} terkirim ke alamat tes` : `Email ${tugas.inv} terkirim ke ${tugas.oto_nama || 'otorisator'}`)
       } catch (e) {

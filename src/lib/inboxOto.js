@@ -21,8 +21,17 @@ export async function panggilInbox(aksi, body = {}) {
     return await r.json().catch(() => ({ ok: false, alasan: `Server ${r.status}` }))
   } catch { return { ok: false, alasan: 'Koneksi ke server gagal — periksa internet' } }
 }
+/** Panggil fungsi server `email-otorisasi` (kirim / balas). */
+export async function panggilEmailOto(aksi, body = {}) {
+  try {
+    const token = await db.token?.()
+    if (!token) return { ok: false, alasan: 'Sesi berakhir — silakan masuk ulang' }
+    const r = await fetch(`${SUPABASE_URL}/functions/v1/email-otorisasi`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ aksi, ...body }) })
+    return await r.json().catch(() => ({ ok: false, alasan: `Server ${r.status}` }))
+  } catch { return { ok: false, alasan: 'Koneksi ke server gagal — periksa internet' } }
+}
 /** Demo: satu balasan contoh per project yang emailnya pernah disimulasikan. Simulasi ke-2, ke-4, … dibalas "OK" (tanpa lampiran). */
-const inboxDemo = (projects) => (projects || []).filter((p) => (p.email_oto || []).length).map((p) => { const n = p.email_oto.length, e = p.email_oto[n - 1]; const inv = digit(p.invoice_no); const ok = n % 2 === 0; return {
+const inboxDemo = (projects) => (projects || []).filter((p) => (p.email_oto || []).some((x) => !x.balasan)).map((p) => { const awal = p.email_oto.filter((x) => !x.balasan); const n = awal.length, e = awal[n - 1]; const inv = digit(p.invoice_no); const ok = n % 2 === 0; return {
   uid: `demo-${p.id}-${n}`, oto_id: e.oto_id || '', dari: e.oto_nama || 'Otorisator', tes: true, subjek: `Re: ${e.subjek}`, tanggal: new Date(+new Date(e.at) + 3600e3).toISOString(), invoice: [inv],
   cuplikan: ok ? 'OK' : 'Selamat siang, dokumen sudah saya periksa dan otorisasi. Hasilnya terlampir.\n\nTerima kasih.',
   lampiran: ok ? [] : [{ part: '2', nama: `Hasil otorisasi ${inv} (contoh sintetis).txt`, ukuran: 74, mime: 'text/plain' }, { part: '3', nama: `Lampiran kedua ${inv} (contoh sintetis).txt`, ukuran: 74, mime: 'text/plain' }, { part: '4', nama: `Lampiran ketiga ${inv} (contoh sintetis).txt`, ukuran: 74, mime: 'text/plain' }] } })

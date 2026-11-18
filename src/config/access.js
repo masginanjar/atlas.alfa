@@ -239,3 +239,7 @@ export const biayaVendorTersembunyi = (u, sub, vendor) => {
   const tersembunyi = m === 'sembunyi' || (m !== 'tampil' && ['apostille', 'legalisasi'].includes(sub?.type))
   return tersembunyi && !can.seeBiayaApostille(u)
 }
+
+/** Project yang otorisatornya sudah membalas lewat email (balasan "OK" atau berlampiran) dan masih menunggu nomor register.
+ *  Dipakai untuk tanda "ACC" di samping nomor invoice dan untuk menaruh project itu di paling atas daftar sampai nomor register terbit. */
+export const accEmail = (p) => !!(p?.email_oto_balasan || []).length && !p.cancelled && (p.sub_projects || []).some((s) => !s.cancelled && (s.stage === 'otorisasi' || s.stage === 'registrasi'))

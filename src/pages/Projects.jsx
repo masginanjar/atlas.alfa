@@ -17,7 +17,7 @@ import { boleh as bolehIzin } from '../lib/izin.js'
 import { DONE, isDone, progressOf, stageLabel, flowOf, totalPengajuan, stageIndex, stagesOf, VENDOR_PAID_STAGES, belumCatatBayar } from '../config/workflows.js'
 import { PengajuanStatus, DownloadBukti } from '../components/Pengajuan.jsx'
 import { SUB_TYPES } from '../config/subtypes.js'
-import { ProjectTypes, TypeBadge, PrintBadge, DemoBadge, InvoiceNo, DeadlineCell, NoteIcon, isCepat } from '../components/badges.jsx'
+import { ProjectTypes, TypeBadge, PrintBadge, DemoBadge, InvoiceNo, DeadlineCell, NoteIcon, isCepat, TandaAcc } from '../components/badges.jsx'
 import { Button, Card, Empty, Input, Pill, Progress, Tabs, Sheet, Popover, cx } from '../components/ui.jsx'
 import { DENSITIES, useDensity } from '../lib/density.js'
 import { dayKey, addDays } from '../lib/performance.js'
@@ -35,7 +35,7 @@ import CentangApostille from '../components/CentangApostille.jsx'
 import { WaktuDibuat, PrioPill, DeadlinePill, CabangPrint, eksekutorOf, dibuatBaru, warnaKategori, infoDeadline, BG_SELESAI } from '../components/BarisCanvas.jsx'
 import LayarKerja from './LayarKerja.jsx'
 import TugaskanPenerjemah from '../components/TugaskanPenerjemah.jsx'
-import { coordinatorFor, bolehPajakApostille } from '../config/access.js'
+import { coordinatorFor, bolehPajakApostille, accEmail } from '../config/access.js'
 import { PingButton } from '../components/Ping.jsx'
 import SalinInvoice from '../components/SalinInvoice.jsx'
 import { KeAtas, TombolTambah } from '../components/SlotAtas.jsx'
@@ -129,6 +129,8 @@ export default function Projects({ tabAwal }) {
       .filter((p) => cepat !== 'saya' || p.created_by === user.id || (p.about?.cs_id && p.about.cs_id === user.id))
       .filter((p) => cepat !== 'pilih' || (p.sub_projects || []).some((x) => x.stage === 'pilih_penerjemah'))
       .sort((a, b) => {
+        // Sudah dibalas/di-ACC otorisator lewat email → selalu paling atas sampai nomor register terbit
+        const xa = accEmail(a) ? 0 : 1, xb = accEmail(b) ? 0 : 1; if (xa !== xb) return xa - xb
         // Terbaru: tanggal input, paling baru dulu
         if (sort === 'baru') return new Date(b.created_at || 0) - new Date(a.created_at || 0)
         // Deadline: hari ini, besok, dst.; yang sudah lewat deadline (dan belum selesai) ditaruh paling akhir
@@ -780,6 +782,7 @@ export const COLUMNS = [
       <span className="flex min-w-0 max-w-full items-center gap-0.5 self-start">
         <span data-inv={dibuatBaru(p) ? 'baru' : 'lama'} title={invoiceLabel(p.invoice_no)}
           className={cx('shrink-0 whitespace-nowrap rounded-md text-base font-bold leading-[26px] tabular-nums text-[#141B34]', dibuatBaru(p) && cx('-ml-1.5 px-1.5 !text-white', isCepat(p) ? 'bg-[#141B34]' : 'bg-emerald-600'))}>{invoiceLabel(p.invoice_no)}</span>
+        <TandaAcc project={p} />
         <OfficialInvoice project={p} kecil />
         <SalinInvoice no={invoiceLabel(p.invoice_no)} />
       </span>
@@ -865,7 +868,7 @@ function ProjectList({ status = 'aktif', setStatus = () => {}, statusOpsi = [], 
                 {/* HP: kartu 4 baris — (1) invoice · prioritas · tenggat, (2) pelanggan, (3) arah bahasa · dok · hlm · cabang, (4) tahap ▸ berikutnya + progres, lalu tombol */}
                 <div className="flex flex-col gap-2.5 py-3.5 xl:hidden" data-kartu-hp>
                   <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5">
-                    <span className="flex shrink-0 items-center gap-0.5"><span className={cx('whitespace-nowrap text-[15px] font-bold tabular-nums', dibuatBaru(p) && cx('-ml-1.5 rounded-md px-1.5 text-white', isCepat(p) ? 'bg-[#141B34]' : 'bg-emerald-600'))}>{invoiceLabel(p.invoice_no)}</span>{dibuatBaru(p) && isCepat(p) && <TandaBaru />}<OfficialInvoice project={p} /><SalinInvoice no={invoiceLabel(p.invoice_no)} /></span>
+                    <span className="flex shrink-0 items-center gap-0.5"><span className={cx('whitespace-nowrap text-[15px] font-bold tabular-nums', dibuatBaru(p) && cx('-ml-1.5 rounded-md px-1.5 text-white', isCepat(p) ? 'bg-[#141B34]' : 'bg-emerald-600'))}>{invoiceLabel(p.invoice_no)}</span>{dibuatBaru(p) && isCepat(p) && <TandaBaru />}<TandaAcc project={p} className="ml-1" /><OfficialInvoice project={p} /><SalinInvoice no={invoiceLabel(p.invoice_no)} /></span>
                     <PrioPill p={p.about?.priority || 'Normal'} />
                     <span className="flex-1" />
                     {(() => { const d = infoDeadline(p); return d ? <span className="inline-flex min-h-6 shrink-0 items-center whitespace-nowrap rounded-full px-2.5 text-xs font-bold" style={{ background: d.bg, color: d.fg }}>{d.sisa === 'Hari ini' ? 'Hari Ini' : d.sisa === 'Besok' ? 'Besok' : d.lewat ? d.sisa : d.tgl.replace(/ \d\d\.\d\d$/, '')}</span> : null })()}

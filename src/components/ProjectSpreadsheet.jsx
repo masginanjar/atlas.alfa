@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { OfficialInvoice } from './NoReg.jsx'
-import { InvoiceNo } from './badges.jsx'
+import { InvoiceNo, TandaAcc } from './badges.jsx'
 import { Eye, MoreHorizontal, Search, SlidersHorizontal, X, ArrowUp, ArrowDown, FolderOpen, Printer, ChevronDown } from 'lucide-react'
 import { useApp } from '../lib/store.jsx'
 import { Button, Sheet, cx, bisaDitekan } from './ui.jsx'
-import { invoiceLabel } from '../config/access.js'
+import { invoiceLabel, accEmail } from '../config/access.js'
 import SalinInvoice from './SalinInvoice.jsx'
 import { tanggalJam, tanggal } from '../lib/waktu.js'
 import { projectRow, TABLE_COLS, sortRows, filterOptions, applyFilters, FILTER_LABEL, RENTANG_JML, rentangTanggal } from '../lib/projectRow.js'
@@ -226,7 +226,8 @@ export default function ProjectSpreadsheet({ list, detailFor, onDetail, onFiles,
     r = applyFilters(r, filters)
     const urut = sortRows(r, sortKey, sortDir) // diurutkan utuh dulu, baru dipotong
     // yang masih berjalan selalu di atas; yang SELESAI tetap tampil, di bagian bawah (urutan di dalamnya tidak berubah)
-    return [...urut.filter((x) => !isDone(x.p)), ...urut.filter((x) => isDone(x.p))]
+    // paling atas: yang sudah dibalas/di-ACC otorisator lewat email (sampai nomor register terbit)
+    return [...urut.filter((x) => accEmail(x.p)), ...urut.filter((x) => !accEmail(x.p) && !isDone(x.p)), ...urut.filter((x) => !accEmail(x.p) && isDone(x.p))]
   }, [semuaRow, q, filters, sortKey, sortDir])
 
   const tampil = hasil.slice(0, shownN)
@@ -251,7 +252,7 @@ export default function ProjectSpreadsheet({ list, detailFor, onDetail, onFiles,
     }
     if (key === 'invoice') return (
       <Lingkar warna={r.prioMendesak ? 'hitam' : ''} judul={r.prioMendesak ? `Prioritas ${r.prioritas}` : ''}>
-        <span className="inline-flex items-center gap-0.5"><InvoiceNo project={r.p} /><OfficialInvoice project={r.p} className="ml-0.5" /><SalinInvoice no={invoiceLabel(r.invoice)} /></span>
+        <span className="inline-flex items-center gap-0.5"><InvoiceNo project={r.p} /><TandaAcc project={r.p} className="ml-1" /><OfficialInvoice project={r.p} className="ml-0.5" /><SalinInvoice no={invoiceLabel(r.invoice)} /></span>
       </Lingkar>)
     if (key === 'deadline') {
       const w = r.dlHariIni ? 'merah' : r.dlBesok ? 'oranye' : ''
@@ -395,12 +396,13 @@ export default function ProjectSpreadsheet({ list, detailFor, onDetail, onFiles,
                 const out = []
                 // Baris judul grup tenggat (hanya bila urutan menurut deadline, supaya grupnya runtut)
                 if (pref.grup && sortKey === 'deadline') {
-                  const g = grupOf(r.p); const sebelum = idx > 0 ? grupOf(tampil[idx - 1].p) : null
+                  const gDari = (p) => (accEmail(p) ? 'acc' : grupOf(p)) // baris ACC punya grup sendiri di paling atas
+                  const g = gDari(r.p); const sebelum = idx > 0 ? gDari(tampil[idx - 1].p) : null
                   if (g !== sebelum) out.push(
                     <tr key={`g-${g}-${idx}`} data-grup-tenggat={g}>
-                      <td colSpan={KOLOM.length + 1} className={cx('sticky left-0 border-y px-3 py-1 text-[11.5px] font-extrabold', kelasGrup(g))}>
+                      <td colSpan={KOLOM.length + 1} className={cx('sticky left-0 border-y px-3 py-1 text-[11.5px] font-extrabold', g === 'acc' ? 'border-sky-200 bg-sky-50 text-sky-900' : kelasGrup(g))}>
                         <button type="button" onClick={(e) => { e.stopPropagation(); setLipat((v) => { const n = new Set(v); n.has(g) ? n.delete(g) : n.add(g); return n }) }} className="flex w-full items-center gap-2 text-left">
-                          {lipat.has(g) ? '▸' : '▾'} {labelGrup(g)}<span className="font-semibold opacity-70">· {hasil.filter((x) => grupOf(x.p) === g).length}</span>
+                          {lipat.has(g) ? '▸' : '▾'} {g === 'acc' ? 'ACC otorisator — menunggu nomor register' : labelGrup(g)}<span className="font-semibold opacity-70">· {hasil.filter((x) => gDari(x.p) === g).length}</span>
                         </button>
                       </td>
                     </tr>)

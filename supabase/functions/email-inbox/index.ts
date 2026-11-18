@@ -97,7 +97,7 @@ Deno.serve(async (req: Request) => {
       if (uids.length) for await (const m of c.fetch(uids, { uid: true, envelope: true, bodyStructure: true, internalDate: true }, { uid: true }) as Any) {
         const dari = String(m?.envelope?.from?.[0]?.address ?? "").toLowerCase(); const siapa = boleh.get(dari);
         if (!siapa) continue; // pengaman ganda: hanya pengirim terdaftar
-        pesan.push({ uid: m.uid, oto_id: siapa.oto_id, tes: siapa.tes, subjek: String(m.envelope?.subject ?? "").slice(0, 250), tanggal: m.internalDate ? new Date(m.internalDate).toISOString() : null, lampiran: lampiranDari(m.bodyStructure), _teks: teksDari(m.bodyStructure) });
+        pesan.push({ uid: m.uid, message_id: String(m.envelope?.messageId ?? "").slice(0, 300), oto_id: siapa.oto_id, tes: siapa.tes, subjek: String(m.envelope?.subject ?? "").slice(0, 250), tanggal: m.internalDate ? new Date(m.internalDate).toISOString() : null, lampiran: lampiranDari(m.bodyStructure), _teks: teksDari(m.bodyStructure) });
       }
       if (aksi === "uji") return json({ ok: true, uji: true, pesan: pesan.length, dengan_lampiran: pesan.filter((p) => p.lampiran.length).length, pengirim_dipantau: boleh.size });
       for (const p of pesan) {

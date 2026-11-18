@@ -5,7 +5,7 @@
 //    TIDAK pernah dikirim dari browser. Selama mode tes nyala, email HANYA ke alamat tes.
 //  • Izin: app_izin('email-otorisasi.tambah') untuk kirim; app_izin('email-otorisasi.atur') untuk mode tes.
 //  • Log hanya metadata (siapa, project, jumlah & ukuran lampiran, hasil) di email_oto_log — tanpa isi email / nama file.
-//  aksi: info | kirim | atur | uji (x-uji-token; email SINTETIS hanya ke alamat tes, tidak pernah ke otorisator)
+//  aksi: info | kirim | balas (balasan dari Inbox Otorisasi; lampiran opsional, menyambung utas lewat In-Reply-To) | atur | uji (x-uji-token; email SINTETIS hanya ke alamat tes, tidak pernah ke otorisator)
 // ============================================================
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import nodemailer from "npm:nodemailer@6.9.16";
@@ -31,9 +31,9 @@ Deno.serve(async (req: Request) => {
   try { const v = typeof cfg?.value === "string" ? JSON.parse(cfg.value) : cfg?.value; if (v && typeof v === "object") setel = { mode_tes: v.mode_tes !== false, tes: String(v.tes ?? ""), pengirim: String(v.pengirim ?? ""), users: v.users ?? {} }; } catch (_) { /* setelan rusak → dianggap kosong, mode tes tetap nyala */ }
   // Alamat Gmail pengirim: dari setelan tertutup (key oto_email), cadangan dari Secrets GMAIL_OTO_USER. Kata sandinya HANYA di Secrets.
   const pengirim = (EMAIL.test(setel.pengirim ?? "") ? setel.pengirim! : (Deno.env.get("GMAIL_OTO_USER") ?? "")).trim();
-  const kirimSmtp = (to: string, subject: string, text: string, attachments: unknown[]) =>
+  const kirimSmtp = (to: string, subject: string, text: string, attachments: unknown[], utas?: string) =>
     nodemailer.createTransport({ host: "smtp.gmail.com", port: 465, secure: true, auth: { user: pengirim, pass: sandi }, connectionTimeout: 20000, socketTimeout: 60000 })
-      .sendMail({ from: `"Otorisasi 247" <${pengirim}>`, to, replyTo: pengirim, subject, text, attachments });
+      .sendMail({ from: `"Otorisasi 247" <${pengirim}>`, to, replyTo: pengirim, subject, text, attachments, ...(utas ? { inReplyTo: utas, references: utas } : {}) });
   const pesanGalat = (e: unknown) => { const m = String((e as Error)?.message ?? ""); return /Invalid login|Username and Password|535|534/i.test(m) ? "Gmail menolak login — kata sandi aplikasi salah / dicabut / bukan milik akun pengirim" : /timeout|ETIMEDOUT|ECONN/i.test(m) ? "Tidak bisa terhubung ke Gmail — coba lagi" : "Email gagal dikirim"; };
 
   // Uji otomatis: hanya email SINTETIS ke alamat tes. Tidak membaca project, tidak pernah ke otorisator.
@@ -78,7 +78,9 @@ Deno.serve(async (req: Request) => {
     await admin.from("email_oto_log").insert({ user_id: row.id, aksi: baru.mode_tes ? "tes_nyala" : "tes_mati", hasil: "ok" });
     return json({ ok: true, mode_tes: baru.mode_tes });
   }
-  if (aksi !== "kirim") return json({ ok: false, alasan: "aksi tidak dikenal" }, 400);
+  if (aksi !== "kirim" && aksi !== "balas") return json({ ok: false, alasan: "aksi tidak dikenal" }, 400);
+  const balas = aksi === "balas";
+  const utas = balas && /^<[^<>\s]{3,290}>$/.test(String(b.in_reply_to ?? "")) ? String(b.in_reply_to) : "";
 
   if (!pengirim || !sandi) return json({ ok: false, alasan: "Email belum disetel di server (kata sandi aplikasi Gmail belum dipasang)" });
   const project_id = String(b.project_id ?? ""), oto_id = String(b.oto_id ?? "");
@@ -90,21 +92,21 @@ Deno.serve(async (req: Request) => {
   const { data: pr } = await db.from("projects").select("id").eq("id", project_id).maybeSingle();
   if (!pr) return json({ ok: false, alasan: "Project tidak ditemukan / tidak ada akses" }, 404);
   const subjek = String(b.subjek ?? "").replace(/[\r\n]+/g, " ").trim().slice(0, 200), isi = String(b.isi ?? "").slice(0, 6000);
-  if (subjek.length < 5 || isi.trim().length < 10) return json({ ok: false, alasan: "Judul / isi email kosong" }, 400);
+  if (subjek.length < 5 || isi.trim().length < (balas ? 1 : 10)) return json({ ok: false, alasan: "Judul / isi email kosong" }, 400);
   // deno-lint-ignore no-explicit-any
   const lamp = (Array.isArray(b.lampiran) ? b.lampiran : []).slice(0, 25) as any[];
-  if (!lamp.length) return json({ ok: false, alasan: "Lampiran kosong" }, 400);
+  if (!lamp.length && !balas) return json({ ok: false, alasan: "Lampiran kosong" }, 400);
   let ukuran = 0;
   for (const l of lamp) { const s = String(l?.b64 ?? ""); if (!s || !/^[A-Za-z0-9+/=]+$/.test(s.slice(0, 2000))) return json({ ok: false, alasan: "Lampiran tidak valid" }, 400); ukuran += s.length; }
   if (ukuran > MAKS_B64) return json({ ok: false, alasan: "Lampiran melebihi 18 MB" }, 400);
   // batas laju: 40 email / jam per pengguna
-  const { count } = await admin.from("email_oto_log").select("id", { count: "exact", head: true }).eq("user_id", row.id).eq("aksi", "kirim").gte("at", new Date(Date.now() - 3600e3).toISOString());
+  const { count } = await admin.from("email_oto_log").select("id", { count: "exact", head: true }).eq("user_id", row.id).in("aksi", ["kirim", "balas"]).gte("at", new Date(Date.now() - 3600e3).toISOString());
   if ((count ?? 0) >= 40) return json({ ok: false, alasan: "Terlalu banyak email dalam 1 jam — tunggu sebentar" });
 
-  const catat = (hasil: string) => admin.from("email_oto_log").insert({ user_id: row.id, aksi: "kirim", project_id, oto_id, tes, lampiran: lamp.length, ukuran: Math.round(ukuran * 0.75), hasil });
+  const catat = (hasil: string) => admin.from("email_oto_log").insert({ user_id: row.id, aksi: balas ? "balas" : "kirim", project_id, oto_id, tes, lampiran: lamp.length, ukuran: Math.round(ukuran * 0.75), hasil });
   try {
     await kirimSmtp(tes ? setel.tes : tujuanAsli, (tes ? "[TES] " : "") + subjek, isi + (tes ? "\n\n— Email TES dari ATLAS. Tujuan sebenarnya: otorisator (belum dikirim ke beliau)." : ""),
-      lamp.map((l) => ({ filename: String(l.nama ?? "lampiran").replace(/[\\/\r\n]+/g, " ").slice(0, 180), content: String(l.b64), encoding: "base64", contentType: /^[\w.+-]+\/[\w.+-]+$/.test(String(l.mime ?? "")) ? String(l.mime) : "application/octet-stream" })));
+      lamp.map((l) => ({ filename: String(l.nama ?? "lampiran").replace(/[\\/\r\n]+/g, " ").slice(0, 180), content: String(l.b64), encoding: "base64", contentType: /^[\w.+-]+\/[\w.+-]+$/.test(String(l.mime ?? "")) ? String(l.mime) : "application/octet-stream" })), utas);
   } catch (e) {
     await catat("gagal");
     return json({ ok: false, alasan: pesanGalat(e) });

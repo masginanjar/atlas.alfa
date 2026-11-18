@@ -4,7 +4,7 @@ import { SUB_TYPES } from '../config/subtypes.js'
 import { Printer, StickyNote } from 'lucide-react'
 import { cx } from './ui.jsx'
 import { useApp } from '../lib/store.jsx'
-import { branchesOf, invoiceLabel} from '../config/access.js'
+import { branchesOf, invoiceLabel, accEmail } from '../config/access.js'
 
 /** Ikon PRINT bila dokumen dititipkan cetak di cabang lain. */
 export function PrintBadge({ project, iconOnly, className }) {
@@ -67,6 +67,12 @@ export const isCepat = (p) => ['Ekspres', 'Super Ekspres', 'Sameday'].includes(p
  *  • keduanya → kapsul hitam + penanda kecil hijau "Baru"
  *  • selain itu → tampilan biasa
  */
+/** Tanda "ACC" di samping nomor invoice: otorisator sudah membalas lewat email, tinggal nomor register. Blok biru, teks putih (setipe tanda "Baru"). */
+export function TandaAcc({ project, className }) {
+  if (!accEmail(project)) return null
+  return <span title="Sudah di-ACC / dibalas otorisator lewat email — menunggu nomor register" data-invoice-badge="acc" className={cx('inline-flex shrink-0 items-center rounded-md bg-[#2563EB] px-1.5 py-1 text-[11px] font-bold uppercase leading-none tracking-wide text-white', className)}>ACC</span>
+}
+
 export function InvoiceNo({ project, className, size = 'sm' }) {
   const fresh = isNewToday(project)
   const prio = project?.about?.priority
