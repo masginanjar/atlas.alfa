@@ -4,7 +4,7 @@ import { useApp } from '../lib/store.jsx'
 import { boleh } from '../lib/izin.js'
 import { Button, Card, Empty, Field, Input, Select, Sheet, Textarea, cx } from '../components/ui.jsx'
 import { tgl } from '../lib/format.js'
-import { WEBSITE, JENIS_KONTEN, PRIORITAS_KONTEN, STATUS_KONTEN, WARNA_STATUS_KONTEN, statusPosting, hariIniWita, kontenBaru, cekKonten, ringkasHari } from '../config/marketing.js'
+import { WEBSITE, TAUTAN_WEBSITE, JENIS_KONTEN, PRIORITAS_KONTEN, STATUS_KONTEN, WARNA_STATUS_KONTEN, statusPosting, hariIniWita, kontenBaru, cekKonten, ringkasHari } from '../config/marketing.js'
 
 // ============================================================
 //  MARKETING → WEBSITE. Ide konten + status posting blog hari ini untuk tiap website.
@@ -14,6 +14,7 @@ import { WEBSITE, JENIS_KONTEN, PRIORITAS_KONTEN, STATUS_KONTEN, WARNA_STATUS_KO
 const Lencana = ({ teks }) => <span className={cx('inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1', WARNA_STATUS_KONTEN[teks] || WARNA_STATUS_KONTEN.Ide)}>{teks}</span>
 const WARNA_PRIO = { Tinggi: 'text-rose-700', Sedang: 'text-amber-700', Rendah: 'text-ink-mute' }
 const pilihCls = 'h-[34px] min-w-0 rounded-lg border-0 bg-white px-2.5 text-[13px] font-semibold ring-1 ring-slate-200 focus:outline-none focus:ring-2 focus:ring-brand max-md:h-11 max-md:flex-1 max-md:text-base'
+const tautCls = 'inline-flex min-h-8 items-center gap-1 rounded-lg bg-white px-2 text-[12px] font-semibold text-brand ring-1 ring-[#D9DBE7] hover:ring-brand max-md:min-h-11 max-md:px-3'
 const urutPrio = (p) => PRIORITAS_KONTEN.indexOf(p) < 0 ? 9 : PRIORITAS_KONTEN.indexOf(p)
 
 function Angka({ ikon: Ikon, label, nilai, warna, kode }) {
@@ -111,7 +112,11 @@ export default function MarketingWebsite() {
           const rows = hari.hari.filter((r) => r.website === w).sort((a, b) => String(a.jam || '99').localeCompare(String(b.jam || '99')))
           return (
             <section key={w} className="border-b border-slate-100 last:border-b-0" data-posting-web={w}>
-              <p className="flex items-center gap-1.5 px-3 pt-3 text-[13px] font-bold text-ink"><Globe className="h-4 w-4 text-brand" aria-hidden="true" />{w}<span className="font-semibold text-ink-mute">· {rows.length} artikel</span></p>
+              <p className="flex flex-wrap items-center gap-1.5 px-3 pt-3 text-[13px] font-bold text-ink"><Globe className="h-4 w-4 shrink-0 text-brand" aria-hidden="true" />{w}<span className="font-semibold text-ink-mute">· {rows.length} artikel</span>
+                <span className="ml-auto flex shrink-0 gap-1.5" data-tautan-web={w}>
+                  {TAUTAN_WEBSITE[w]?.demo && <a href={TAUTAN_WEBSITE[w].demo} target="_blank" rel="noopener noreferrer" title="Buka demo website (tab baru)" className={tautCls}><ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />Demo</a>}
+                  {TAUTAN_WEBSITE[w]?.situs && <a href={TAUTAN_WEBSITE[w].situs} target="_blank" rel="noopener noreferrer" title="Buka website asli (tab baru)" className={tautCls}><ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />Website</a>}
+                </span></p>
               {rows.length === 0 ? <p className="px-3 pb-3 pt-1 text-[13px] text-ink-mute">Tidak ada artikel yang dijadwalkan terbit hari ini.</p> : <>
                 <div className="max-md:hidden">
                   <table className="tbl-rapat w-full table-fixed border-collapse text-left">

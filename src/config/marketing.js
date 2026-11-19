@@ -5,6 +5,11 @@
 // ============================================================
 /** Website yang dikelola. Menambah website cukup di sini. */
 export const WEBSITE = ['englishlink.co.id', 'etranslator.nl']
+/** Tautan tiap website: situs asli + demo (artifact) yang dipakai selama situs masih dibangun. Hanya tautan — ATLAS tidak membaca isinya. */
+export const TAUTAN_WEBSITE = {
+  'englishlink.co.id': { situs: 'https://englishlink.co.id/', demo: 'https://claude.ai/artifact/CWBag3vCZeLR7eUTdfJ7SW' },
+  'etranslator.nl': { situs: 'https://etranslator.nl/', demo: 'https://claude.ai/artifact/2fXD8TTnbBmbvLSF5TLoAD' },
+}
 export const JENIS_KONTEN = ['Edukasi', 'Layanan', 'Panduan', 'FAQ', 'Berita', 'Lainnya']
 export const PRIORITAS_KONTEN = ['Tinggi', 'Sedang', 'Rendah']
 /** Urutan = alur kerja. */
