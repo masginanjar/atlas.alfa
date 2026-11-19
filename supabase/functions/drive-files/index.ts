@@ -16,8 +16,11 @@ const URL_ = Deno.env.get("SUPABASE_URL")!
 const SERVICE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
 const ANON = Deno.env.get("SUPABASE_ANON_KEY")!
 
-const SA_EMAIL = Deno.env.get("GOOGLE_SA_EMAIL") || ""
-const SA_KEY = Deno.env.get("GOOGLE_SA_PRIVATE_KEY") || ""
+// Akun layanan: cukup SATU rahasia GOOGLE_SA_JSON (isi utuh berkas kunci .json dari Google Cloud).
+// Cara lama (GOOGLE_SA_EMAIL + GOOGLE_SA_PRIVATE_KEY) tetap didukung.
+const SA_JSON = (() => { try { return JSON.parse(Deno.env.get("GOOGLE_SA_JSON") || "{}") } catch { return {} } })()
+const SA_EMAIL = String(SA_JSON.client_email || Deno.env.get("GOOGLE_SA_EMAIL") || "")
+const SA_KEY = String(SA_JSON.private_key || Deno.env.get("GOOGLE_SA_PRIVATE_KEY") || "")
 const ROOT = Deno.env.get("GOOGLE_DRIVE_ROOT_FOLDER_ID") || ""
 
 const CORS = {
@@ -122,10 +125,11 @@ Deno.serve(async (req) => {
     const akun = (rows || []).find((r: any) => String(r.doc?.email || "").toLowerCase() === email)
     if (!akun || akun.doc?.active === false) return json({ error: "Akun tidak terdaftar atau nonaktif." }, 403)
 
-    if (!ROOT) return json({ error: "Folder induk Drive belum disetel di server." }, 503)
-
     const body = await req.json().catch(() => ({}))
     const aksi = String(body.action || "")
+    if (!SA_EMAIL || !SA_KEY) return json({ error: "Akun layanan Google belum dipasang di server." }, 503)
+    // Folder induk ATLAS hanya dibutuhkan aksi berkas ATLAS; "tarik-nama" membaca Drive lama tanpa folder induk.
+    if (!ROOT && aksi !== "tarik-nama") return json({ error: "Folder induk Drive belum disetel di server." }, 503)
 
     // Cabang yang boleh diakses orang ini — dibaca dari database, bukan dari browser.
     const peran = String(akun.doc?.role || "")
@@ -200,6 +204,11 @@ Deno.serve(async (req) => {
       const r = await gfetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id,name,parents)&pageSize=20&corpora=allDrives&supportsAllDrives=true&includeItemsFromAllDrives=true`)
       const j = await r.json()
       if (!r.ok) return json({ error: "Drive lama tidak bisa dibaca. Pastikan Drive sudah dibagikan ke akun layanan ATLAS." }, 502)
+      // Tidak ada satu folder pun yang terlihat → bedakan "folder invoice ini belum ada" dari "Drive belum dibagikan ke akun layanan".
+      if (!(j.files || []).length) {
+        const d = await (await gfetch("https://www.googleapis.com/drive/v3/drives?pageSize=1&fields=drives(id)")).json()
+        if (!(d.drives || []).length) return json({ error: `Akun layanan ATLAS (${SA_EMAIL}) belum dijadikan anggota Drive bersama mana pun` }, 502)
+      }
       const cocok = (j.files || []).filter((f: any) => new RegExp(`(^|\\D)${angka}(\\D|$)`).test(String(f.name || ""))).slice(0, 6)
       const namaInduk = new Map<string, { name: string; parent: string }>()
       const jalur = async (id: string) => {
