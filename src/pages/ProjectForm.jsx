@@ -64,6 +64,8 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
   const [busy, setBusy] = useState(false)
   const [queue, setQueue] = useState([]) // file yang akan diunggah: {_k, file, name, sub_ref}
   const [progress, setProgress] = useState('')
+  /** Pasang pelanggan pemilik invoice (dari nomor invoice yang diketik) — nomor invoicenya tidak diubah. */
+  const pakaiPemilik = async (r) => { try { const c = await zoho.contact(r.customer_id); if (c) setCustomer(c) } catch { /* biarkan CS memilih pelanggan sendiri */ } }
   // Tarik Data (beta): usulan sub project dari item invoice — { sibuk } | { ok, n, mesin, dilewati, sebelum } | { galat }
   const [tarikSt, setTarikSt] = useState(null)
   const subTerisi = (x) => !!x.id || points(x.description).length > 0 || (x.docs || []).some((d) => d.file || String(d.desc || '').trim()) || !!x.applicant_file
@@ -375,7 +377,7 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
                     {E('invoice') && <FieldError>{E('invoice')}</FieldError>}
                   </div>
                 )
-                : <InvoicePicker customer={customer} value={invoice} onChange={setInvoice} error={E('invoice')} />}
+                : <InvoicePicker customer={customer} value={invoice} onChange={setInvoice} error={E('invoice')} onPemilik={pakaiPemilik} />}
             </div>
             <div>
               <MetodeKirim value={metodeKirim} onPilih={pilihMetode} error={E('metode')} kantor={about.print_location} />
@@ -510,7 +512,7 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
           <div className="space-y-2">
             <CustomerPicker ringkas value={customer} invalid={!!E('customer')} onChange={(c, inv) => { setCustomer(c); if (!editing) setInvoice(inv || '') }} />
             {E('customer') && <FieldError>{E('customer')}</FieldError>}
-            {customer && (preset?.invoice_no ? <p className="text-sm font-bold">{invoiceLabel(invoice)}</p> : <InvoicePicker ringkas customer={customer} value={invoice} onChange={setInvoice} error={E('invoice')} />)}
+            {customer && (preset?.invoice_no ? <p className="text-sm font-bold">{invoiceLabel(invoice)}</p> : <InvoicePicker ringkas customer={customer} value={invoice} onChange={setInvoice} error={E('invoice')} onPemilik={pakaiPemilik} />)}
             <MetodeKirim value={metodeKirim} onPilih={pilihMetode} error={E('metode')} kantor={about.print_location} />
           </div>
         </section>
@@ -672,7 +674,7 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
             <KolBaru label="No. invoice" wajib style={{ flex: '1 1 170px' }} error={preset?.invoice_no ? E('invoice') : null}>
               {preset?.invoice_no
                 ? <p className="flex h-9 items-center text-sm font-bold max-md:h-11">{invoiceLabel(invoice)}</p>
-                : <InvoicePicker ringkas customer={customer} value={invoice} onChange={setInvoice} error={E('invoice')} />}
+                : <InvoicePicker ringkas customer={customer} value={invoice} onChange={setInvoice} error={E('invoice')} onPemilik={pakaiPemilik} />}
             </KolBaru>
             <KolBaru label="Metode pengiriman" wajib style={{ flex: '1 1 190px' }} error={E('metode')}>
               <select value={metodeKirim} onChange={(e) => pilihMetode(e.target.value)} aria-label="Metode pengiriman" aria-invalid={!!E('metode')} data-metode-kirim className={cx(kelas, '!px-2', E('metode') && '!ring-2 !ring-rose-500')}>
@@ -944,6 +946,7 @@ function CustomerPicker({ value, onChange, invalid, ringkas }) {
   const [loading, setLoading] = useState(false)
   const [err, setErr] = useState('')
   const [inv, setInv] = useState([]) // hasil cari lewat NOMOR INVOICE (≥ 4 angka)
+  const [invNama, setInvNama] = useState({}) // invoice terbaru tiap pelanggan di hasil cari nama
 
   useEffect(() => {
     if (value || q.trim().length < 2) { setRes([]); setInv([]); return }
@@ -952,7 +955,8 @@ function CustomerPicker({ value, onChange, invalid, ringkas }) {
       const angka = q.replace(/\D/g, '')
       try {
         const [k, iv] = await Promise.all([zoho.searchContacts(q.trim()), angka.length >= 4 ? zoho.cariInvoice(angka).catch(() => []) : []])
-        setRes(k); setInv(iv)
+        setRes(k); setInv(iv); setInvNama({})
+        zoho.invoiceTerbaru(k.map((c) => c.zoho_id)).then(setInvNama).catch(() => {})
       } catch (e) { setErr(e.message) } finally { setLoading(false) }
     }, 350)
     return () => clearTimeout(t)
@@ -968,9 +972,9 @@ function CustomerPicker({ value, onChange, invalid, ringkas }) {
     } catch (e) { setErr(e.message) } finally { setLoading(false) }
   }
 
-  const pick = async (c) => {
+  const pick = async (c, noInv) => {
     setLoading(true); setErr('')
-    try { onChange({ ...c, ...((await zoho.contact(c.zoho_id)) || {}) }) } catch (e) { setErr(e.message); onChange(c) } finally { setLoading(false) }
+    try { onChange({ ...c, ...((await zoho.contact(c.zoho_id)) || {}) }, noInv) } catch (e) { setErr(e.message); onChange(c, noInv) } finally { setLoading(false) }
   }
 
   if (value && ringkas) return (
@@ -1016,7 +1020,18 @@ function CustomerPicker({ value, onChange, invalid, ringkas }) {
           {res.map((c) => (
             <li key={c.zoho_id}><button type="button" onClick={() => pick(c)} className="w-full px-3 py-2.5 text-left hover:bg-slate-50">
               <p className="text-sm font-semibold">{c.name}</p><p className="text-xs text-ink-mute">{c.email || '—'}</p>
-            </button></li>
+            </button>
+              {invNama[c.zoho_id]?.length > 0 && (
+                <div className="flex flex-wrap items-center gap-1.5 px-3 pb-2.5" data-invoice-nama={c.zoho_id}>
+                  <span className="text-[11px] text-ink-mute">Invoice:</span>
+                  {invNama[c.zoho_id].map((iv) => (
+                    <button key={iv.invoice_no} type="button" onClick={() => pick(c, iv.invoice_no)} disabled={loading} title={`Pilih ${c.name} dengan invoice ${invoiceLabel(iv.invoice_no)}`}
+                      className="inline-flex min-h-8 items-center gap-1 rounded-lg bg-emerald-50 px-2 text-xs font-semibold text-emerald-900 ring-1 ring-emerald-200 hover:bg-emerald-100 disabled:opacity-60 max-md:min-h-11 max-md:px-3">
+                      {invoiceLabel(iv.invoice_no)}<span className="font-normal text-emerald-800/70">{iv.date ? tgl(iv.date) : ''}</span></button>
+                  ))}
+                </div>
+              )}
+            </li>
           ))}
         </ul>
       )}
@@ -1030,9 +1045,25 @@ function CustomerPicker({ value, onChange, invalid, ringkas }) {
   )
 }
 
-function InvoicePicker({ customer, value, onChange, error, ringkas }) {
+function InvoicePicker({ customer, value, onChange, error, ringkas, onPemilik }) {
   const [list, setList] = useState([])
   const [loading, setLoading] = useState(false)
+  // Pemilik invoice yang diketik: supaya jelas invoice ini milik siapa. Pelanggan kosong → langsung diisi; pelanggan berbeda → diperingatkan.
+  const [pemilik, setPemilik] = useState(null)
+  const idPel = customer?.zoho_id || ''
+  useEffect(() => {
+    const no = String(value || '').trim().toUpperCase()
+    if (no.replace(/\D/g, '').length < 6) { setPemilik(null); return }
+    let batal = false
+    const t = setTimeout(() => zoho.cariInvoice(no).then((l) => {
+      if (batal) return
+      const r = l.find((x) => String(x.invoice_no).toUpperCase() === no) || null
+      setPemilik(r)
+      if (r && !idPel) onPemilik?.(r)
+    }).catch(() => {}), 400)
+    return () => { batal = true; clearTimeout(t) }
+  }, [value, idPel]) // eslint-disable-line react-hooks/exhaustive-deps
+  const beda = pemilik && idPel && pemilik.customer_id !== idPel
   useEffect(() => {
     if (!customer?.zoho_id) { setList([]); return }
     setLoading(true)
@@ -1056,6 +1087,13 @@ function InvoicePicker({ customer, value, onChange, error, ringkas }) {
         </div>
       )}
       {(!ringkas || !list.length || !list.some((iv) => iv.invoice_no === value)) && <Input aria-invalid={!!error} placeholder={customer ? (ringkas ? 'Ketik no. invoice' : 'atau ketik manual, mis. INV-000245') : 'Pilih pelanggan dulu, atau ketik manual'} value={value} onChange={(e) => onChange(e.target.value)} className={ringkas ? '!h-9' : ''} />}
+      {pemilik && !beda && idPel && <p className="flex items-center gap-1 text-[11px] font-semibold text-emerald-800" data-pemilik-invoice="cocok"><Check className="h-3 w-3 shrink-0" aria-hidden="true" /><span className="min-w-0 truncate">Invoice milik {pemilik.customer_name || customer?.name}</span></p>}
+      {beda && (
+        <div role="alert" className="flex flex-wrap items-center gap-1.5 rounded-lg bg-amber-50 px-2.5 py-1.5 text-[11px] text-amber-900 ring-1 ring-amber-200" data-pemilik-invoice="beda">
+          <span className="min-w-0 flex-1">Invoice ini milik <b>{pemilik.customer_name || 'pelanggan lain'}</b>, bukan {customer?.name}.</span>
+          {onPemilik && <button type="button" onClick={() => onPemilik(pemilik)} className="inline-flex min-h-8 items-center rounded-lg bg-white px-2 font-bold ring-1 ring-amber-300 hover:bg-amber-100 max-md:min-h-11 max-md:px-3">Ganti pelanggan</button>}
+        </div>
+      )}
       {error && <FieldError>{error}</FieldError>}
       </div>
     </div>

@@ -134,6 +134,18 @@ export const zoho = {
     }
     return []
   },
+  /** Invoice terbaru untuk BEBERAPA pelanggan sekaligus (hasil pencarian nama) → { [customer_id]: [{ invoice_no, date, status }] }, maks. 3 per pelanggan. */
+  async invoiceTerbaru(ids = []) {
+    const daftar = [...new Set(ids.filter(Boolean))].slice(0, 25)
+    if (!daftar.length) return {}
+    let baris = []
+    if (MODE === 'supabase') baris = must(await sb().from('zoho_invoices').select('invoice_no,customer_id,date,status').in('customer_id', daftar).order('date', { ascending: false }).limit(120)) || []
+    else if (!ZOHO_LIVE) baris = [...daftar.flatMap((id) => (DEMO_INVOICES[id] || []).map((iv) => ({ ...iv, customer_id: id }))), ...DEMO_ZOHO_NOV.filter((r) => daftar.includes(r.customer_id))]
+      .sort((a, b) => String(b.date).localeCompare(String(a.date)))
+    const peta = {}
+    for (const r of baris) { if (/void|batal/i.test(r.status || '')) continue; const l = (peta[r.customer_id] ||= []); if (l.length < 3) l.push({ invoice_no: r.invoice_no, date: r.date, status: r.status }) }
+    return peta
+  },
   /** Detail lengkap: nama, HP, email, penerima & alamat pengiriman. */
   async contact(zohoId) {
     if (MODE === 'supabase') return rowToContact((must(await sb().from('zoho_contacts').select('*').eq('zoho_id', zohoId).limit(1)) || [])[0])
