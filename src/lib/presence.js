@@ -9,8 +9,10 @@
 // ============================================================
 import { lastActivity } from './session.js'
 
-export const BEAT_MS = 60 * 1000 // denyut tiap 1 menit
-export const ONLINE_GRACE = 150 * 1000 // dianggap tersambung 2,5 menit sejak denyut terakhir
+// 19 Nov 2026 (hemat server): denyut 1 menit → 4 menit. Tiap denyut = satu tulisan ke database yang lalu disiarkan ke semua orang yang online,
+// jadi bebannya naik berlipat seiring jumlah pengguna. Akibatnya: orang yang menutup tab tanpa keluar tampak Online sampai ±5,5 menit (dulu 2,5 menit).
+export const BEAT_MS = 4 * 60 * 1000 // denyut tiap 4 menit
+export const ONLINE_GRACE = 330 * 1000 // dianggap tersambung 5,5 menit sejak denyut terakhir
 export const IDLE_AFTER = 15 * 60 * 1000 // 15 menit tanpa interaksi → Idle
 
 const ms = (v) => (v ? new Date(v).getTime() : 0)
@@ -43,7 +45,7 @@ export function sinceLabel(v, now = Date.now()) {
 }
 
 /**
- * Denyut kehadiran. Menulis ke baris user sendiri tiap 1 menit selama tab terbuka.
+ * Denyut kehadiran. Menulis ke baris user sendiri tiap BEAT_MS (4 menit) selama tab terbuka.
  * onRow dipanggil dengan baris terbaru supaya tampilan ikut segar tanpa menunggu refresh.
  */
 export function startHeartbeat(db, userId, onRow) {

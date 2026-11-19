@@ -218,16 +218,19 @@ export function AppProvider({ children }) {
     // muat ulang tabel utama (dipakai saat realtime tidak tersambung atau tab kembali aktif)
     const MAIN = ['projects', 'notifications', 'pings', 'requests', 'petty_cash', 'vendor_bills', 'fund_balances', ...(CHAT_ENABLED ? ['messages'] : []), 'todos', 'reminders', 'notes']
     const refreshMain = (minGap = 4000) => { const now = Date.now(); if (now - lastFull < minGap) return; lastFull = now; for (const t of MAIN) pending.add(t); clearTimeout(timer); timer = setTimeout(flush, 50) }
-    const stop = db.subscribe(TABLES, touch, (st) => { status = st; setLiveStatus(st === 'SUBSCRIBED' ? 'SUBSCRIBED' : st); if (st === 'SUBSCRIBED') refreshMain(0) })
-    // Cadangan: bila realtime belum/tidak tersambung, polling tiap 20 detik agar perubahan rekan tetap muncul tanpa refresh
-    const poll = setInterval(() => { if (status !== 'SUBSCRIBED') { setLiveStatus('POLLING'); refreshMain(6000) } }, 8000)
+    // 19 Nov 2026 (hemat server): tiap muat ulang = 11 tabel sekaligus. Sambung-ulang realtime yang berulang tidak lagi memicu muat ulang beruntun (jeda min. 15 dtk).
+    let pernahSambung = false
+    const stop = db.subscribe(TABLES, touch, (st) => { status = st; setLiveStatus(st === 'SUBSCRIBED' ? 'SUBSCRIBED' : st); if (st === 'SUBSCRIBED') { refreshMain(pernahSambung ? 15000 : 0); pernahSambung = true } })
+    // Cadangan: bila realtime belum/tidak tersambung, polling tiap 30 detik (dulu 8 detik) dan HANYA saat layar sedang dilihat
+    const poll = setInterval(() => { if (status !== 'SUBSCRIBED') { setLiveStatus('POLLING'); if (document.visibilityState === 'visible') refreshMain(25000) } }, 30000)
     // Chat: selalu disegarkan cepat walau realtime sedang tersambung — pesan tidak boleh telat.
     // Chat dimatikan → tidak ada penyegaran sama sekali.
     const chatPoll = CHAT_ENABLED
       ? setInterval(() => { if (document.visibilityState === 'visible') touch('messages') }, 10000)
       : null
     // Kembali ke tab / layar HP menyala → segarkan sekali
-    const onVisible = () => { if (document.visibilityState === 'visible') refreshMain() }
+    // visibilitychange + focus + online sering datang bersamaan / berulang (pindah-pindah jendela) → jeda min. 20 dtk (dulu 4 dtk)
+    const onVisible = () => { if (document.visibilityState === 'visible') refreshMain(20000) }
     document.addEventListener('visibilitychange', onVisible); window.addEventListener('focus', onVisible); window.addEventListener('online', onVisible)
     return () => { alive = false; stop(); clearTimeout(timer); clearInterval(poll); if (chatPoll) clearInterval(chatPoll); document.removeEventListener('visibilitychange', onVisible); window.removeEventListener('focus', onVisible); window.removeEventListener('online', onVisible) }
   }, [user]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -248,7 +251,8 @@ export function AppProvider({ children }) {
   useEffect(() => {
     if (!baseUser || WORKER_ROLES.includes(baseUser.role)) return
     refreshInvoices()
-    const t = setInterval(refreshInvoices, 2 * 60000) // segarkan berkala; tidak membuat data ganda
+    // hemat server: tiap 5 menit (dulu 2 menit) dan hanya saat layar dilihat — salinan Zoho sendiri baru diperbarui tiap 5–15 menit
+    const t = setInterval(() => { if (document.visibilityState === 'visible') refreshInvoices() }, 5 * 60000)
     return () => clearInterval(t)
   }, [baseUser?.id, invoiceRange.from, invoiceRange.to]) // eslint-disable-line react-hooks/exhaustive-deps
   /** Invoice yang belum punya project (dipakai untuk angka di menu Faktur). */
@@ -266,7 +270,7 @@ export function AppProvider({ children }) {
   }, [invoices, data.projects, user, branchFilter])
 
   // ---------- kehadiran (Tim Aktif) ----------
-  // Denyut 1 menit sekali selama tab terbuka → kolom online_until & last_active_at.
+  // Denyut tiap 4 menit (BEAT_MS) selama tab terbuka → kolom online_until & last_active_at.
   const prevOnline = useRef(null)
   useEffect(() => {
     if (!baseUser) return

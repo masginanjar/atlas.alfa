@@ -1,0 +1,5 @@
+-- 19 Nov 2026 (sudah diterapkan di live): sinkron Zoho lebih jarang di luar jam kerja.
+--  • jam kerja 07.00–22.00 WITA (23.00–14.00 UTC): tiap 5 menit (job 'zoho-sync-10m')
+--  • di luar jam kerja 22.00–07.00 WITA (14.00–23.00 UTC): tiap 15 menit (job 'zoho-sync-malam')
+-- select cron.alter_job(<id zoho-sync-10m>, schedule := '*/5 0-13,23 * * *');
+-- select cron.schedule('zoho-sync-malam', '*/15 14-22 * * *', $$select public.zoho_sync_call('sync')$$);
