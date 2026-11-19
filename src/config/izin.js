@@ -115,6 +115,9 @@ export const MODUL = [
   // 15 Nov 2026: menu Alat. Fitur baru → bawaan hanya Superadmin (default deny); role lain diberi lewat Role & Hak Akses.
   { id: 'alat', label: 'Alat', fitur: [
     f('smart-translator', 'Smart Translator', ['menu', 'lihat']),
+    // 19 Nov 2026: Bahasa Belanda di Smart Translator (Indonesia ⇄ Belanda, template & istilah baku tim Belanda). Default deny — diberikan ke penerjemah Belanda lewat Role & Hak Akses.
+    // Diperiksa server (gemini-ai → app_izin) dan aplikasi Smart Translator (rpc app_izin). Tetap butuh izin smart-translator.lihat.
+    f('smart-translator-belanda', 'Smart Translator — Bahasa Belanda (template tim Belanda)', ['lihat']),
     // 17 Nov 2026: Pemisah Data & Spesimen Pejabat (baca data pejabat, potong tanda tangan/paraf/stempel, ekspor Word). Default deny.
     f('pemisah-spesimen', 'Pemisah Spesimen Pejabat', ['menu', 'lihat', 'kelola']),
     // 15 Nov 2026 (keputusan pemilik): Staf Apostille/Legalisasi membuat surat kuasa dari baris pekerjaannya → lihat, tambah, ubah, cetak. Menu, hapus, atur tetap hanya Superadmin.

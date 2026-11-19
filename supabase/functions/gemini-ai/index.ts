@@ -8,6 +8,11 @@
 //  aksi: "info" | "atur" | "jalan" (fitur + gambar) | "uji" (x-uji-token, data SINTETIS saja)
 // ============================================================
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import "./nl-core.js"; // Bahasa Belanda: arah, jenis dokumen, istilah baku, panduan AI (salinan dari public/smart-translator/nl-core.js)
+// deno-lint-ignore no-explicit-any
+const NLCORE = (globalThis as any).NLCORE as { ARAH: Record<string, unknown>; prompt: (arah: string, kode: string) => string };
+/** Izin memakai arah Belanda (template tim Belanda). Default deny — diberikan lewat Pengaturan → Role & Hak Akses. */
+const IZIN_NL = "smart-translator-belanda.lihat";
 
 const CORS = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-uji-token", "Access-Control-Allow-Methods": "POST, OPTIONS" };
 const json = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: s, headers: { "Content-Type": "application/json", ...CORS } });
@@ -121,7 +126,7 @@ const TUGAS: Record<string, { prompt: string; skema: unknown; maksKeluar: number
       "Elemen bukan teks ditulis sebagai blok tersendiri dengan sel dan en yang sama: (Logo), (Emblem), (Photograph), (Signature), (Stamp), (Signature and stamp), (Duty stamp), (QR Code). Teks pada cap yang terbaca disalin sebagai blok setelahnya. " +
       "Bagian yang tidak terbaca dengan yakin: salin yang terlihat saja, tulis [illegible] untuk bagian yang hilang, dan masukkan nomor urut bloknya (mulai 1, sebagai teks) ke ragu. Jangan mengarang. " +
       "jenis (di luar blok) = nama jenis dokumen dalam bahasa Indonesia seperti tertulis (mis. SURAT KETERANGAN DOMISILI). judul_en = nama jenis dokumen itu dalam bahasa Inggris, singkat (mis. Certificate of Domicile). nama = nama orang/pihak utama yang diterangkan dokumen (kosong bila tidak ada). orientasi = MENDATAR atau TEGAK sesuai bentuk kertas.",
-    skema: { type: "OBJECT", properties: { bahasa: S("bahasa utama teks sumber halaman ini: ID atau EN"), jenis: S("nama jenis dokumen (Indonesia)"), judul_en: S("nama jenis dokumen (Inggris), singkat"), nama: S("nama orang/pihak utama, boleh kosong"), orientasi: S("MENDATAR atau TEGAK"),
+    skema: { type: "OBJECT", properties: { bahasa: S("bahasa utama teks sumber halaman ini: ID, EN, atau NL"), jenis: S("nama jenis dokumen (Indonesia)"), judul_en: S("nama jenis dokumen (Inggris), singkat"), nama: S("nama orang/pihak utama, boleh kosong"), orientasi: S("MENDATAR atau TEGAK"),
       blok: { type: "ARRAY", items: { type: "OBJECT", properties: { jenis: S("judul | sub | paragraf | tabel_kepala | tabel | ttd"), rata: S("kiri | tengah | kanan | rata"), sel: { type: "ARRAY", items: { type: "STRING" } }, en: { type: "ARRAY", items: { type: "STRING" } }, kolom: S("0, 1, 2, atau 3") }, required: ["jenis", "rata", "sel", "en", "kolom"] } },
       ragu: { type: "ARRAY", items: { type: "STRING" } } }, required: ["bahasa", "jenis", "judul_en", "nama", "orientasi", "blok", "ragu"] },
     maksKeluar: 16000, batasMs: 100000,
@@ -142,9 +147,11 @@ const NR_EN_ID = "teks sumber berbahasa INGGRIS, maka en diisi terjemahan ke BAH
   "Nama lembaga, konvensi, dan badan asing dipertahankan dalam bahasa aslinya; istilah teknis asing boleh diberi aslinya dalam kurung, mis. akta jual beli (Bill of Sale). Salah ketik dan penomoran ganda pada sumber dipertahankan apa adanya. " +
   "Istilah baku: execution/executed = penandatanganan/ditandatangani (bukan pelaksanaan); herein = dalam Perjanjian ini; hereunder = berdasarkan Perjanjian ini; subject matter = objek perjanjian; cure period = masa tenggang; binding effect = kekuatan mengikat; govern and prevail = berlaku dan diutamakan; reputable = bereputasi baik; itemized = terperinci; " +
   "maritime lien = piutang maritim yang didahulukan (maritime lien); willful misconduct = kesalahan yang disengaja; shall (kewajiban) = wajib; (the \"X\") = (selanjutnya disebut \"X\"); Parties = Para Pihak (konsisten). Frasa 'by the Buyer/Seller' dilekatkan ke kata kerja yang benar (siapa yang membayar vs siapa yang menunjuk) sesuai kalimat sumber.";
-function arahNonreg(arah: string, konteks: string) {
+function arahNonreg(arah: string, konteks: string, panduan = "") {
   let t = "";
-  if (arah === "en-id") t = " ARAH TERJEMAHAN (mengalahkan kata 'bahasa Inggris' di atas): Inggris → Indonesia. bahasa = EN; " + NR_EN_ID;
+  // 19 Nov 2026: Indonesia ⇄ Belanda. Panduan dipilih lewat KODE jenis dokumen; teksnya disusun server (klien tidak bisa mengirim prompt).
+  if (NLCORE.ARAH[arah]) t = NLCORE.prompt(arah, /^[a-z-]{2,20}$/.test(panduan) ? panduan : "lain");
+  else if (arah === "en-id") t = " ARAH TERJEMAHAN (mengalahkan kata 'bahasa Inggris' di atas): Inggris → Indonesia. bahasa = EN; " + NR_EN_ID;
   else if (arah === "id-en") t = " ARAH TERJEMAHAN: Indonesia → Inggris untuk SELURUH halaman dokumen ini (walaupun halaman ini memuat kutipan bahasa lain). bahasa = ID.";
   else t = " ARAH TERJEMAHAN: tentukan dulu bahasa utama teks sumber dan isi bahasa = ID atau EN. Bila ID: en berisi terjemahan bahasa Inggris seperti aturan di atas. Bila EN (aturan ini mengalahkan kata 'bahasa Inggris' di atas): " + NR_EN_ID;
   const k = konteks.replace(/\s+/g, " ").trim().slice(-500);
@@ -289,7 +296,8 @@ Deno.serve(async (req: Request) => {
     if (m[2].length * 0.75 > MAKS_BYTE) return json({ ok: false, alasan: "gambar terlalu besar (maks 8 MB)" }, 400);
     // Smart Translator: jenis dokumen boleh dipilih pemanggil (akta kelahiran / kartu keluarga / ijazah / transkrip / non-reguler); selain itu tugas bawaan fitur.
     const tugasJalan = fitur === "penerjemah" && ["akta", "kk", "ijazah", "transkrip", "nonreg"].includes(String(b.tugas ?? "")) ? String(b.tugas) : F.tugas;
-    const tambahan = tugasJalan === "nonreg" ? arahNonreg(String(b.arah ?? ""), String(b.konteks ?? "")) : "";
+    if (tugasJalan === "nonreg" && NLCORE.ARAH[String(b.arah ?? "")] && !(await boleh(IZIN_NL))) return json({ ok: false, alasan: "Tidak ada akses Smart Translator Bahasa Belanda" }, 403);
+    const tambahan = tugasJalan === "nonreg" ? arahNonreg(String(b.arah ?? ""), String(b.konteks ?? ""), String(b.panduan ?? "")) : "";
     return json(await satu(fitur, model, tugasJalan, m[2], m[1], tambahan));
   }
 

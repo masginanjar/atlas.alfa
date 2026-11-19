@@ -14,6 +14,8 @@ import { Card, Input, cx } from './ui.jsx'
 //  Bawaan: ditolak (hanya Superadmin). Perubahan tercatat di riwayat akses (audit).
 // ============================================================
 const KODE = ['smart-translator.menu', 'smart-translator.lihat']
+// 19 Nov 2026: Bahasa Belanda (Indonesia ⇄ Belanda, template tim Belanda) — izin terpisah, default deny, diberikan per pengguna di daftar yang sama.
+const KODE_NL = 'smart-translator-belanda.lihat'
 
 export default function AksesSmartTranslator() {
   const { user, data, save, notify } = useApp()
@@ -23,7 +25,7 @@ export default function AksesSmartTranslator() {
   const aktifKecuali = (u, nilai) => kecuali.filter((k) => k.user_id === u.id && !k.dicabut && KODE.includes(k.kode) && k.nilai === nilai && (!k.sampai || new Date(k.sampai) > new Date()))
   const baris = useMemo(() => (data.users || []).filter((u) => u.active !== false).map((u) => {
     const e = izinEfektif(u, 'smart-translator.lihat')
-    return { u, punya: e.boleh, sumber: u.role === 'superadmin' ? 'superadmin' : e.boleh ? (e.sumber === 'pengecualian' ? 'khusus' : 'role') : (e.sumber === 'pengecualian' ? 'dilarang' : 'tidak') }
+    return { u, punya: e.boleh, nl: izinEfektif(u, KODE_NL).boleh, sumber: u.role === 'superadmin' ? 'superadmin' : e.boleh ? (e.sumber === 'pengecualian' ? 'khusus' : 'role') : (e.sumber === 'pengecualian' ? 'dilarang' : 'tidak') }
   }).sort((a, b) => Number(b.punya) - Number(a.punya) || String(a.u.name).localeCompare(String(b.u.name))), [data.users, data.akses_pengecualian, data.akses_role]) // eslint-disable-line react-hooks/exhaustive-deps
   if (!boleh(user, 'pengaturan.role.lihat')) return <Card className="p-5 text-sm text-ink-mute" data-st-akses-tanpa>Tidak ada akses ke pengaturan ini.</Card>
   const tampil = baris.filter((x) => (saring === 'semua' || (saring === 'punya') === x.punya) && (!q || `${x.u.name} ${x.u.email || ''} ${roleLabel(x.u)} ${x.u.branch || ''}`.toLowerCase().includes(q.toLowerCase())))
@@ -48,6 +50,21 @@ export default function AksesSmartTranslator() {
       }
     } catch (e) { notify(e.message || 'Gagal menyimpan', 'err') } finally { setSibuk('') }
   }
+  /** Bahasa Belanda untuk satu pengguna (hanya bila ia sudah punya akses Smart Translator). */
+  const ubahNl = async (x, beri) => {
+    if (!bisaUbah || sibuk) return
+    if (x.u.id === user.id) return notify('Akses Anda sendiri tidak bisa diubah dari sini', 'err')
+    setSibuk(x.u.id)
+    try {
+      const kini = new Date().toISOString()
+      const punyaKecuali = (nilai) => kecuali.filter((k) => k.user_id === x.u.id && !k.dicabut && k.kode === KODE_NL && k.nilai === nilai && (!k.sampai || new Date(k.sampai) > new Date()))
+      const tulis = (nilai) => save('akses_pengecualian', { user_id: x.u.id, kode: KODE_NL, nilai, cakupan: nilai === 'izinkan' ? 'sendiri' : undefined, sampai: '', alasan: 'Smart Translator — Bahasa Belanda', oleh: user.name, oleh_id: user.id, at: kini })
+      const cabut = async (nilai) => { for (const k of punyaKecuali(nilai)) await save('akses_pengecualian', { id: k.id, dicabut: true, dicabut_at: kini, dicabut_oleh: user.name }) }
+      const dariRole = izinEfektif({ ...x.u, id: `__role__${x.u.role}` }, KODE_NL).boleh
+      if (beri) { await cabut('larang'); if (!dariRole && !punyaKecuali('izinkan').length) await tulis('izinkan'); await audit(x.u, 'tambah', `Izinkan Smart Translator Bahasa Belanda untuk ${x.u.name}`); notify(`${x.u.name} sekarang boleh memakai Bahasa Belanda di Smart Translator`) }
+      else { await cabut('izinkan'); if (dariRole) await tulis('larang'); await audit(x.u, 'cabut', `Cabut Smart Translator Bahasa Belanda dari ${x.u.name}`); notify(`Bahasa Belanda untuk ${x.u.name} dicabut`) }
+    } catch (e) { notify(e.message || 'Gagal menyimpan', 'err') } finally { setSibuk('') }
+  }
   /** Apakah role pengguna ini (tanpa pengecualian) sudah memberi akses. */
   const roleMemberi = (u) => izinEfektif({ ...u, id: `__role__${u.role}` }, 'smart-translator.lihat').boleh
 
@@ -58,7 +75,7 @@ export default function AksesSmartTranslator() {
         <div className="flex items-start gap-3">
           <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-brand-soft text-brand"><Languages className="h-5 w-5" aria-hidden="true" /></span>
           <div className="min-w-0"><h2 className="font-bold">Akses Smart Translator</h2>
-            <p className="text-sm text-ink-mute">Pilih siapa yang boleh memakai Smart Translator. Yang belum diberi akses tidak melihat menunya, tidak bisa membukanya lewat alamat langsung, dan permintaan baca dokumennya ditolak server. Izin ini tidak membuka akses ke berkas pekerjaan lain.</p></div>
+            <p className="text-sm text-ink-mute">Pilih siapa yang boleh memakai Smart Translator. Yang belum diberi akses tidak melihat menunya, tidak bisa membukanya lewat alamat langsung, dan permintaan baca dokumennya ditolak server. Izin ini tidak membuka akses ke berkas pekerjaan lain. Tombol <b>Belanda</b> di tiap baris membuka arah Indonesia ⇄ Belanda beserta template tim Belanda untuk orang itu.</p></div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <label className="relative min-w-0 flex-1 md:max-w-sm"><span className="sr-only">Cari pengguna</span><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-mute" aria-hidden="true" /><Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari nama, role, atau cabang" className="pl-9 max-md:min-h-11 max-md:text-base" data-st-cari /></label>
@@ -72,6 +89,8 @@ export default function AksesSmartTranslator() {
             <li key={x.u.id} className="flex items-center gap-3 px-4 py-2.5 max-md:min-h-14" data-st-baris={x.u.id}>
               <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold text-ink">{x.u.name}</p><p className="truncate text-xs text-ink-mute">{roleLabel(x.u) || x.u.role}{x.u.branch ? ` · ${branchLabel(x.u) || x.u.branch}` : ''}</p></div>
               <span className={cx('hidden shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold sm:inline', cls)}>{lbl}</span>
+              {x.punya && <button type="button" aria-pressed={x.nl} aria-label={`Bahasa Belanda untuk ${x.u.name}`} title="Indonesia ⇄ Belanda (template tim Belanda)" disabled={kunci || sibuk === x.u.id} onClick={() => ubahNl(x, !x.nl)} data-st-nl={x.nl ? 'ya' : 'tidak'}
+                className={cx('h-7 shrink-0 rounded-full px-2.5 text-[11px] font-semibold ring-1 transition max-md:h-11 max-md:px-3 max-md:text-xs', x.nl ? 'bg-emerald-50 text-emerald-700 ring-emerald-200' : 'bg-white text-ink-mute ring-slate-200', kunci && 'cursor-not-allowed opacity-50')}>Belanda{x.nl ? ' ✓' : ''}</button>}
               <button type="button" role="switch" aria-checked={x.punya} aria-label={`Smart Translator untuk ${x.u.name}`} disabled={kunci || sibuk === x.u.id} onClick={() => ubah(x, !x.punya)} data-st-saklar={x.punya ? 'ya' : 'tidak'}
                 className={cx('relative h-7 w-12 shrink-0 rounded-full transition max-md:h-8 max-md:w-14', x.punya ? 'bg-emerald-600' : 'bg-slate-300', kunci && 'cursor-not-allowed opacity-50')}>
                 <span className={cx('absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-all max-md:h-6 max-md:w-6', x.punya ? 'left-6 max-md:left-7' : 'left-1')} />
