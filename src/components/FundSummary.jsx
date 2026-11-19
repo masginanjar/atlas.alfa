@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { TandaDana } from './badges.jsx'
 import { Landmark, ChevronUp, Pencil, Check, X } from 'lucide-react'
 import { useApp } from '../lib/store.jsx'
 import { can } from '../config/access.js'
@@ -39,7 +40,7 @@ export default function FundSummary() {
         <button type="button" onClick={toggle} className="flex w-full flex-wrap items-stretch gap-2 px-4 py-2.5 text-left" aria-label="Ringkasan sumber dana — klik untuk buka">
           {rows.map((r) => (
             <span key={r.code} className="rounded-lg bg-white px-2.5 py-1 ring-1 ring-slate-200" title={`${r.name}: menunggu transfer ${rupiah(r.waiting)}${r.remaining !== null ? ` · sisa ${rupiah(r.remaining)}` : ''}`}>
-              <span className="text-[11px] font-black">{r.code}</span> <b className="tabular-nums">{jt(r.waiting)}</b>
+              <TandaDana code={r.code} className="mr-1 align-middle" /> <b className="tabular-nums">{jt(r.waiting)}</b>
               {r.remaining !== null && <span className={cx('ml-1 text-[10px] font-semibold tabular-nums', r.remaining < 0 ? 'text-rose-600' : 'text-emerald-700')}>sisa {jt(r.remaining)}</span>}
             </span>
           ))}
@@ -62,7 +63,7 @@ export default function FundSummary() {
         <ul className="divide-y divide-slate-100 sm:hidden">
           {rows.map((r) => (
             <li key={r.code} className="space-y-1.5 px-3 py-3">
-              <div className="flex items-center gap-2"><span className="rounded-md bg-ink px-1.5 py-0.5 text-xs font-bold text-white">{r.code}</span><span className="min-w-0 flex-1 truncate text-xs text-ink-soft">{r.name}</span>
+              <div className="flex items-center gap-2"><TandaDana code={r.code} /><span className="min-w-0 flex-1 truncate text-xs text-ink-soft">{r.name}</span>
                 {canEdit && edit?.code !== r.code && <button onClick={() => setEdit({ code: r.code, value: r.balance ?? '' })} aria-label={`Ubah saldo ${r.code} (HP)`} className="rounded p-1 text-ink-mute hover:bg-slate-100 hover:text-brand"><Pencil className="h-3.5 w-3.5" /></button>}</div>
               {edit?.code === r.code && <div className="flex items-center gap-1"><Input type="number" inputMode="numeric" value={edit.value} onChange={(e) => setEdit({ ...edit, value: e.target.value })} className="!py-1 text-right text-sm" aria-label={`Saldo ${r.code} (HP)`} placeholder="Saldo" />
                 <button onClick={saveBal} aria-label="Simpan saldo (HP)" className="rounded p-1 text-emerald-600"><Check className="h-4 w-4" /></button><button onClick={() => setEdit(null)} aria-label="Batal (HP)" className="rounded p-1 text-ink-mute"><X className="h-4 w-4" /></button></div>}
@@ -81,7 +82,7 @@ export default function FundSummary() {
             <th className="px-4 py-2">Sumber</th><th className="px-2 py-2 text-right">Saldo</th><th className="px-2 py-2 text-right">Menunggu transfer</th><th className="px-2 py-2 text-right">Sisa setelah transfer</th><th className="px-4 py-2 text-right">Ditransfer ({range.from || range.to ? 'rentang' : 'semua'})</th></tr></thead>
           <tbody className="divide-y divide-slate-100">{rows.map((r) => (
             <tr key={r.code}>
-              <td className="px-4 py-2.5"><span className="mr-2 rounded-md bg-ink px-1.5 py-0.5 text-xs font-bold text-white">{r.code}</span><span className="text-xs text-ink-soft">{r.name}</span></td>
+              <td className="px-4 py-2.5"><TandaDana code={r.code} className="mr-2" /><span className="text-xs text-ink-soft">{r.name}</span></td>
               <td className="px-2 py-2.5 text-right">
                 {edit?.code === r.code ? (
                   <span className="inline-flex items-center gap-1"><Input type="number" inputMode="numeric" value={edit.value} onChange={(e) => setEdit({ ...edit, value: e.target.value })} className="!w-36 !py-1 text-right text-xs" aria-label={`Saldo ${r.code}`} autoFocus />

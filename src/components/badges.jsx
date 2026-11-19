@@ -158,3 +158,14 @@ export function NoteIcon({ note, className }) {
     </span>
   )
 }
+
+/**
+ * Sumber rekening (PT) dengan warna tebal supaya tidak salah transfer (19 Nov 2026):
+ * ATS biru · PTI merah · PAL hijau · ATI kuning. Kode lain / kosong → abu-abu. Warna selalu disertai tulisan kodenya.
+ */
+export const WARNA_DANA = { ATS: 'bg-[#1D4ED8] text-white', PTI: 'bg-[#DC2626] text-white', PAL: 'bg-[#15803D] text-white', ATI: 'bg-[#FACC15] text-[#422006]' }
+export function TandaDana({ code, className = '' }) {
+  if (!code) return null
+  const k = String(code).trim().toUpperCase()
+  return <span data-dana={k} title={`Sumber rekening ${k}`} className={`inline-flex shrink-0 items-center rounded-md px-2 py-0.5 text-[11px] font-extrabold tracking-wide ${WARNA_DANA[k] || 'bg-slate-600 text-white'} ${className}`}>{k}</span>
+}

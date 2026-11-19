@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { TandaDana } from './badges.jsx'
 import { Landmark, Download, Send, Wallet, Flag, CheckCircle2, Clock3, Hourglass, BadgeCheck, Undo2, X, Repeat2 } from 'lucide-react'
 import { useApp } from '../lib/store.jsx'
 import { drive } from '../lib/integrations.js'
@@ -106,7 +107,7 @@ export function PengajuanSummary({ sub, className }) {
           <dt className="flex-1 text-xs font-bold uppercase tracking-wide text-ink">Total Pengajuan</dt>
           <dd>{samar ? <span className="text-xs text-ink-mute" data-biaya-samar>Tidak ditampilkan</span> : <NominalCopy nilai={totalPengajuan(d)} label="total pengajuan" besar />}</dd>
         </div>
-        {d.sumber_dana && can.seeFunding(user) && <div className="flex gap-2 text-xs"><dt className="w-16 shrink-0 font-semibold text-ink-mute">Sumber</dt><dd className="min-w-0 flex-1 font-semibold text-ink">{sumberLabel(d.sumber_dana)}</dd></div>}
+        {d.sumber_dana && can.seeFunding(user) && <div className="flex gap-2 text-xs"><dt className="w-16 shrink-0 font-semibold text-ink-mute">Sumber</dt><dd className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5 font-semibold text-ink"><TandaDana code={d.sumber_dana} /><span className="min-w-0">{sumberLabel(d.sumber_dana)}</span></dd></div>}
         {d.rekening && <div className="flex gap-2 text-xs"><dt className="w-16 shrink-0 font-semibold text-ink-mute">Penerima</dt><dd className="min-w-0 flex-1">{accountLabel(d.rekening)}</dd></div>}
         {d.paid_date && <div className="flex gap-2 text-xs"><dt className="w-16 shrink-0 font-semibold text-ink-mute">Dibayar</dt><dd>{tgl(d.paid_date)}</dd></div>}
         {d.vendor_note && <p className="pt-1 text-xs text-ink-mute">Catatan: {d.vendor_note}</p>}
@@ -141,7 +142,7 @@ export function SumberDanaPicker({ value, onChange, className, recommended, layo
             className={cx('flex w-full items-center gap-2 px-2.5 py-1.5 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand',
               i > 0 && 'border-t border-slate-100', on ? 'bg-brand text-white' : 'hover:bg-slate-50')}>
             <span className={cx('grid h-4 w-4 shrink-0 place-items-center rounded-full ring-1', on ? 'bg-white ring-white' : 'ring-slate-300')}>{on && <span className="h-2 w-2 rounded-full bg-brand" />}</span>
-            <span className="w-9 shrink-0 text-xs font-bold">{d.code}</span>
+            <TandaDana code={d.code} className="w-11 justify-center" />
             <span className={cx('min-w-0 flex-1 truncate text-[11px]', on ? 'text-white/85' : 'text-ink-mute')} title={d.name}>{d.name}</span>
             {recommended === d.code && <span className={cx('shrink-0 rounded-full px-1.5 text-[9px] font-bold uppercase', on ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-700')}>Rek.</span>}
             <span className={cx('shrink-0 text-[11px] font-semibold tabular-nums', on ? 'text-white' : m?.remaining < 0 ? 'text-rose-600' : 'text-ink-soft')} title={`Menunggu ${rupiah(m?.waiting || 0)}${m?.remaining != null ? ` · Sisa ${rupiah(m.remaining)}` : ''}`}>
@@ -160,7 +161,7 @@ export function SumberDanaPicker({ value, onChange, className, recommended, layo
           <button key={d.code} type="button" role="radio" aria-checked={on} onClick={() => onChange(d.code)} title={d.name}
             className={cx('flex flex-col items-start rounded-xl px-3 py-2 text-left ring-1 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand',
               on ? 'bg-brand text-white ring-brand' : 'bg-white text-ink ring-slate-300 hover:ring-brand')}>
-            <span className="flex items-center gap-1.5 text-sm font-bold"><Landmark className="h-3.5 w-3.5" />{d.code}{on && <CheckCircle2 className="h-3.5 w-3.5" />}{recommended === d.code && <span className={cx('rounded-full px-1.5 text-[9px] font-bold uppercase', on ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-700')}>Rekomendasi</span>}</span>
+            <span className="flex items-center gap-1.5 text-sm font-bold"><Landmark className="h-3.5 w-3.5" /><TandaDana code={d.code} />{on && <CheckCircle2 className="h-3.5 w-3.5" />}{recommended === d.code && <span className={cx('rounded-full px-1.5 text-[9px] font-bold uppercase', on ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-700')}>Rekomendasi</span>}</span>
             <span className={cx('text-[10px] leading-tight', on ? 'text-white/80' : 'text-ink-mute')}>{d.name}</span>
             <span className={cx('mt-1 text-[10px] font-semibold leading-tight', on ? 'text-white' : sum[d.code]?.remaining < 0 ? 'text-rose-600' : 'text-ink-soft')}>
               Menunggu {rupiah(sum[d.code]?.waiting || 0)}{sum[d.code]?.remaining !== null && sum[d.code]?.remaining !== undefined ? ` · Sisa ${rupiah(sum[d.code].remaining)}` : ''}

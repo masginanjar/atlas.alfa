@@ -1,4 +1,5 @@
 import { cx } from './ui.jsx'
+import { TandaDana } from './badges.jsx'
 import CopyText, { NominalCopy } from './CopyText.jsx'
 import { rupiah } from '../lib/format.js'
 
@@ -81,7 +82,7 @@ export function FinAmount({ value, sub, className, label = 'nominal' }) {
   return (
     <span className={cx('flex items-baseline gap-2 lg:block lg:text-right', className)}>
       <NominalCopy nilai={value} label={label} besar className="lg:justify-end" />
-      {sub && <span className="text-xs font-semibold text-ink-mute lg:mt-0.5 lg:block">{sub}</span>}
+      {sub && <span className="text-xs font-semibold text-ink-mute lg:mt-0.5 lg:block">{/^Dana [A-Za-z]{2,5}$/.test(String(sub)) ? <TandaDana code={String(sub).slice(5)} /> : sub}</span>}
     </span>
   )
 }
@@ -103,5 +104,5 @@ export function Rek({ acc, empty = '—', emptyHref }) {
   )
 }
 
-/** Sumber dana (chip kecil hitam). */
-export const DanaChip = ({ code }) => (code ? <span className="rounded-md bg-ink px-1.5 py-0.5 text-[10px] font-bold text-white" title="Sumber dana">{code}</span> : null)
+/** Sumber dana (chip berwarna per PT: ATS biru · PTI merah · PAL hijau · ATI kuning). */
+export const DanaChip = ({ code }) => <TandaDana code={code} />

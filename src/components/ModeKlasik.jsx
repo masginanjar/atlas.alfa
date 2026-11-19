@@ -4,6 +4,7 @@
 //  Tanpa harga proyek, pembayaran pelanggan, maupun omset.
 //  Pilihan disimpan per pengguna di perangkat ini. Di HP tidak tersedia.
 // ============================================================
+import { TandaDana } from './badges.jsx'
 import { PriorityBadge } from './Priority.jsx'
 import { prioSub, prioSubBeda } from '../config/priority.js'
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
@@ -187,7 +188,7 @@ function InfoLayanan({ r, nameOf }) {
 
 /** Isi popup ringkas satu pengajuan (tab Keuangan). Tanpa harga proyek — hanya nominal pengajuan. */
 function InfoPengajuan({ r }) {
-  const baris = [['Jenis', r.jenis], ['No invoice', r.invoice], ['Pelanggan', r.pelanggan], ['Nominal', r.total ? rupiah(r.total) : ''], ['Sumber dana', r.sumber], ['Kantor', r.kantor], ['Diajukan', r.cs],
+  const baris = [['Jenis', r.jenis], ['No invoice', r.invoice], ['Pelanggan', r.pelanggan], ['Nominal', r.total ? rupiah(r.total) : ''], ['Sumber dana', r.sumber ? <TandaDana code={r.sumber} /> : ''], ['Kantor', r.kantor], ['Diajukan', r.cs],
     ['Penerima', r.penerima], ['Bank', r.rek?.bank], ['No. rekening', r.rek?.number]].filter(([, v]) => v)
   return (
     <div className="space-y-1.5">
@@ -872,7 +873,7 @@ function KlasikKeuangan() {
               <button type="button" onClick={() => setBuka(terbuka ? null : r.id)} aria-expanded={terbuka} className={cx('block w-full px-3 py-2.5 text-left', terbuka && 'bg-[var(--klasik-pilih)]')} data-klasik-aju={r.st} data-ditahan={ditahan.has(r.id) ? '' : undefined}>
                 <span className="flex items-center gap-2"><span className={cx('rounded px-1.5 text-[10px] font-semibold', cls)}>{lbl}</span>{ditahan.has(r.id) && <TandaDitahan />}<span className="text-[10px] text-ink-mute">{jam(r.at)}</span><b className="ml-auto tabular-nums">{r.total ? rupiah(r.total) : '—'}</b></span>
                 <span className="mt-1 flex"><b className="min-w-0 flex-1 truncate">{r.jenis}</b><span className="ml-2 shrink-0 text-ink-soft">{r.kantor} · {r.cs || '—'}</span></span>
-                <span className="block truncate text-[11.5px] text-ink-soft">{[r.invoice, r.penerima, [r.rek.bank, r.rek.number].filter(Boolean).join(' '), r.sumber].filter(Boolean).join(' · ') || '—'}</span>
+                <span className="block truncate text-[11.5px] text-ink-soft">{r.sumber && <TandaDana code={r.sumber} className="mr-1.5 align-middle" />}{[r.invoice, r.penerima, [r.rek.bank, r.rek.number].filter(Boolean).join(' ')].filter(Boolean).join(' · ') || (r.sumber ? '' : '—')}</span>
               </button>
               {terbuka && <div className="bg-[var(--klasik-detail)]" onClick={(e) => e.stopPropagation()}>
                 <div className="flex flex-wrap gap-2 px-3 pt-2 text-[12px]"><span className="rounded-lg bg-white px-2 py-1.5 ring-1 ring-slate-200">Nota: <FileLink f={r.nota} label="Lihat" /></span><span className="rounded-lg bg-white px-2 py-1.5 ring-1 ring-slate-200">Bukti: <FileLink f={r.bukti} label="Lihat" /></span>{r.tglTf && <span className="rounded-lg bg-white px-2 py-1.5 ring-1 ring-slate-200">Transfer {String(r.tglTf).slice(0, 10)}</span>}{r.pelanggan && <span className="rounded-lg bg-white px-2 py-1.5 ring-1 ring-slate-200">{r.pelanggan}</span>}</div>
@@ -916,7 +917,7 @@ function KlasikKeuangan() {
                   <td className="px-3"><span className="inline-flex items-center"><InfoHover inline isi={<InfoPengajuan r={r} />}>{r.tipe === 'vendor' ? <InvoiceNo project={r.p} /> : <span className="font-bold">{r.invoice || '—'}</span>}</InfoHover>{salin && <Salin teks={r.invoice ? invoiceLabel(r.invoice) : ''} label="No invoice" />}</span></td>
                   <td className="px-3"><span className={cx('rounded px-2 py-0.5 text-[11px] font-semibold', cls)}>{lbl}</span></td>
                   <td className="px-3"><InfoHover isi={<InfoPengajuan r={r} />}><span className="cursor-help underline decoration-dotted decoration-slate-300 underline-offset-2">{r.jenis}</span></InfoHover></td>
-                  <td className="px-3">{r.sumber || '—'}</td>
+                  <td className="px-3">{r.sumber ? <TandaDana code={r.sumber} /> : '—'}</td>
                   <td className="px-3"><span className="inline-flex max-w-[190px] items-center"><span className="truncate">{r.pelanggan || '—'}</span>{salin && <Salin teks={r.pelanggan} label="Nama pelanggan" />}</span></td>
                   <td className="px-3 text-right font-semibold tabular-nums">{r.total ? rupiah(r.total) : '—'}{salin && <Salin teks={r.total ? String(Math.round(r.total)) : ''} label="Nominal" />}</td>
                   <td className="px-3">{r.kantor || '—'}</td>
