@@ -77,7 +77,10 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
     if (!r.ok) return setTarikSt({ galat: r.alasan })
     const sebelum = subs
     setSubs([...subs.filter(subTerisi), ...r.subs]) // sub yang sudah diisi manual dipertahankan; baris kosong diganti usulan
-    setTarikSt({ ok: true, n: r.subs.length, mesin: r.mesin, dilewati: r.dilewati || [], sebelum })
+    // Data pengiriman (item Delivery Fee: kurir, penerima, HP, alamat) ikut ditarik. Dibaca DI PERANGKAT INI — tidak dikirim ke AI.
+    const k = applyInvoice({ invoice_no: invoiceItems.invoice_no, items: invoiceItems.items }, { force: true }) || {}
+    const kirim = [k.alamat && (customer ? 'alamat & penerima' : 'alamat ada di invoice — pilih pelanggan dulu supaya terpasang'), k.kurir && `kurir ${k.kurir}`, k.kantor && `via kantor ${k.kantor}`].filter(Boolean).join(' · ')
+    setTarikSt({ ok: true, n: r.subs.length, mesin: r.mesin, dilewati: r.dilewati || [], sebelum, kirim })
   }
   const urungTarik = () => { if (tarikSt?.sebelum) setSubs(tarikSt.sebelum); setTarikSt(null) }
   const propTarik = !editing && bolehIzin(user, 'tarik-data.tambah') ? { onTarik: jalankanTarik, onUrung: urungTarik, tarik: tarikSt } : {}
@@ -141,7 +144,14 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
       return next
     })
     setAutoFill({ invoice_no: inv, ship: !!(p.ship && p.hasAddress), courier: courierRow?.name || '', priority: p.priority, others: p.others.length })
+    return { alamat: !!(p.ship && p.hasAddress), kurir: courierRow?.name || '', kantor: p.office || '' }
   }
+  // Pelanggan baru terpasang SETELAH invoice dibaca (mis. invoice diketik dulu, pelanggan terisi dari pemilik invoice)
+  // → data pengiriman dari item invoice dipasang ke pelanggan itu. Tanpa ini alamat kirim dari invoice terlewat.
+  useEffect(() => {
+    if (editing || !customer?.zoho_id || !invoiceItems?.items?.length || customer.ship_source === 'invoice') return
+    applyInvoice({ invoice_no: invoiceItems.invoice_no, items: invoiceItems.items })
+  }, [customer?.zoho_id, invoiceItems?.invoice_no]) // eslint-disable-line react-hooks/exhaustive-deps
   // Begitu invoice dipilih/diketik → baca item invoice dari salinan Zoho (debounce)
   useEffect(() => {
     if (editing) return
@@ -842,7 +852,7 @@ function InvoiceItemsView({ inv, onTarik, onUrung, tarik }) {
       {tarik?.ok && (
         <div role="status" className="flex flex-wrap items-center gap-2 border-t border-violet-100 bg-violet-50 px-3.5 py-2 text-xs text-violet-900" data-tarik-hasil={tarik.mesin}>
           <Sparkles className="h-3.5 w-3.5 shrink-0" />
-          <p className="min-w-0 flex-1"><b className="font-bold">{tarik.n} sub project disusun dari invoice (beta)</b> — {tarik.mesin === 'ai' ? 'dianalisa AI' : 'DEMO: disusun dengan aturan sederhana, bukan AI (AI hanya berjalan di ATLAS live)'}. Periksa lagi tiap sub, lalu tinggal pilih filenya. Belum ada yang tersimpan.{tarik.dilewati?.length > 0 && <span className="block text-violet-800/80">Tidak dijadikan sub: {tarik.dilewati.join(' · ')}</span>}</p>
+          <p className="min-w-0 flex-1"><b className="font-bold">{tarik.n} sub project disusun dari invoice (beta)</b> — {tarik.mesin === 'ai' ? 'dianalisa AI' : 'DEMO: disusun dengan aturan sederhana, bukan AI (AI hanya berjalan di ATLAS live)'}. Periksa lagi tiap sub, lalu tinggal pilih filenya. Belum ada yang tersimpan.<span className="block" data-tarik-kirim>{tarik.kirim ? <>Pengiriman ikut ditarik: <b className="font-bold">{tarik.kirim}</b> — periksa di bagian 1.</> : 'Pengiriman: tidak ada data kirim di invoice ini — isi manual.'}</span>{tarik.dilewati?.length > 0 && <span className="block text-violet-800/80">Tidak dijadikan sub: {tarik.dilewati.join(' · ')}</span>}</p>
           <button type="button" onClick={onUrung} data-aksi="urung-tarik" className="inline-flex min-h-8 items-center rounded-lg bg-white px-2.5 py-1 text-[11.5px] font-bold text-violet-800 ring-1 ring-violet-300 hover:bg-violet-100 max-md:min-h-11 max-md:px-3">Urungkan</button>
         </div>
       )}
