@@ -88,6 +88,10 @@ export const MODUL = [
     f('mitra', 'Mitra', ['menu', 'lihat', 'detail', 'tambah', 'ubah', 'hapus'], { semua: dari(canSeeMitra) }),
     f('katalog', 'Katalog / Daftar Harga', ['menu', 'lihat', 'tambah', 'ubah', 'hapus', 'impor', 'ekspor'], { semua: dari(canSeeKatalog) }),
   ] },
+  { id: 'marketing', label: 'Marketing', fitur: [
+    // 20 Nov 2026: ide konten & status posting blog per website. Default deny → hanya Super Admin sampai diatur di Role & Hak Akses.
+    f('marketing-website', 'Website — ide konten & status posting blog', ['menu', 'lihat', 'tambah', 'ubah', 'hapus']),
+  ] },
   { id: 'project', label: 'Project', fitur: [
     // 19 Nov 2026: Tarik Data (beta) — susun usulan sub project dari item invoice memakai AI (server: tarik-data-ai).
     f('tarik-data', 'Tarik Data (beta) — susun sub project dari invoice', ['tambah'], { tambah: ['cs', 'admin_pusat', 'helper', 'direktur', 'supervisor'] }),
@@ -212,7 +216,7 @@ export const pisahKode = (kode) => { const i = kode.lastIndexOf('.'); return [ko
 
 /** Halaman (rute #/key[/sub]) → fitur yang mengatur aksesnya. */
 export const RUTE_FITUR = {
-  beranda: 'beranda', dashboard: 'dashboard', faktur: 'faktur', pelanggan: 'pelanggan', mitra: 'mitra', 'daftar-harga': 'katalog',
+  beranda: 'beranda', dashboard: 'dashboard', faktur: 'faktur', pelanggan: 'pelanggan', mitra: 'mitra', 'daftar-harga': 'katalog', 'marketing-website': 'marketing-website',
   projects: 'project', penugasan: 'penugasan', register: 'register', otorisasi: 'otorisasi', dokumen: 'dokumen', affidavit: 'affidavit',
   keuangan: 'keuangan', vendor: 'vendor', agenda: 'agenda', jadwal: 'jadwal', notes: 'notes', perusahaan: 'perusahaan', faq: 'faq', settings: 'settings',
   kehadiran: 'kehadiran', 'smart-translator': 'smart-translator', 'pemisah-spesimen': 'pemisah-spesimen', 'inbox-otorisasi': 'inbox-otorisasi', 'surat-kuasa': 'surat-kuasa', monitoring: 'monitoring', 'status-server': 'status-server', 'rilis-fitur': 'rilis-fitur', aktivitas: 'aktivitas',

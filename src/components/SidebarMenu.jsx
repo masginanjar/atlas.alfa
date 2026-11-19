@@ -51,7 +51,7 @@ export default function SidebarMenu({ menu, page, param, ctx, bawah, alatBawah, 
           const b = anak.reduce((t, n) => t + badgeOf(n, ctx), 0)
           const kls = cx('relative grid h-11 w-11 place-items-center rounded-xl', on ? 'bg-[var(--brand)] text-white' : 'text-[#141B34] hover:bg-[#F3F4F9] dark:text-slate-100 dark:hover:bg-white/10')
           const lencana = b > 0 && <span className="absolute -right-0.5 -top-0.5 min-w-[18px] rounded-full bg-rose-600 px-1 text-center text-[10px] font-bold leading-[18px] text-white">{b > 99 ? '99+' : b}</span>
-          if (anak.length === 1) return (
+          if (anak.length === 1 && !g.selaluGrup) return (
             <a key={g.id || anak[0].key} href={hrefOf(anak[0])} title={anak[0].label} aria-label={anak[0].label} aria-current={on ? 'page' : undefined} data-nav="rel" className={kls}><Ikon className="h-5 w-5" aria-hidden="true" />{lencana}</a>
           )
           const terbuka = layang === g.id
@@ -91,7 +91,7 @@ export default function SidebarMenu({ menu, page, param, ctx, bawah, alatBawah, 
       <nav aria-label="Menu ATLAS" className="flex flex-col gap-1 pb-2">
         {menu.map((g) => {
           const anak = g.children || [g]
-          if (anak.length === 1 && !anak[0].segera) {
+          if (anak.length === 1 && !anak[0].segera && !g.selaluGrup) { // selaluGrup: tetap tampil sebagai induk + submenu walau baru satu isi (mis. Marketing → Website)
             const n = anak[0]; const on = aktifItem(n, page, param); const b = badgeOf(n, ctx)
             const Ikon = g.icon || n.icon
             return (

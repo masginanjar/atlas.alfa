@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
-import { Home, LayoutDashboard, FolderKanban, Settings as Cog, LogOut, Loader2, History, MonitorCheck, Wallet, Stamp, ReceiptText, StickyNote, AlarmClock, CalendarDays, Plus, Users, LayoutGrid, HardDrive, Tags, MessageCircle, BookOpen, FileStack, CalendarRange, Store, Handshake, Minimize2, Maximize2, Building2, Server, Rocket, Hash, ClipboardList, Truck, UserCheck, Languages, Wrench, FileSignature } from 'lucide-react'
+import { Home, LayoutDashboard, FolderKanban, Settings as Cog, LogOut, Loader2, History, MonitorCheck, Wallet, Stamp, ReceiptText, StickyNote, AlarmClock, CalendarDays, Plus, Users, LayoutGrid, HardDrive, Tags, MessageCircle, BookOpen, FileStack, CalendarRange, Store, Handshake, Minimize2, Maximize2, Building2, Server, Rocket, Hash, ClipboardList, Truck, UserCheck, Languages, Wrench, FileSignature, Megaphone, Globe } from 'lucide-react'
 import PindahBooks from './components/PindahBooks.jsx'
 import SidebarMenu from './components/SidebarMenu.jsx'
 import PanelDummy from './components/PanelDummy.jsx'
@@ -14,6 +14,7 @@ import { Toast, Sheet, Button, Popover, cx } from './components/ui.jsx'
 import Login from './pages/Login.jsx'
 import { simpanCache, DEFAULT_LOGIN } from './config/loginTheme.js'
 const Dashboard = lazy(() => import('./pages/Dashboard.jsx'))
+const MarketingWebsite = lazy(() => import('./pages/MarketingWebsite.jsx'))
 const Projects = lazy(() => import('./pages/Projects.jsx'))
 const ProjectDetail = lazy(() => import('./pages/ProjectDetail.jsx'))
 import { canSeeAllActivity, canMonitor, canSeeKeuangan, canSeeApostille, canSeeInvoices, canSeeAffidavit, canSeePelanggan, canSeePenugasan, canSeeKatalog, canSeeVendor, canSeeMitra, canSeeBeranda, canSeeRegister, canSeeLaporanOto, menuBoleh } from './config/menuAccess.js'
@@ -129,6 +130,10 @@ const MENU = [
     { key: 'smart-translator', label: 'Smart Translator', icon: Languages },
     { key: 'surat-kuasa', label: 'Surat Kuasa', icon: FileSignature },
     { key: 'pemisah-spesimen', label: 'Pemisah Spesimen', icon: Stamp },
+  ] },
+  // 20 Nov 2026: Marketing → Website (ide konten & status posting blog). Akses lewat katalog izin (default: Super Admin saja).
+  { id: 'marketing', label: 'Marketing', icon: Megaphone, selaluGrup: true, children: [
+    { key: 'marketing-website', label: 'Website', icon: Globe },
   ] },
   { id: 'keuangan', label: 'Keuangan', icon: Wallet, children: [
     { key: 'keuangan', label: 'Ringkasan', icon: Wallet, badge: needsAction, subOnly: true },
@@ -273,6 +278,7 @@ export default function App() {
     : page === 'pengiriman' ? <Pengiriman tab={param} id={param2} />
     : page === 'vendor' ? <VendorPage />
     : page === 'mitra' ? <MitraPage />
+    : page === 'marketing-website' ? <MarketingWebsite />
     : page === 'penugasan' ? <Penugasan />
     : page === 'affidavit' ? <Affidavit />
     : page === 'register' && canSeeRegister(user) ? <Register />

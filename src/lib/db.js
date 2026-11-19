@@ -24,7 +24,7 @@ const URL_ = import.meta.env.VITE_INSFORGE_URL
 // 'supabase' (live, Supabase) · 'live' (InsForge, lama) · 'demo' (localStorage)
 export const MODE = SUPABASE_READY ? 'supabase' : URL_ ? 'live' : 'demo'
 export const IS_LIVE = MODE !== 'demo'
-const ALL_TABLES = ['users', 'people', 'projects', 'petty_cash', 'couriers', 'notifications', 'requests', 'perf_daily', 'share_links', 'share_log', 'vendor_bills', 'fund_balances', 'app_settings', 'activity_log', 'pings', 'notes', 'todos', 'reminders', 'messages', 'daftar_harga', 'faq', 'affidavit_stok', 'affidavit_pakai', 'affidavit_kirim', 'jadwal', 'cuti', 'mitra', 'kapasitas', 'perusahaan_dok', 'data_pribadi', 'kirim', 'kirim_alamat', 'kirim_templat', 'kirim_kendala', 'kirim_mutasi', 'kirim_event', 'akses_role', 'akses_pengecualian', 'akses_audit', 'app_laporan', 'kehadiran', 'surat_kuasa', 'surat_kuasa_penerima']
+const ALL_TABLES = ['users', 'people', 'projects', 'petty_cash', 'couriers', 'notifications', 'requests', 'perf_daily', 'share_links', 'share_log', 'vendor_bills', 'fund_balances', 'app_settings', 'activity_log', 'pings', 'notes', 'todos', 'reminders', 'messages', 'daftar_harga', 'faq', 'affidavit_stok', 'affidavit_pakai', 'affidavit_kirim', 'jadwal', 'cuti', 'mitra', 'kapasitas', 'perusahaan_dok', 'data_pribadi', 'kirim', 'kirim_alamat', 'kirim_templat', 'kirim_kendala', 'kirim_mutasi', 'kirim_event', 'akses_role', 'akses_pengecualian', 'akses_audit', 'app_laporan', 'kehadiran', 'surat_kuasa', 'surat_kuasa_penerima', 'marketing_konten']
 // Chat dimatikan → `messages` tidak ikut dilanggan realtime maupun disegarkan.
 export const TABLES = CHAT_ENABLED ? ALL_TABLES : ALL_TABLES.filter((t) => t !== 'messages')
 
@@ -270,6 +270,19 @@ function migrate(m) {
     let n = 0
     m.daftar_harga = baris.flatMap(([kategori, items, satuan]) =>
       items.map((layanan) => ({ id: uid(), kategori, layanan, satuan, harga_normal: null, harga_kilat: null, catatan: '', urutan: ++n })))
+    changed = true
+  }
+  // Marketing → Website: contoh ide konten (sintetis) supaya halaman demo tidak kosong; tanggal mengikuti hari ini.
+  if (!m.marketing_konten) {
+    const hari = (n) => new Date(Date.now() + n * 864e5).toLocaleDateString('sv-SE', { timeZone: 'Asia/Makassar' })
+    const C = [
+      ['englishlink.co.id', 'Cara menerjemahkan ijazah untuk kuliah di luar negeri', 'terjemahan ijazah tersumpah', 'Panduan', 'Tinggi', 0, '14:00', 'Sedang Ditulis', ''],
+      ['etranslator.nl', 'Beëdigde vertaling Indonesisch–Nederlands: wanneer nodig?', 'beëdigde vertaling indonesisch', 'Edukasi', 'Tinggi', 0, '10:00', 'Sudah Terbit', 'https://etranslator.nl/blog/contoh-artikel'],
+      ['englishlink.co.id', 'Apostille vs legalisasi: bedanya apa?', 'apostille dokumen', 'FAQ', 'Sedang', 2, '', 'Disetujui', ''],
+      ['etranslator.nl', 'Akta kelahiran Indonesia untuk gemeente', 'geboorteakte vertalen', 'Layanan', 'Sedang', 5, '', 'Ide', ''],
+      ['englishlink.co.id', 'Biaya penerjemah tersumpah 2026', 'biaya penerjemah tersumpah', 'Layanan', 'Rendah', -2, '', 'Siap Review', ''],
+    ]
+    m.marketing_konten = C.map(([website, judul, kata_kunci, jenis, prioritas, n, jam, status, link]) => ({ id: uid(), website, judul, kata_kunci, jenis, prioritas, tanggal: hari(n), jam, pic: 'Contoh', status, link, catatan: '', created_at: new Date().toISOString(), updated_at: new Date().toISOString() }))
     changed = true
   }
   // Mitra contoh — diisi manual oleh CS, jadi cukup beberapa baris untuk demo.
