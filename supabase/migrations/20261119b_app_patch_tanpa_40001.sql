@@ -1,0 +1,7 @@
+-- 19 Nov 2026 (sudah diterapkan di live). Penyebab CPU database 100%:
+-- bentrok versi (DATA_BERUBAH) di app_patch dilempar dengan SQLSTATE 40001 (serialization_failure).
+-- PostgREST mengulang otomatis transaksi yang gagal dengan 40001; bentrok versi tidak pernah berhasil saat diulang,
+-- jadi SATU simpanan yang bentrok diulang tanpa henti (±220 kali/detik) sampai PostgREST di-restart.
+-- Perbaikan: `raise exception 'DATA_BERUBAH: …'` TANPA `using errcode = '40001'` (kode biasa P0001, tidak diulang).
+-- Aplikasi mengenali bentrok dari teks pesannya, jadi perilaku di layar tidak berubah.
+-- JANGAN memakai SQLSTATE 40001 / 40P01 untuk galat buatan sendiri.
