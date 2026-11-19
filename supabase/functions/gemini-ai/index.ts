@@ -296,7 +296,8 @@ Deno.serve(async (req: Request) => {
     if (m[2].length * 0.75 > MAKS_BYTE) return json({ ok: false, alasan: "gambar terlalu besar (maks 8 MB)" }, 400);
     // Smart Translator: jenis dokumen boleh dipilih pemanggil (akta kelahiran / kartu keluarga / ijazah / transkrip / non-reguler); selain itu tugas bawaan fitur.
     const tugasJalan = fitur === "penerjemah" && ["akta", "kk", "ijazah", "transkrip", "nonreg"].includes(String(b.tugas ?? "")) ? String(b.tugas) : F.tugas;
-    if (tugasJalan === "nonreg" && NLCORE.ARAH[String(b.arah ?? "")] && !(await boleh(IZIN_NL))) return json({ ok: false, alasan: "Tidak ada akses Smart Translator Bahasa Belanda" }, 403);
+    // Arah Belanda butuh izin sendiri — juga untuk template kolom (mis. akta kelahiran → Belanda), yang hanya MEMBACA kolom dan tidak menerjemahkan.
+    if (NLCORE.ARAH[String(b.arah ?? "")] && !(await boleh(IZIN_NL))) return json({ ok: false, alasan: "Tidak ada akses Smart Translator Bahasa Belanda" }, 403);
     const tambahan = tugasJalan === "nonreg" ? arahNonreg(String(b.arah ?? ""), String(b.konteks ?? ""), String(b.panduan ?? "")) : "";
     return json(await satu(fitur, model, tugasJalan, m[2], m[1], tambahan));
   }
