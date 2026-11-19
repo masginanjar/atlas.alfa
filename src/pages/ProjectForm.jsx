@@ -1057,7 +1057,9 @@ function InvoicePicker({ customer, value, onChange, error, ringkas, onPemilik })
     let batal = false
     const t = setTimeout(() => zoho.cariInvoice(no).then((l) => {
       if (batal) return
-      const r = l.find((x) => String(x.invoice_no).toUpperCase() === no) || null
+      // cocokkan ANGKANYA saja: "1012611197431" dan "INV-1012611197431" adalah invoice yang sama
+      const angka = no.replace(/\D/g, '')
+      const r = l.find((x) => String(x.invoice_no).replace(/\D/g, '') === angka) || null
       setPemilik(r)
       if (r && !idPel) onPemilik?.(r)
     }).catch(() => {}), 400)
