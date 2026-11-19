@@ -186,6 +186,44 @@ Deno.serve(async (req) => {
       return json({ ok: true })
     }
 
+    // TARIK DARI DRIVE (masa transisi): NAMA folder & file milik satu nomor invoice — untuk menyusun usulan sub project di form.
+    // Hanya nama yang dikembalikan (bukan isi / tautan file). Izin: app_izin('tarik-drive.tambah'); invoicenya harus terlihat oleh pemanggil (RLS zoho_invoices).
+    if (aksi === "tarik-nama") {
+      const { data: izin } = await asUser.rpc("app_izin", { kode: "tarik-drive.tambah" })
+      if (izin !== true) return json({ error: "Tidak ada akses Tarik dari Drive." }, 403)
+      const noInv = String(body.invoice || "").trim().toUpperCase()
+      const angka = noInv.replace(/\D/g, "")
+      if (!/^\d{8,16}$/.test(angka)) return json({ error: "Nomor invoice tidak sah." }, 400)
+      const { data: inv } = await asUser.from("zoho_invoices").select("invoice_no").eq("invoice_no", noInv).limit(1)
+      if (!inv?.length) return json({ error: "Invoice ini tidak ada di daftar faktur Anda." }, 403)
+      const q = `name contains '${angka}' and mimeType='application/vnd.google-apps.folder' and trashed=false`
+      const r = await gfetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id,name,parents)&pageSize=20&corpora=allDrives&supportsAllDrives=true&includeItemsFromAllDrives=true`)
+      const j = await r.json()
+      if (!r.ok) return json({ error: "Drive lama tidak bisa dibaca. Pastikan Drive sudah dibagikan ke akun layanan ATLAS." }, 502)
+      const cocok = (j.files || []).filter((f: any) => new RegExp(`(^|\\D)${angka}(\\D|$)`).test(String(f.name || ""))).slice(0, 6)
+      const namaInduk = new Map<string, { name: string; parent: string }>()
+      const jalur = async (id: string) => {
+        const out: string[] = []; let node = id
+        for (let i = 0; i < 4 && node; i++) {
+          if (!namaInduk.has(node)) {
+            const m = await (await gfetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(node)}?fields=name,parents&supportsAllDrives=true`)).json()
+            namaInduk.set(node, { name: String(m.name || ""), parent: m.parents?.[0] || "" })
+          }
+          const x = namaInduk.get(node)!
+          if (!x.name) break
+          out.unshift(x.name); node = x.parent
+        }
+        return out
+      }
+      const folders = []
+      for (const f of cocok) {
+        const fq = `'${f.id}' in parents and mimeType!='application/vnd.google-apps.folder' and trashed=false`
+        const fr = await (await gfetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(fq)}&fields=files(name,mimeType)&pageSize=200&orderBy=name&supportsAllDrives=true&includeItemsFromAllDrives=true`)).json()
+        folders.push({ name: String(f.name || ""), jalur: f.parents?.[0] ? await jalur(f.parents[0]) : [], files: (fr.files || []).map((x: any) => ({ name: String(x.name || ""), mime: String(x.mimeType || "") })) })
+      }
+      return json({ ok: true, folders })
+    }
+
     // Dipakai saat mencocokkan project lama dengan foldernya di Drive (khusus pimpinan/kantor pusat).
     if (aksi === "cari-folder") {
       if (!semuaCabang) return json({ error: "Khusus pimpinan & kantor pusat." }, 403)

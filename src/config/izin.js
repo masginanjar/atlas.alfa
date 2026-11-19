@@ -91,6 +91,8 @@ export const MODUL = [
   { id: 'project', label: 'Project', fitur: [
     // 19 Nov 2026: Tarik Data (beta) — susun usulan sub project dari item invoice memakai AI (server: tarik-data-ai).
     f('tarik-data', 'Tarik Data (beta) — susun sub project dari invoice', ['tambah'], { tambah: ['cs', 'admin_pusat', 'helper', 'direktur', 'supervisor'] }),
+    // 20 Nov 2026: Tarik dari Drive (masa transisi) — susun usulan sub project dari nama file di folder Drive lama (server: drive-files aksi tarik-nama). Default: Super Admin saja.
+    f('tarik-drive', 'Tarik dari Drive (transisi) — susun sub project dari nama file Drive', ['tambah']),
     f('project', 'Project', ['menu', 'lihat', 'detail', 'tambah', 'ubah', 'hapus', 'tugaskan', 'status', 'lampiran_lihat', 'lampiran_kelola', 'ekspor', 'cetak', 'bagikan', 'riwayat', 'massal'],
       { menu: plus(SEMUA, 'projects'), lihat: plus(SEMUA, 'projects'), detail: plus(SEMUA, 'projects'), lampiran_lihat: plus(SEMUA, 'projects'), riwayat: plus(SEMUA, 'projects'), status: plus(SEMUA, 'projects'),
         tambah: dari(can.editProject), ubah: dari(can.editProject), tugaskan: dari(can.editProject), lampiran_kelola: plus(SEMUA, 'projects'), ekspor: dari(can.editProject), cetak: dari(can.editProject), bagikan: dari(can.editProject), massal: dari(can.editProject),

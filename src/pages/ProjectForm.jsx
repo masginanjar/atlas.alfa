@@ -1,8 +1,9 @@
 import { autoDeadline } from '../lib/waktu.js'
 import { prioSub, prioTertinggi } from '../config/priority.js'
 import { tarikData } from '../lib/tarikData.js'
+import { tarikDrive } from '../lib/tarikDrive.js'
 import { useEffect, useState } from 'react'
-import { Search, Plus, Check, Loader2, UserRound, Receipt, Upload, X, FileText, RefreshCw, Headset, Building2, Printer, CalendarPlus, CalendarClock, Flag, ClipboardList, Truck, Layers, CloudUpload, StickyNote, Sparkles, Pencil, Copy, ChevronDown, ChevronUp, ChevronLeft } from 'lucide-react'
+import { Search, Plus, Check, Loader2, UserRound, Receipt, Upload, X, FileText, RefreshCw, Headset, Building2, Printer, CalendarPlus, CalendarClock, Flag, ClipboardList, Truck, Layers, CloudUpload, StickyNote, Sparkles, FolderSearch, Pencil, Copy, ChevronDown, ChevronUp, ChevronLeft } from 'lucide-react'
 import { useApp } from '../lib/store.jsx'
 import { go } from '../lib/router.js'
 import { zoho } from '../lib/integrations.js'
@@ -84,6 +85,19 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
   }
   const urungTarik = () => { if (tarikSt?.sebelum) setSubs(tarikSt.sebelum); setTarikSt(null) }
   const propTarik = !editing && bolehIzin(user, 'tarik-data.tambah') ? { onTarik: jalankanTarik, onUrung: urungTarik, tarik: tarikSt } : {}
+  // Tarik dari Drive (masa transisi): usulan sub project dari NAMA FILE di folder Drive lama — terpisah dari Tarik Data (beta)
+  const [driveSt, setDriveSt] = useState(null)
+  const jalankanDrive = async () => {
+    if (driveSt?.sibuk) return
+    setDriveSt({ sibuk: true })
+    const r = await tarikDrive(invoiceItems?.invoice_no || invoice, { buatSub: (t) => (page ? subBaru(t, data) : newSub(t)) }).catch(() => ({ ok: false, alasan: 'Tarik dari Drive gagal' }))
+    if (!r.ok) return setDriveSt({ galat: r.alasan })
+    const sebelum = subs
+    setSubs([...subs.filter(subTerisi), ...r.subs]) // sub yang sudah terisi dipertahankan; baris kosong diganti usulan
+    setDriveSt({ ok: true, n: r.subs.length, dok: r.subs.reduce((n, x) => n + (x.file_count || 0), 0), folder: r.folder, mesin: r.mesin, sebelum })
+  }
+  const urungDrive = () => { if (driveSt?.sebelum) setSubs(driveSt.sebelum); setDriveSt(null) }
+  const propDrive = !editing && bolehIzin(user, 'tarik-drive.tambah') ? { onDrive: jalankanDrive, onUrungDrive: urungDrive, drive: driveSt } : {}
   const [autoFill, setAutoFill] = useState(null) // ringkasan isian otomatis dari item invoice Zoho (alamat/kurir/prioritas)
   const [invoiceItems, setInvoiceItems] = useState(null) // item invoice Zoho — hanya ditampilkan (view) untuk dibaca/disalin saat mengisi sub project
   const [editShip, setEditShip] = useState(false)
@@ -447,7 +461,7 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
         {/* ===== 3 · Sub project ===== */}
         <SectionCard tone="mint" icon={Layers} title="3 · Sub project & dokumen" aside={`${subs.length} sub project`}>
           <div className="space-y-4">
-            {!editing && invoiceItems && <InvoiceItemsView inv={invoiceItems} {...propTarik} />}
+            {!editing && invoiceItems && <InvoiceItemsView inv={invoiceItems} {...propTarik} {...propDrive} />}
             {autoFill && (autoFill.ship || autoFill.courier || autoFill.priority) && (
               <div role="status" className="flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-xl bg-amber-50 px-3.5 py-2.5 text-xs text-amber-900 ring-1 ring-amber-200">
                 <Sparkles className="h-4 w-4 shrink-0 text-amber-600" />
@@ -748,7 +762,7 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
             <h2 className="text-xs font-bold uppercase tracking-[0.06em] text-[#5E6380]">3 · Sub project & dokumen</h2>
             <span className="text-xs text-[#5E6380]" data-ringkasan-sub>{subs.length} sub project · {nDokumen} dokumen · {nHalaman} halaman</span>
           </div>
-          {invoiceItems && <InvoiceItemsView inv={invoiceItems} {...propTarik} />}
+          {invoiceItems && <InvoiceItemsView inv={invoiceItems} {...propTarik} {...propDrive} />}
           {autoFill && (autoFill.ship || autoFill.courier || autoFill.priority) && (
             <div role="status" className="flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-xl bg-amber-50 px-3.5 py-2 text-xs text-amber-900 ring-1 ring-amber-200">
               <Sparkles className="h-4 w-4 shrink-0 text-amber-600" />
@@ -831,7 +845,7 @@ function KolBaru({ label, wajib, hp = 'full', style, error, children }) {
 }
 
 /** Item & deskripsi invoice Zoho — hanya tampilan (tidak mengisi apa pun), untuk dibaca / disalin saat mengisi sub project secara manual. */
-function InvoiceItemsView({ inv, onTarik, onUrung, tarik }) {
+function InvoiceItemsView({ inv, onTarik, onUrung, tarik, onDrive, onUrungDrive, drive }) {
   const { notify } = useApp()
   const [open, setOpen] = useState(true)
   const items = inv.items || []
@@ -845,6 +859,9 @@ function InvoiceItemsView({ inv, onTarik, onUrung, tarik }) {
         {onTarik && items.length > 0 && <button type="button" onClick={onTarik} disabled={!!tarik?.sibuk} data-aksi="tarik-data" title="Susun sub project otomatis dari item invoice ini — hasilnya tetap bisa diubah"
           className="inline-flex min-h-8 items-center gap-1.5 rounded-lg bg-violet-600 px-2.5 py-1 text-[11.5px] font-bold text-white hover:bg-violet-700 disabled:opacity-60 max-md:min-h-11 max-md:px-3 max-md:text-[13px]">
           {tarik?.sibuk ? <Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" /> : <Sparkles className="h-3.5 w-3.5" />}{tarik?.sibuk ? 'Menganalisa…' : 'Tarik Data (beta)'}</button>}
+        {onDrive && <button type="button" onClick={onDrive} disabled={!!drive?.sibuk} data-aksi="tarik-drive" title="Masa transisi: susun sub project dari nama file di folder Drive bernomor invoice ini — hasilnya tetap bisa diubah"
+          className="inline-flex min-h-8 items-center gap-1.5 rounded-lg bg-sky-700 px-2.5 py-1 text-[11.5px] font-bold text-white hover:bg-sky-800 disabled:opacity-60 max-md:min-h-11 max-md:px-3 max-md:text-[13px]">
+          {drive?.sibuk ? <Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" /> : <FolderSearch className="h-3.5 w-3.5" />}{drive?.sibuk ? 'Membaca Drive…' : 'Tarik dari Drive (transisi)'}</button>}
         {items.length > 0 && <button type="button" onClick={() => copy(items.map((it, i) => `${i + 1}. ${textOf(it)}`).join('\n\n'), 'Semua item')} className="inline-flex items-center gap-1 rounded-lg bg-white px-2 py-1 text-[11px] font-semibold text-emerald-800 ring-1 ring-emerald-300 hover:bg-emerald-100"><Copy className="h-3 w-3" />Salin semua</button>}
         <button type="button" onClick={() => setOpen((o) => !o)} className="rounded-lg p-1 text-emerald-800 hover:bg-emerald-100" aria-label={open ? 'Sembunyikan item invoice' : 'Tampilkan item invoice'} aria-expanded={open}>{open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</button>
       </div>
@@ -854,6 +871,14 @@ function InvoiceItemsView({ inv, onTarik, onUrung, tarik }) {
           <Sparkles className="h-3.5 w-3.5 shrink-0" />
           <p className="min-w-0 flex-1"><b className="font-bold">{tarik.n} sub project disusun dari invoice (beta)</b> — {tarik.mesin === 'ai' ? 'dianalisa AI' : 'DEMO: disusun dengan aturan sederhana, bukan AI (AI hanya berjalan di ATLAS live)'}. Periksa lagi tiap sub, lalu tinggal pilih filenya. Belum ada yang tersimpan.<span className="block" data-tarik-kirim>{tarik.kirim ? <>Pengiriman ikut ditarik: <b className="font-bold">{tarik.kirim}</b> — periksa di bagian 1.</> : 'Pengiriman: tidak ada data kirim di invoice ini — isi manual.'}</span>{tarik.dilewati?.length > 0 && <span className="block text-violet-800/80">Tidak dijadikan sub: {tarik.dilewati.join(' · ')}</span>}</p>
           <button type="button" onClick={onUrung} data-aksi="urung-tarik" className="inline-flex min-h-8 items-center rounded-lg bg-white px-2.5 py-1 text-[11.5px] font-bold text-violet-800 ring-1 ring-violet-300 hover:bg-violet-100 max-md:min-h-11 max-md:px-3">Urungkan</button>
+        </div>
+      )}
+      {drive?.galat && <p role="alert" className="border-t border-rose-100 bg-rose-50 px-3.5 py-2 text-xs font-semibold text-rose-800" data-drive-galat>{drive.galat}. Sub project tidak diubah — isi manual seperti biasa.</p>}
+      {drive?.ok && (
+        <div role="status" className="flex flex-wrap items-center gap-2 border-t border-sky-100 bg-sky-50 px-3.5 py-2 text-xs text-sky-900" data-drive-hasil={drive.mesin}>
+          <FolderSearch className="h-3.5 w-3.5 shrink-0" />
+          <p className="min-w-0 flex-1"><b className="font-bold">{drive.n} sub project · {drive.dok} dokumen disusun dari nama file Drive</b>{drive.mesin === 'contoh' ? ' — DEMO: memakai folder contoh (nama karangan); Drive asli hanya dibaca di ATLAS live' : ''}. Periksa lagi tiap sub, lalu pasang filenya. Belum ada yang tersimpan.<span className="block break-words text-sky-800/80">Folder: {drive.folder.join(' · ')}</span></p>
+          <button type="button" onClick={onUrungDrive} data-aksi="urung-drive" className="inline-flex min-h-8 items-center rounded-lg bg-white px-2.5 py-1 text-[11.5px] font-bold text-sky-800 ring-1 ring-sky-300 hover:bg-sky-100 max-md:min-h-11 max-md:px-3">Urungkan</button>
         </div>
       )}
       {open && (items.length === 0

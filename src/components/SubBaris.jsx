@@ -373,7 +373,7 @@ export default function SubBaris({ n, sub, onChange, onRemove, branch, error, on
 
       {(ketId || ketIkut || lembaga?.note || error || catTarik.length > 0) && (
         <div className="mt-1.5 space-y-1">
-          {catTarik.length > 0 && <ul className="space-y-0.5 rounded-lg bg-violet-50 px-2.5 py-1.5 text-[11px] leading-relaxed text-violet-900 ring-1 ring-violet-200" data-catatan-tarik>{sub._tarik.judul && <li className="font-bold">Dari item invoice: {sub._tarik.judul}</li>}{catTarik.map((c, k) => <li key={k}>• {c}</li>)}</ul>}
+          {catTarik.length > 0 && <ul className="space-y-0.5 rounded-lg bg-violet-50 px-2.5 py-1.5 text-[11px] leading-relaxed text-violet-900 ring-1 ring-violet-200" data-catatan-tarik>{sub._tarik.judul && <li className="font-bold">{sub._tarik.sumber === 'drive' ? 'Dari folder Drive' : 'Dari item invoice'}: {sub._tarik.judul}</li>}{catTarik.map((c, k) => <li key={k}>• {c}</li>)}</ul>}
           {ketId && <p className="text-[11px] text-[#3B2F9E]" data-ket-id>{ketId}</p>}
           {!ketId && ketIkut && <p className="text-[11px] text-[#3B2F9E]" data-ket-ikut>{ketIkut}</p>}
           {lembaga?.note && <p className="rounded-lg bg-amber-50 px-2.5 py-1.5 text-[11px] leading-relaxed text-amber-900 ring-1 ring-amber-200">{lembaga.note}</p>}
