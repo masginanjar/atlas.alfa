@@ -7,16 +7,18 @@
 //   Delivery Fee: "Jenis Ekspedisi : JNT\nNama: …\nAlamat: …\nKec/kab/kota: …\nKode pos: …\nNomor hp: …"  atau bebas "Nama\nAlamat…\n08…"
 // ============================================================
 
+import { cocokNegara as negaraAtlas, negaraDariTeks, prioritasDariTeks, prioritasTertinggi } from './bacaInvoice.js'
+
 const LANG = {
   english: 'Inggris', inggris: 'Inggris', eng: 'Inggris', en: 'Inggris', ing: 'Inggris',
-  indonesia: 'Indonesia', indonesian: 'Indonesia', ind: 'Indonesia', id: 'Indonesia', idn: 'Indonesia', bahasa: 'Indonesia',
+  indonesia: 'Indonesia', indonesian: 'Indonesia', ind: 'Indonesia', id: 'Indonesia', idn: 'Indonesia', indo: 'Indonesia', bahasa: 'Indonesia',
   spanyol: 'Spanyol', spanish: 'Spanyol', spain: 'Spanyol', esp: 'Spanyol', es: 'Spanyol', spa: 'Spanyol',
   jepang: 'Jepang', japanese: 'Jepang', japan: 'Jepang', jp: 'Jepang', jpn: 'Jepang',
-  mandarin: 'Mandarin', chinese: 'Mandarin', china: 'Mandarin', cn: 'Mandarin', zh: 'Mandarin', chn: 'Mandarin',
-  korea: 'Korea', korean: 'Korea', kr: 'Korea', kor: 'Korea',
+  mand: 'Mandarin', man: 'Mandarin', mdr: 'Mandarin', mandarin: 'Mandarin', chinese: 'Mandarin', china: 'Mandarin', cn: 'Mandarin', zh: 'Mandarin', chn: 'Mandarin',
+  korea: 'Korea', korsel: 'Korea', korean: 'Korea', kr: 'Korea', kor: 'Korea',
   jerman: 'Jerman', german: 'Jerman', germany: 'Jerman', de: 'Jerman', ger: 'Jerman', deutsch: 'Jerman',
   prancis: 'Prancis', perancis: 'Prancis', french: 'Prancis', france: 'Prancis', fr: 'Prancis', fra: 'Prancis',
-  belanda: 'Belanda', dutch: 'Belanda', nl: 'Belanda', nld: 'Belanda',
+  belanda: 'Belanda', dutch: 'Belanda', ned: 'Belanda', nederlands: 'Belanda', nl: 'Belanda', nld: 'Belanda',
   arab: 'Arab', arabic: 'Arab', ar: 'Arab', ara: 'Arab',
   italia: 'Italia', italian: 'Italia', italy: 'Italia', it: 'Italia', ita: 'Italia',
   rusia: 'Rusia', russian: 'Rusia', russia: 'Rusia', ru: 'Rusia', rus: 'Rusia',
@@ -44,18 +46,13 @@ export function courierFromText(text = '') {
 /** Cabang/kantor yang disebut ("Self Pickup Kantor Jakarta" → Jakarta). */
 const officeOf = (text = '') => (text.match(/kantor\s+([A-Za-z]+)/i) || text.match(/pick\s*-?\s*up\s+([A-Za-z]+)/i) || [])[1]?.replace(/^\w/, (c) => c.toUpperCase()) || ''
 
-/** Prioritas dari kata kunci harga: SAME-DAY → Sameday; Speed 100% / Express → Super Ekspres; Speed 50% → Ekspres. */
-export function priorityFromText(text = '') {
-  const t = text.toLowerCase()
-  if (/same\s*-?\s*day/.test(t)) return 'Sameday'
-  if (/speed\s*100|super\s*ekspres|super\s*express|express|ekspres|kilat/.test(t)) return 'Super Ekspres'
-  if (/speed\s*(50|75)/.test(t)) return 'Ekspres'
-  return ''
-}
+/** Prioritas dari kata kunci harga: SAME-DAY → Sameday; Super Express / Speed 100% → Super Ekspres; Express / Speed 50% → Ekspres. */
+export const priorityFromText = (text = '') => prioritasDariTeks(text) // satu aturan dengan Tarik Data: Express → Ekspres, Super Express / Speed 100% → Super Ekspres
 
-const DOC_LINE = /^(\d+)\s*[.)]\s*(.+)$/
-const PAGES_TAIL = /\(?\s*(\d+)\s*(?:hal(?:aman)?|hlm|lembar|pages?|pgs?)\b\.?\s*\)?\s*$/i
-const isDirectionLine = (l) => /^(terjemahan\s+)?[A-Za-z]{2,10}\s*[-–>→]+\s*[A-Za-z]{2,10}(\s+.*)?$/i.test(l) && !DOC_LINE.test(l)
+// "1. Ijazah" / "2) KTP" / "1 Buku Nikah" (nomor tanpa titik) — bukan "3 hari kerja", "2 rangkap", "1-4 hari"
+const DOC_LINE = /^(\d{1,3})(?:\s*[.)]\s*|\s+(?!(?:hari|rangkap|lembar|hal|hlm|pages?|x|jam|minggu|bulan)\b)(?=[A-Za-z]))(.+)$/i
+const PAGES_TAIL = /(?:\(?\s*(?:est(?:imasi)?\.?\s*)?(\d+)\s*(?:hal(?:aman)?|hlm|lembar|lbr|pages?|pgs?|h)\b\.?\s*\)?|\(\s*(\d+)\s*\))\s*$/i
+const isDirectionLine = (l) => /^(terjemahan\s+)?[A-Za-z]{2,10}\s*(?:[-–>→]+|\s+to\s+)\s*[A-Za-z]{2,10}(\s+.*)?$/i.test(l) && !DOC_LINE.test(l)
 
 /** Baris bernomor → dokumen; "Ijazah Chandra 2 hal" → pages 2. Baris lain dikembalikan sebagai `notes`. */
 export function parseDocs(description = '', fallbackPages = 0) {
@@ -66,7 +63,7 @@ export function parseDocs(description = '', fallbackPages = 0) {
     if (m) {
       let desc = m[2].trim(); let pages
       const pm = desc.match(PAGES_TAIL)
-      if (pm) { pages = Number(pm[1]); desc = desc.slice(0, pm.index).trim().replace(/[-–,:(]\s*$/, '').trim() }
+      if (pm) { pages = Number(pm[1] || pm[2]); desc = desc.slice(0, pm.index).trim().replace(/[-–,:(]\s*$/, '').trim() }
       if (desc) docs.push({ desc, pages })
     } else if (!(i === 0 && isDirectionLine(l))) notes.push(l)
   })
@@ -84,8 +81,9 @@ export function parseDocs(description = '', fallbackPages = 0) {
 /** Arah bahasa. Baris pertama deskripsi ("IND-ENG", "Spanish - IND", "Terjemahan EN-ID") lebih dipercaya daripada nama item. */
 export function parseLang(name = '', description = '') {
   const first = (description.split(/\r?\n/).map((l) => l.trim()).find(Boolean) || '').replace(/^terjemahan\s+/i, '')
-  const m = first.match(/^([A-Za-z]{2,10})\s*[-–>→]+\s*([A-Za-z]{2,10})\b/)
-  if (m) { const a = langOf(m[1]), b = langOf(m[2]); if (a && b) return { lang_from: a, lang_to: b, sure: true } }
+  const m = first.match(/^([A-Za-z]{2,10})\s*(?:[-–>→]+|\s+to\s+)\s*([A-Za-z]{2,10})\b/i)
+  // "IND-ENG / ENG-IND" (dua arah) → arahnya belum pasti
+  if (m) { const a = langOf(m[1]), b = langOf(m[2]); if (a && b) return { lang_from: a, lang_to: b, sure: !/[A-Za-z]{2,10}\s*[-–]\s*[A-Za-z]{2,10}\s*(\/|&|dan|atau)\s*[A-Za-z]{2,10}\s*[-–]/i.test(first) } }
   const parts = name.split(/⇄|<->|<>|->|→|↔/).map((s) => s.replace(/\|.*$/, '').trim()).map(langOf).filter(Boolean)
   const uniq = [...new Set(parts)]
   if (uniq.length >= 2) {
@@ -142,12 +140,7 @@ const isLegalisasi = (it) => /legalis/i.test(it.name || '')
 const isTranslation = (it) => /⇄|<->|->|→|sworn|tersumpah|terjemah|translat|regular|reguler/i.test(it.name || '')
 const isOther = (it) => /print|hard\s*copy|rangkap|akomodasi|materai|biaya|fee\b|cetak|scan|notaris\s*fee/i.test(it.name || '')
 const INSTITUTION = [[/kemenag/i, 'Kemenag'], [/kemenkumham|kumham/i, 'Kemenkumham'], [/kemlu|kementerian luar/i, 'Kemlu'], [/notaris/i, 'Notaris'], [/kedutaan|embassy|kbri/i, 'Kedutaan'], [/dikti|kemdikbud|kemendikbud/i, 'Kemdikbud'], [/pengadilan/i, 'Pengadilan']]
-const COUNTRY_ALIAS = { china: 'Tiongkok', tiongkok: 'Tiongkok', rrc: 'Tiongkok', usa: 'Amerika Serikat', us: 'Amerika Serikat', amerika: 'Amerika Serikat', uk: 'Inggris (Britania Raya)', inggris: 'Inggris (Britania Raya)', england: 'Inggris (Britania Raya)', korea: 'Korea Selatan', belanda: 'Belanda', netherlands: 'Belanda', holland: 'Belanda', jerman: 'Jerman', germany: 'Jerman', jepang: 'Jepang', japan: 'Jepang', australia: 'Australia', spanyol: 'Spanyol', spain: 'Spanyol', prancis: 'Prancis', perancis: 'Prancis', france: 'Prancis', italia: 'Italia', italy: 'Italia', turki: 'Turki', turkey: 'Turki', singapura: 'Singapura', singapore: 'Singapura', malaysia: 'Malaysia', taiwan: 'Taiwan', hongkong: 'Hong Kong', kanada: 'Kanada', canada: 'Kanada', swiss: 'Swiss', switzerland: 'Swiss', belgia: 'Belgia', belgium: 'Belgia', portugal: 'Portugal', rusia: 'Rusia', russia: 'Rusia', india: 'India', filipina: 'Filipina', philippines: 'Filipina', vietnam: 'Vietnam', thailand: 'Thailand', qatar: 'Qatar', kuwait: 'Kuwait', uae: 'Uni Emirat Arab', dubai: 'Uni Emirat Arab', mesir: 'Mesir', egypt: 'Mesir', brasil: 'Brasil', brazil: 'Brasil', meksiko: 'Meksiko', mexico: 'Meksiko', austria: 'Austria', ceko: 'Ceko', denmark: 'Denmark', finlandia: 'Finlandia', irlandia: 'Irlandia', ireland: 'Irlandia', norwegia: 'Norwegia', norway: 'Norwegia', polandia: 'Polandia', poland: 'Polandia', swedia: 'Swedia', sweden: 'Swedia', 'selandia baru': 'Selandia Baru', 'new zealand': 'Selandia Baru', nz: 'Selandia Baru', brunei: 'Brunei Darussalam', 'arab saudi': 'Arab Saudi', saudi: 'Arab Saudi' }
-const countryOf = (text = '') => {
-  const m = text.match(/(?:tujuan|negara|country|untuk|to)\s*[:：]?\s*([A-Za-z][A-Za-z ]{1,30})/i)
-  const raw = (m?.[1] || '').trim().toLowerCase().replace(/\s+(normal|express|ekspres|speed.*)$/i, '')
-  return COUNTRY_ALIAS[raw] || (raw ? raw.replace(/\b\w/g, (c) => c.toUpperCase()) : '')
-}
+const countryOf = (text = '') => negaraDariTeks(text).negara || negaraAtlas((text.match(/(?:negara|country)\s*[:：]?\s*([A-Za-z][A-Za-z ]{1,30})/i) || [])[1] || '')
 
 /**
  * Hasil utama dari line_items invoice Zoho:
@@ -165,7 +158,7 @@ export function parseInvoiceItems(items = []) {
   for (const it of items) {
     const name = it.name || '', description = it.description || ''
     const qty = Number(it.quantity) || 0
-    const pr = priorityFromText(`${name}\n${description.split('\n')[0] || ''}`); if (pr && !priority) priority = pr
+    if (!isDelivery(it)) priority = prioritasTertinggi([priority, priorityFromText(`${name}\n${description.split('\n')[0] || ''}`)]) // yang paling cepat di antara semua item
     if (isDelivery(it)) { ship = parseShipping(description); courier = ship.courier || courier; office = ship.office || office; continue }
     if (!name.trim() && description.trim()) { noteHint([description]); others.push({ name: '', description, qty, rate: it.rate }); continue } // baris tanpa item: biasanya keterangan kirim
     if (isOther(it) && !isApostille(it) && !isLegalisasi(it)) { others.push({ name, description, qty, rate: it.rate }); noteHint(description.split('\n')); continue } // cetak ulang, fee, dsb. → catatan

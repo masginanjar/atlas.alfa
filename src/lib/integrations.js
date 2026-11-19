@@ -45,6 +45,13 @@ const DEMO_INVOICE_ITEMS = {
   'INV-000242': [
     { name: 'Spanyol ⇄ Indonesia  ⇄ Spanyol | Sworn', description: 'Spanish - IND SAME-DAY\n1. Dokumen Spanyol 2 halaman\n\nSoftcopy Only : budi@example.com', unit: 'page', quantity: 2, rate: 300000, item_total: 600000 },
   ],
+  // Contoh pola nyata (nama karangan): produk Express tetapi deskripsi menulis REGULER, negara ejaan "PERANCIS", halaman "(EST 2 PAGE)", arah "INDONESIAN TO ENGLISH".
+  'INV-000245': [
+    { name: 'Legalisasi Kemenag', description: '1 Buku Nikah Budi Contoh dan Sari Contoh', unit: 'pcs', quantity: 1, rate: 650000, item_total: 650000 },
+    { name: 'Apostille Express', description: 'APOSTILLE REGULER TUJUAN PERANCIS\n1 Buku Nikah Budi Contoh dan Sari Contoh', unit: 'page', quantity: 1, rate: 1200000, item_total: 1200000 },
+    { name: 'English ⇄ Indonesia ⇄ Inggris | NON Regular | Sworn', description: 'INDONESIAN TO ENGLISH\n1. Transkrip Budi Contoh (EST 2 PAGE)\n2. Ijazah Budi Contoh (2)', unit: 'page', quantity: 4, rate: 90000, item_total: 360000 },
+    { name: 'Delivery Fee', description: 'Jenis Ekspedisi : JNT REG\nNama : Sari Contoh\nAlamat : Jl. Contoh No. 2, Kel. Contoh, Kec. Contoh, Kab. Contoh, Jawa Timur 60000\nNomor HP : 0812-0000-0001', unit: 'doc', quantity: 1, rate: 50000, item_total: 50000 },
+  ],
   // Contoh untuk mencoba "Tarik Data (beta)": tiga legalisasi beda lembaga dengan daftar dokumen yang sama (nama karangan).
   'INV-000244': [
     { name: 'Legalisasi Kemenkumham', description: '1. Ijazah Dewi Contoh\n2. Transkrip Dewi Contoh\n3. SKCK Dewi Contoh', unit: 'pcs', quantity: 3, rate: 425000, item_total: 1275000 },
