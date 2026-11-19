@@ -7,7 +7,7 @@ import { cx } from './ui.jsx'
 import { invoiceLabel } from '../config/access.js'
 
 // Kode bahasa untuk template chat vendor
-const LANG_CODE = { Indonesia: 'IND', Inggris: 'ENG', Mandarin: 'CHN', Jepang: 'JPN', Korea: 'KOR', Arab: 'ARB', Belanda: 'NLD', Jerman: 'DEU', Prancis: 'FRA', Spanyol: 'SPA', Rusia: 'RUS' }
+const LANG_CODE = { Indonesia: 'IND', Inggris: 'ENG', Mandarin: 'CHN', Jepang: 'JPN', Korea: 'KOR', Arab: 'ARB', Belanda: 'NLD', Jerman: 'DEU', Prancis: 'FRA', Spanyol: 'SPA', Rusia: 'RUS', Turki: 'TUR' }
 const code = (l) => LANG_CODE[l] || String(l || '').slice(0, 3).toUpperCase()
 
 /** Normalisasi nomor WA ke format internasional tanpa +, spasi, strip. Awalan 0 (Indonesia) → 62. */

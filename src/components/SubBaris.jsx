@@ -8,6 +8,7 @@ import { FieldError, cx } from './ui.jsx'
 import { placeOf, perluVendor } from '../config/access.js'
 import PilihCari from './PilihCari.jsx'
 import { newSub, usesDocs, isTerjemahan, docsOf, fromDocs, docFileName, safeName, MAKS_DOK, hitungHalaman } from './SubProjectEditor.jsx'
+import { LANGS } from '../config/bahasa.js'
 
 /**
  * Sub project SATU BARIS — dipakai di halaman penuh "Project Baru".
@@ -16,7 +17,6 @@ import { newSub, usesDocs, isTerjemahan, docsOf, fromDocs, docFileName, safeName
  *  • terjemahan: tiap file = satu baris dokumen di sub yang sama
  *  • apostille / legalisasi: sama — tiap file = satu baris dokumen di sub yang sama (19 Nov 2026; dulu 1 sub = 1 dokumen)
  */
-const LANGS = ['Indonesia', 'Inggris', 'Mandarin', 'Jepang', 'Korea', 'Arab', 'Belanda', 'Jerman', 'Prancis', 'Spanyol', 'Rusia', 'Lainnya']
 /** Reguler / Non Reguler hanya untuk pasangan bahasa Indonesia · Inggris · Belanda (dikerjakan tim internal).
  *  Bahasa lain (ke vendor, mis. Mandarin): TIDAK ada pilihan jenis per dokumen — kecepatannya memakai Prioritas sub project (19 Nov 2026). */
 const BHS_REGULER = ['Indonesia', 'Inggris', 'Belanda']

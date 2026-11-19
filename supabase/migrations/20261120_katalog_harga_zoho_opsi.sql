@@ -1,0 +1,11 @@
+-- 20 Nov 2026 — CATATAN perubahan data yang SUDAH diterapkan di live (bukan migrasi skema).
+-- Katalog (daftar_harga) diisi dari item aktif Zoho Books organisasi ATS BALI (dibaca lewat konektor, baca saja):
+--   * 34 baris lama: harga_normal / harga_kilat diisi (hanya bila masih kosong) + `opsi` (tautan ke pilihan form project) + `zoho` (id item asal).
+--     dh-apo-sameday hanya diberi `opsi` (tidak ada itemnya di Zoho → harga tetap kosong).
+--     dh-pt-inggris & dh-pt-belanda dinamai ulang "... (Reguler)" karena Zoho membedakan Reguler / Non Reguler.
+--   * 32 baris baru (id dh-z-01 … dh-z-32): non tersumpah, harga mitra (B2B), jasa lain, Korea, Kedutaan Rusia, Kemenkumham + Kemenlu.
+--   * 12 lembaga baru di people (id lem-ked-*, type 'lembaga', branch 'Semua', dari_katalog=true, alias ejaan Zoho) supaya tiap
+--     baris Legalisasi Kedutaan punya pilihan lembaga di form project.
+-- Tidak ada baris yang dihapus. Angka harga tidak disimpan di repo ini.
+-- Membatalkan: delete from daftar_harga where id like 'dh-z-%'; delete from people where id like 'lem-ked-%' (bila belum dipakai project);
+--   lalu kosongkan harga_normal / harga_kilat baris yang doc ? 'zoho'.

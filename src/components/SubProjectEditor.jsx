@@ -11,8 +11,8 @@ import { placeOf } from '../config/access.js'
 import { DONE, VENDOR_PAID_STAGES } from '../config/workflows.js'
 import { boleh } from '../lib/izin.js'
 import PilihCari from './PilihCari.jsx'
+import { LANGS } from '../config/bahasa.js'
 
-const LANGS = ['Indonesia', 'Inggris', 'Mandarin', 'Jepang', 'Korea', 'Arab', 'Belanda', 'Jerman', 'Prancis', 'Spanyol', 'Rusia', 'Lainnya']
 
 export const newSub = (type = 'terjemahan') => ({
   _k: Math.random(), type, description: '', file_count: 0, pages: 0, pages_manual: false, docs: usesDocs(type) ? [{ desc: '', pages: 1 }] : undefined,

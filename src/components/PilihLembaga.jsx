@@ -25,6 +25,6 @@ export default function PilihLembaga({ value, onChange, branch, invalid, ringkas
   return (
     <PilihCari ringkas={ringkas} label="Lembaga" invalid={invalid} value={value} onChange={onChange} placeholder="Pilih lembaga…" kosong="Lembaga tidak ditemukan"
       onTambah={boleh(user, 'lembaga.tambah') ? tambah : undefined} labelTambah="Tambah lembaga lain"
-      options={semua.map((p) => ({ value: p.id, label: p.name, note: p.note || '', alias: aliasOf(p.name) }))} />
+      options={semua.map((p) => ({ value: p.id, label: p.name, note: p.note || '', alias: `${aliasOf(p.name)} ${p.alias || ''}` }))} />
   )
 }

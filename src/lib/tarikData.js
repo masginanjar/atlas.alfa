@@ -9,6 +9,7 @@ import { COUNTRIES } from '../config/subtypes.js'
 import { PRIORITIES } from '../config/priority.js'
 import { parseInvoiceItems } from './zohoParse.js'
 import { AI_LIVE, aiTarikData } from './ai.js'
+import { LANGS as BAHASA } from '../config/bahasa.js'
 
 const BARIS_PRIBADI = /@|(\+?\d[\d\s().-]{8,}\d)|^\s*(alamat|address|nama(\s*penerima)?|penerima|nomor\s*hp|no\.?\s*hp|hp|telp|telepon|phone|wa|whatsapp|kec|kel|kota|kab|kode\s*pos|rt\s*\/?\s*rw)\b\s*[.:：]/i
 const KIRIM = /delivery|ongkir|ongkos\s*kirim|pengiriman|shipping|ekspedisi/i
@@ -19,7 +20,6 @@ export function itemUntukAi(items = []) {
     : { name: String(it?.name || '').trim(), description: String(it?.description || '').split(/\r?\n/).map((l) => l.trim()).filter((l) => l && !BARIS_PRIBADI.test(l)).join('\n'), quantity: Number(it?.quantity) || 0, unit: String(it?.unit || '') }))
 }
 
-const BAHASA = ['Indonesia', 'Inggris', 'Mandarin', 'Jepang', 'Korea', 'Arab', 'Belanda', 'Jerman', 'Prancis', 'Spanyol', 'Rusia', 'Lainnya']
 const BHS_REGULER = ['Indonesia', 'Inggris', 'Belanda']
 const norm = (s = '') => String(s).toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
 /** Sebutan sehari-hari lembaga → kata kunci nama resminya. */
@@ -31,7 +31,7 @@ export function cocokLembaga(nama, daftar = []) {
   const tepat = daftar.find((p) => norm(p.name) === n); if (tepat) return tepat
   if (/kedutaan|embassy|konsulat|teto|kbri/.test(n)) {
     const kata = n.split(' ').filter((w) => w.length > 3 && !/kedutaan|besar|embassy|konsulat|republik/.test(w))
-    return daftar.find((p) => /kedutaan|embassy|konsulat/i.test(p.name) && kata.length && kata.some((w) => norm(p.name).includes(w))) || null
+    return daftar.find((p) => /kedutaan|embassy|konsulat/i.test(p.name) && kata.length && kata.some((w) => norm(`${p.name} ${p.alias || ''}`).includes(w))) || null
   }
   for (const [dari, ke] of SINONIM) if (dari.test(n)) { const hit = daftar.find((p) => ke.test(norm(p.name))); if (hit) return hit }
   return daftar.find((p) => norm(p.name).includes(n) || n.includes(norm(p.name))) || null
