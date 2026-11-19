@@ -121,6 +121,19 @@ export const zoho = {
     }
     return (await api(`/api/zoho/contacts?search=${encodeURIComponent(q)}`)).contacts
   },
+  /** Cari invoice dari (potongan) nomornya → [{ invoice_no, customer_id, customer_name, date }]. Dipakai untuk menemukan pelanggan lewat nomor invoice. */
+  async cariInvoice(q) {
+    const angka = String(q || '').replace(/\D/g, '')
+    if (angka.length < 4) return []
+    if (MODE === 'supabase') return (must(await sb().from('zoho_invoices').select('invoice_no,customer_id,customer_name,date').ilike('invoice_no', `%${angka}%`).order('date', { ascending: false }).limit(8)) || [])
+      .filter((r) => r.customer_id)
+    if (!ZOHO_LIVE) {
+      const demo = Object.entries(DEMO_INVOICES).flatMap(([id, l]) => l.map((iv) => ({ invoice_no: iv.invoice_no, customer_id: id, customer_name: DEMO_CONTACTS.find((c) => c.zoho_id === id)?.name || '', date: iv.date })))
+      const nov = DEMO_ZOHO_NOV.map((r) => ({ invoice_no: r.invoice_no, customer_id: r.customer_id, customer_name: r.customer_name || '', date: r.date }))
+      return [...demo, ...nov].filter((r) => r.customer_id && String(r.invoice_no).replace(/\D/g, '').includes(angka)).slice(0, 8)
+    }
+    return []
+  },
   /** Detail lengkap: nama, HP, email, penerima & alamat pengiriman. */
   async contact(zohoId) {
     if (MODE === 'supabase') return rowToContact((must(await sb().from('zoho_contacts').select('*').eq('zoho_id', zohoId).limit(1)) || [])[0])

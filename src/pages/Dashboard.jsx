@@ -1,6 +1,6 @@
 import { subAL, FOLDER_AL } from '../lib/dokumenAL.js'
 import { useMemo } from 'react'
-import { FolderKanban, CheckCircle2, AlarmClock, Wallet, Banknote, ArrowRight, Inbox, Stamp, ChevronDown, Hand, Upload, Loader2, FileCheck2, Send, Languages, ChevronUp, Users, Undo2, CalendarDays, X , Sunrise, Moon, Waves, Activity, Target, Sprout, Sparkles, Coffee, ReceiptText, ArrowUp, ArrowDown, StickyNote} from 'lucide-react'
+import { Hash, FolderKanban, CheckCircle2, AlarmClock, Wallet, Banknote, ArrowRight, Inbox, Stamp, ChevronDown, Hand, Upload, Loader2, FileCheck2, Send, Languages, ChevronUp, Users, Undo2, CalendarDays, X , Sunrise, Moon, Waves, Activity, Target, Sprout, Sparkles, Coffee, ReceiptText, ArrowUp, ArrowDown, StickyNote} from 'lucide-react'
 import LayarKerja from './LayarKerja.jsx'
 import ProjectDetail, { SubProject } from './ProjectDetail.jsx'
 import TugaskanPenerjemah from '../components/TugaskanPenerjemah.jsx'
@@ -89,6 +89,7 @@ export default function Dashboard() {
   const act = s.active.filter((p) => !p.demo_perf)
   const late = act.filter((p) => { const d = daysLeft(p.about?.deadline); return d !== null && d < 0 }).length
   const today = act.filter((p) => daysLeft(p.about?.deadline) === 0).length
+  const besok = act.filter((p) => daysLeft(p.about?.deadline) === 1).length
   const vendor = s.subs.filter((x) => VENDOR_ORDER_STAGES.includes(x.stage) && !x.project.demo_perf).length
   const unlinked = WORKER_ROLES.includes(user.role) ? undefined : (unlinkedInvoices?.length ?? unlinkedInvoices ?? 0)
   const accounts = pettyAccountsOf(user).filter((k) => k === APOSTILLE_FUND || branchFilter === 'Semua' || k === branchFilter)
@@ -116,14 +117,39 @@ export default function Dashboard() {
     selesai: { k: 'selesai', label: 'Selesai bulan ini', value: selesaiBulanIni, sub: 'dokumen diterjemahkan', href: '#/projects' },
     ambil: { k: 'ambil', label: 'Saya ambil', value: sayaAmbil, sub: 'sedang diproses', onClick: keTab('kerja') },
     reg: { k: 'reg', label: 'Perlu nomor registrasi', value: regMenunggu, sub: 'setelah ACC', tone: regMenunggu ? 'warn' : undefined, href: '#/projects' },
+    // angka tambahan (19 Nov 2026) — tidak tampil bawaan, bisa dipilih lewat "Atur angka"
+    besok: { k: 'besok', label: 'Tenggat besok', value: besok, sub: 'perlu disiapkan', tone: besok ? 'warn' : undefined, href: '#/projects' },
+    pengajuan: { k: 'pengajuan', label: 'Pengajuan menunggu', value: reqMenunggu, sub: 'belum diputuskan', tone: reqMenunggu ? 'warn' : undefined, href: '#/keuangan' },
+    perlu_tr: { k: 'perlu_tr', label: 'Perlu penerjemah', value: s.needTr.length, sub: 'belum ditugaskan', tone: s.needTr.length ? 'warn' : undefined, href: '#/projects' },
+    selesai_semua: { k: 'selesai_semua', label: 'Project selesai', value: s.done, sub: 'dalam lingkup Anda', href: '#/projects' },
   }
-  const tiles = user.role === 'penerjemah' ? [T.tugas, { ...T.dl, k: 'dl' }, T.perbaikan, T.selesai]
+  const bawaan = user.role === 'penerjemah' ? [T.tugas, { ...T.dl, k: 'dl' }, T.perbaikan, T.selesai]
     : user.role === 'proofreader' ? [T.tugas, { ...T.dl }, T.late, T.selesai]
     : user.role === 'otorisator' ? [T.tugas, T.ambil, T.reg, T.late]
     : user.role === 'admin_pusat' ? [T.reg, T.dl, T.todo, T.late, T.faktur, T.active, T.vendor]
     : user.role === 'akunting' ? [T.todo, T.vendor, T.petty, T.dl, T.active, T.faktur]
     : pimpinan ? [T.dl, T.keputusan, T.todo, T.faktur, T.active, T.vendor, T.petty]
     : [T.dl, T.todo, T.faktur, T.late, T.active, T.vendor, T.petty]
+  // ---------- Atur angka: tiap orang memilih angka yang tampil, urutannya & namanya (tersimpan di akun) ----------
+  //  Angka yang BOLEH dipilih = bawaan role + tambahan yang datanya memang sudah terlihat oleh role itu (tidak membuka data baru).
+  const tambahan = worker ? [T.dl, T.late, T.besok]
+    : [T.late, T.besok, T.active, T.selesai_semua, T.todo, T.vendor, T.pengajuan,
+      ...(accounts.length ? [T.petty] : []), ...(unlinked !== undefined ? [T.faktur] : []),
+      ...(pimpinan || user.role === 'admin_pusat' ? [T.reg, T.perlu_tr] : []), ...(pimpinan ? [T.keputusan] : [])]
+  const tersedia = [...bawaan, ...tambahan.filter((t) => !bawaan.some((b) => b.k === t.k))].filter((t, i, a) => a.findIndex((x) => x.k === t.k) === i)
+  const pilihan = bolehTata ? tataDasbor.angka : null
+  const namaAngka = pilihan?.nama || {}
+  const berNama = (t) => ({ ...t, asli: t.label, label: String(namaAngka[t.k] || '').trim() || t.label })
+  const dipilih = (pilihan?.urut || []).map((k) => tersedia.find((t) => t.k === k)).filter(Boolean)
+  const tiles = (dipilih.length ? dipilih : bawaan).map(berNama)
+  const [aturAngka, setAturAngka] = useState(false)
+  const simpanAngka = (patch) => tataDasbor.setAngka({ urut: tiles.map((t) => t.k), nama: namaAngka, ...patch })
+  const propAtur = aturAngka && bolehTata ? {
+    tersedia: tersedia.map(berNama), nama: namaAngka, diubah: !!pilihan,
+    onUrut: (urut) => simpanAngka({ urut }),
+    onNama: (k, v) => { const n = { ...namaAngka }; const t = String(v || '').trim().slice(0, 28); const asli = tersedia.find((x) => x.k === k)?.label; if (t && t !== asli) n[k] = t; else delete n[k]; simpanAngka({ nama: n }) },
+    onBawaan: () => tataDasbor.setAngka(null), onSelesai: () => setAturAngka(false),
+  } : null
 
   // ---------- isi tab Kerja saya ----------
   const kerja = worker ? { polos: true, isi: <div data-kerja-saya><WorkerBoard projects={scopeByBranch(user, data.projects, branchFilter)} /></div> } : (
@@ -144,10 +170,14 @@ export default function Dashboard() {
       <KepalaDasbor user={user} ping={pil} />
       <StripTersemat tanpaPing />
       {strip}
-      <AngkaPeran tiles={tiles} aktif={{ tenggat: 'dl', hambatan: 'late', kerja: 'todo' }[tab]} />
+      <AngkaPeran tiles={tiles} aktif={{ tenggat: 'dl', hambatan: 'late', kerja: 'todo' }[tab]} atur={propAtur} />
       {user.role === 'penerjemah' && <KapasitasSaya />}
 
-      {bolehTata && <div className="flex justify-end"><TombolTata atur={tataDasbor.atur} adaTata={!!tataDasbor.tata} onKlik={() => tataDasbor.setAtur(!tataDasbor.atur)} /></div>}
+      {bolehTata && <div className="flex flex-wrap justify-end gap-2">
+        <button type="button" onClick={() => setAturAngka(!aturAngka)} aria-pressed={aturAngka} data-aksi="atur-angka"
+          className={cx('inline-flex min-h-9 items-center gap-1.5 rounded-xl px-3 text-xs font-semibold ring-1 transition max-md:min-h-11', aturAngka ? 'bg-ink text-white ring-ink' : 'bg-white text-ink-soft ring-[#D9DBE7] hover:text-ink hover:ring-ink dark:bg-white/5 dark:text-slate-300 dark:ring-white/10')}>
+          <Hash className="h-4 w-4" aria-hidden="true" />{aturAngka ? 'Selesai atur angka' : 'Atur angka'}</button>
+        <TombolTata atur={tataDasbor.atur} adaTata={!!tataDasbor.tata} onKlik={() => tataDasbor.setAtur(!tataDasbor.atur)} /></div>}
       {/* Sudah pernah ditata / sedang menata → papan kartu berukuran pakem. Belum pernah → tampilan bawaan di bawah, tidak berubah. */}
       {bolehTata && (tataDasbor.tata || tataDasbor.atur) ? (
         <PapanDasbor {...tataDasbor} kartu={[

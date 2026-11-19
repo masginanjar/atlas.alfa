@@ -363,7 +363,7 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
           <div className="grid gap-4 lg:grid-cols-2">
             <div className="space-y-4">
               <div>
-                <CustomerPicker value={customer} invalid={!!E('customer')} onChange={(c) => { setCustomer(c); if (!editing) setInvoice('') }} />
+                <CustomerPicker value={customer} invalid={!!E('customer')} onChange={(c, inv) => { setCustomer(c); if (!editing) setInvoice(inv || '') }} />
                 {E('customer') && <FieldError>{E('customer')}</FieldError>}
               </div>
               {preset?.invoice_no && !editing
@@ -508,7 +508,7 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
         <section>
           <p className="mb-1.5 flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wide text-ink-mute"><span className="grid h-5 w-5 place-items-center rounded-full bg-ink text-[10px] text-white">1</span>Pelanggan & invoice</p>
           <div className="space-y-2">
-            <CustomerPicker ringkas value={customer} invalid={!!E('customer')} onChange={(c) => { setCustomer(c); if (!editing) setInvoice('') }} />
+            <CustomerPicker ringkas value={customer} invalid={!!E('customer')} onChange={(c, inv) => { setCustomer(c); if (!editing) setInvoice(inv || '') }} />
             {E('customer') && <FieldError>{E('customer')}</FieldError>}
             {customer && (preset?.invoice_no ? <p className="text-sm font-bold">{invoiceLabel(invoice)}</p> : <InvoicePicker ringkas customer={customer} value={invoice} onChange={setInvoice} error={E('invoice')} />)}
             <MetodeKirim value={metodeKirim} onPilih={pilihMetode} error={E('metode')} kantor={about.print_location} />
@@ -667,7 +667,7 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
           <h2 className="text-xs font-bold uppercase tracking-[0.06em] text-[#5E6380]">1 · Pelanggan, invoice & pengiriman</h2>
           <div className="flex flex-wrap items-start gap-2.5">
             <KolBaru label="Pelanggan" wajib style={{ flex: '1.4 1 220px' }} error={E('customer')}>
-              <CustomerPicker ringkas value={customer} invalid={!!E('customer')} onChange={(c) => { setCustomer(c); setInvoice(preset?.invoice_no || '') }} />
+              <CustomerPicker ringkas value={customer} invalid={!!E('customer')} onChange={(c, inv) => { setCustomer(c); setInvoice(preset?.invoice_no || inv || '') }} />
             </KolBaru>
             <KolBaru label="No. invoice" wajib style={{ flex: '1 1 170px' }} error={preset?.invoice_no ? E('invoice') : null}>
               {preset?.invoice_no
@@ -943,15 +943,30 @@ function CustomerPicker({ value, onChange, invalid, ringkas }) {
   const [res, setRes] = useState([])
   const [loading, setLoading] = useState(false)
   const [err, setErr] = useState('')
+  const [inv, setInv] = useState([]) // hasil cari lewat NOMOR INVOICE (≥ 4 angka)
 
   useEffect(() => {
-    if (value || q.trim().length < 2) { setRes([]); return }
+    if (value || q.trim().length < 2) { setRes([]); setInv([]); return }
     const t = setTimeout(async () => {
       setLoading(true); setErr('')
-      try { setRes(await zoho.searchContacts(q.trim())) } catch (e) { setErr(e.message) } finally { setLoading(false) }
+      const angka = q.replace(/\D/g, '')
+      try {
+        const [k, iv] = await Promise.all([zoho.searchContacts(q.trim()), angka.length >= 4 ? zoho.cariInvoice(angka).catch(() => []) : []])
+        setRes(k); setInv(iv)
+      } catch (e) { setErr(e.message) } finally { setLoading(false) }
     }, 350)
     return () => clearTimeout(t)
   }, [q, value])
+
+  /** Pilih lewat nomor invoice: pelanggan pemilik invoice dipasang, nomor invoicenya langsung terpilih. */
+  const pickInvoice = async (r) => {
+    setLoading(true); setErr('')
+    try {
+      const c = await zoho.contact(r.customer_id)
+      if (!c) { setErr('Pelanggan invoice ini belum ada di salinan Zoho — cari lewat namanya atau isi manual'); return }
+      onChange(c, r.invoice_no)
+    } catch (e) { setErr(e.message) } finally { setLoading(false) }
+  }
 
   const pick = async (c) => {
     setLoading(true); setErr('')
@@ -982,10 +997,20 @@ function CustomerPicker({ value, onChange, invalid, ringkas }) {
     <div>
       <div className="relative">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-        <Input className="h-11 pl-9" aria-invalid={invalid} placeholder="Cari nama / email pelanggan (min. 2 huruf)" value={q} onChange={(e) => setQ(e.target.value)} />
+        <Input className="h-11 pl-9" aria-invalid={invalid} placeholder="Cari nama / email / no. invoice" value={q} onChange={(e) => setQ(e.target.value)} />
         {loading && <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-brand" />}
       </div>
       {err && <p className="mt-2 text-xs text-rose-600">{err}</p>}
+      {inv.length > 0 && (
+        <ul className="mt-2 divide-y divide-slate-100 overflow-hidden rounded-xl bg-white shadow-lg ring-1 ring-emerald-200" data-hasil-invoice>
+          {inv.map((r) => (
+            <li key={r.invoice_no}><button type="button" onClick={() => pickInvoice(r)} disabled={loading} className="flex min-h-11 w-full items-center gap-2.5 px-3 py-2 text-left hover:bg-emerald-50 disabled:opacity-60">
+              <Receipt className="h-4 w-4 shrink-0 text-emerald-700" aria-hidden="true" />
+              <span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold">{r.customer_name || 'Pelanggan'}</span><span className="block text-xs text-ink-mute">Invoice {invoiceLabel(r.invoice_no)}{r.date ? ` · ${tgl(r.date)}` : ''}</span></span>
+            </button></li>
+          ))}
+        </ul>
+      )}
       {res.length > 0 && (
         <ul className="mt-2 divide-y divide-slate-100 overflow-hidden rounded-xl bg-white shadow-lg ring-1 ring-slate-200">
           {res.map((c) => (
@@ -995,7 +1020,7 @@ function CustomerPicker({ value, onChange, invalid, ringkas }) {
           ))}
         </ul>
       )}
-      {!loading && q.trim().length >= 2 && !res.length && !err && (
+      {!loading && q.trim().length >= 2 && !res.length && !inv.length && !err && (
         <div className="mt-2 flex flex-wrap items-center gap-2 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-900 ring-1 ring-amber-200">
           <span className="min-w-0 flex-1">Tidak ditemukan di data Zoho (disinkron berkala). Pelanggan baru di Zoho muncul paling lama 1 jam — atau isi manual dulu.</span>
           <Button size="sm" variant="outline" onClick={() => onChange({ zoho_id: null, name: q.trim(), email: '', phone: '', city: '', ship: { attention: q.trim() }, manual: true })}>Isi manual: “{q.trim()}”</Button>

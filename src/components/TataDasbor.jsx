@@ -26,11 +26,19 @@ export function useTataDasbor(user, data, save) {
   const userId = user.id
   const baris = (data?.users || []).find((u) => u.id === userId)
   const diAkun = baris && baris.tata_dasbor !== undefined ? baris.tata_dasbor : undefined
+  // Isi tersimpan: { urut, sembunyi, ukuran } (tataan kartu) dan/atau { angka } (pilihan kotak angka di atas dasbor).
+  // Papan kartu hanya aktif bila ada `urut`; pilihan angka saja TIDAK mengubah susunan kartu bawaan.
+  const sahMentah = (v) => (v && typeof v === 'object' && (Array.isArray(v.urut) || v.angka) ? v : null)
   const sahTata = (v) => (v && Array.isArray(v.urut) ? v : null)
-  const [tata, setTataMentah] = useState(() => { if (diAkun !== undefined) return sahTata(diAkun); try { return sahTata(JSON.parse(localStorage.getItem(kunci(userId)) || 'null')) } catch { return null } })
+  const [mentah, setTataMentah] = useState(() => { if (diAkun !== undefined) return sahMentah(diAkun); try { return sahMentah(JSON.parse(localStorage.getItem(kunci(userId)) || 'null')) } catch { return null } })
+  const mentahRef = useRef(mentah); mentahRef.current = mentah
+  const tata = sahTata(mentah)
+  const angka = mentah?.angka || null
   const [atur, setAtur] = useState(false)
   const tunda = useRef(null); const menunggu = useRef(false)
-  const setTata = useCallback((v) => {
+  const tulis = useCallback((v0) => {
+    const v = sahMentah(v0)
+    mentahRef.current = v
     setTataMentah(v)
     try { if (v) localStorage.setItem(kunci(userId), JSON.stringify(v)); else localStorage.removeItem(kunci(userId)) } catch { /* penyimpanan penuh / diblokir */ }
     if (!save || user._actor) return
@@ -39,15 +47,19 @@ export function useTataDasbor(user, data, save) {
     tunda.current = setTimeout(async () => {
       try { const row = (data?.users || []).find((u) => u.id === userId); if (row) await save('users', { ...row, tata_dasbor: v || null }) } catch { /* gagal simpan ke akun — tataan tetap ada di perangkat ini */ } finally { menunggu.current = false }
     }, 900)
-  }, [userId, save, data, user._actor])
+  }, [userId, save, data, user._actor]) // eslint-disable-line react-hooks/exhaustive-deps
+  /** Tataan kartu (null = kembali ke bawaan). Pilihan angka ikut dipertahankan. */
+  const setTata = useCallback((v) => { const a = mentahRef.current?.angka; tulis(v ? { ...v, ...(a ? { angka: a } : {}) } : (a ? { angka: a } : null)) }, [tulis])
+  /** Pilihan kotak angka: { urut:[kunci], nama:{kunci:label} } (null = bawaan role). Tataan kartu ikut dipertahankan. */
+  const setAngka = useCallback((a) => { const { angka: _lama, ...sisa } = mentahRef.current || {}; tulis(a ? { ...sisa, angka: a } : sisa) }, [tulis])
   // Tataan diubah dari perangkat lain → ikut, selama tidak sedang menata di sini.
   const teksAkun = diAkun === undefined ? undefined : JSON.stringify(diAkun || null)
   useEffect(() => {
     if (teksAkun === undefined || atur || menunggu.current) return
-    setTataMentah((kini) => (JSON.stringify(kini || null) === teksAkun ? kini : sahTata(JSON.parse(teksAkun))))
+    setTataMentah((kini) => (JSON.stringify(kini || null) === teksAkun ? kini : sahMentah(JSON.parse(teksAkun))))
   }, [teksAkun, atur]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => () => clearTimeout(tunda.current), [])
-  return { tata, setTata, atur, setAtur }
+  return { tata, setTata, atur, setAtur, angka, setAngka }
 }
 
 /** Tombol pembuka mode atur (ditaruh di atas papan). */

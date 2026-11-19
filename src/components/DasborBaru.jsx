@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { BellRing, Check, ArrowRight, ChevronDown, AlarmClock, AlertTriangle, Inbox, StickyNote, Send, Plane, CalendarDays } from 'lucide-react'
+import { BellRing, Check, ArrowRight, ChevronDown, ChevronUp, Pencil, Plus, RotateCcw, X, AlarmClock, AlertTriangle, Inbox, StickyNote, Send, Plane, CalendarDays } from 'lucide-react'
 import { useApp } from '../lib/store.jsx'
 import { Card, Sheet, Button, cx } from './ui.jsx'
 import { MapTabs } from './SubTab.jsx'
@@ -97,7 +97,8 @@ export function PingStrip() {
  * Angka: tiles = [{k,label,value,sub,tone,uang,onClick|href}]. Di HP 4 pertama
  * jadi kotak besar, sisanya baris chip kecil; di PC semuanya kotak.
  */
-export function AngkaPeran({ tiles, aktif }) {
+export function AngkaPeran({ tiles, aktif, atur }) {
+  if (atur) return <AngkaAtur tiles={tiles} {...atur} />
   const utama = tiles.slice(0, 4), lain = tiles.slice(4)
   const Kotak = ({ t, kecil }) => {
     const Tag = t.href ? 'a' : 'button'
@@ -125,6 +126,53 @@ export function AngkaPeran({ tiles, aktif }) {
             const props = t.href ? { href: t.href } : { type: 'button', onClick: t.onClick }
             return <Tag key={t.k} {...props} className="inline-flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-[10px] border border-[#E7E8F0] bg-white px-3 text-xs font-semibold text-[#5E6380]">{t.label}<b className="text-ink">{t.value}</b></Tag>
           })}
+        </div>
+      )}
+    </section>
+  )
+}
+
+/**
+ * Mode atur kotak angka: pilih angka mana yang tampil, urutkan, dan ganti namanya. Hanya tampilan milik sendiri.
+ * tiles = yang sedang tampil (urut) · tersedia = semua angka yang boleh dipakai akun ini · nama = label buatan sendiri.
+ */
+function AngkaAtur({ tiles, tersedia, nama, onUrut, onNama, onBawaan, onSelesai, diubah }) {
+  const [edit, setEdit] = useState(null)
+  const kunci = tiles.map((t) => t.k)
+  const geser = (k, d) => { const i = kunci.indexOf(k), j = i + d; if (j < 0 || j >= kunci.length) return; const a = [...kunci]; [a[i], a[j]] = [a[j], a[i]]; onUrut(a) }
+  const belum = tersedia.filter((t) => !kunci.includes(t.k))
+  const tbl = 'grid h-9 w-9 place-items-center rounded-lg text-[#5E6380] hover:bg-[#EEF0F6] hover:text-ink disabled:opacity-30 max-md:h-11 max-md:w-11'
+  return (
+    <section aria-label="Atur angka dasbor" data-angka="atur" className="space-y-2.5 rounded-2xl bg-[#EEEBFF] p-3 ring-1 ring-[#D4CEFA]">
+      <div className="flex flex-wrap items-center gap-2 text-xs text-[#2A2170]">
+        <p className="min-w-0 flex-1 basis-56"><b>Atur angka.</b> Pilih angka yang tampil, geser urutannya, atau ganti namanya. Hanya berlaku di dasbor Anda. <span className="lg:hidden">Di HP, empat pertama tampil besar.</span></p>
+        {diubah && <button type="button" onClick={onBawaan} data-aksi="angka-bawaan" className="inline-flex min-h-9 items-center gap-1.5 rounded-xl bg-white px-3 font-semibold ring-1 ring-[#D4CEFA] hover:ring-[#2A2170] max-md:min-h-11"><RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />Kembali ke bawaan</button>}
+        <button type="button" onClick={onSelesai} data-aksi="angka-selesai" className="inline-flex min-h-9 items-center gap-1.5 rounded-xl bg-[#2A2170] px-3 font-semibold text-white max-md:min-h-11"><Check className="h-3.5 w-3.5" aria-hidden="true" />Selesai</button>
+      </div>
+      <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        {tiles.map((t, i) => (
+          <li key={t.k} data-angka-atur={t.k} className="flex min-w-0 items-center gap-1 rounded-xl bg-white p-1.5 pl-3 ring-1 ring-[#DADDE8]">
+            <div className="min-w-0 flex-1">
+              {edit === t.k
+                ? <input autoFocus defaultValue={t.label} maxLength={28} aria-label={`Nama untuk ${t.asli}`} data-angka-nama
+                    onBlur={(e) => { onNama(t.k, e.target.value); setEdit(null) }} onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); if (e.key === 'Escape') setEdit(null) }}
+                    className="h-9 w-full rounded-lg border-0 bg-[#F6F7FB] px-2 text-[13px] font-semibold text-ink ring-1 ring-[#B9BDD0] focus:outline-none focus:ring-2 focus:ring-brand max-md:h-11 max-md:text-base" />
+                : <><p className="truncate text-[13px] font-semibold text-ink" title={t.label}>{t.label}</p><p className="truncate text-[11px] text-[#5E6380]">{t.value}{nama?.[t.k] ? ` · asli: ${t.asli}` : ''}</p></>}
+            </div>
+            <button type="button" className={tbl} onClick={() => setEdit(edit === t.k ? null : t.k)} aria-label={`Ganti nama ${t.label}`} title="Ganti nama"><Pencil className="h-4 w-4" /></button>
+            <button type="button" className={tbl} disabled={i === 0} onClick={() => geser(t.k, -1)} aria-label={`Majukan ${t.label}`} title="Majukan"><ChevronUp className="h-4 w-4" /></button>
+            <button type="button" className={tbl} disabled={i === tiles.length - 1} onClick={() => geser(t.k, 1)} aria-label={`Mundurkan ${t.label}`} title="Mundurkan"><ChevronDown className="h-4 w-4" /></button>
+            <button type="button" className={tbl} disabled={tiles.length <= 1} onClick={() => onUrut(kunci.filter((k) => k !== t.k))} aria-label={`Sembunyikan ${t.label}`} title="Sembunyikan"><X className="h-4 w-4" /></button>
+          </li>
+        ))}
+      </ul>
+      {belum.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5" data-angka-tambah>
+          <span className="text-xs font-semibold text-[#2A2170]">Tambah angka:</span>
+          {belum.map((t) => (
+            <button key={t.k} type="button" onClick={() => onUrut([...kunci, t.k])} data-tambah-angka={t.k}
+              className="inline-flex min-h-9 items-center gap-1.5 rounded-xl bg-white px-2.5 text-xs font-semibold text-ink-soft ring-1 ring-[#D4CEFA] hover:text-ink hover:ring-[#2A2170] max-md:min-h-11"><Plus className="h-3.5 w-3.5" aria-hidden="true" />{t.label}<b className="tabular-nums text-ink">{t.value}</b></button>
+          ))}
         </div>
       )}
     </section>
