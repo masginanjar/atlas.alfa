@@ -17,11 +17,16 @@ export const KATALOG_CONTOH = [
   { id: 'gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro', tingkat: 'bagus', masuk: 2, keluar: 12 },
 ]
 export const FITUR_AI = [
-  { id: 'penerjemah', label: 'Smart Translator', ket: 'Pembaca kedua untuk dokumen di Smart Translator. Hasilnya dibandingkan dengan Google Vision; yang berbeda ditandai untuk dicek.', tanpa: 'Tanpa AI (Google Vision / Tesseract saja)', token: [1300, 4000] },
-  { id: 'surat_kuasa', label: 'Surat Kuasa — baca KTP', ket: 'Mengisi identitas pemberi kuasa dari foto KTP.', tanpa: 'Tanpa AI (Tesseract, gratis)', token: [1300, 320] },
-  { id: 'bukti', label: 'Bukti transfer massal', ket: 'Membaca screenshot daftar transfer internet banking.', tanpa: 'Tanpa AI (Tesseract, gratis)', token: [1250, 900] },
+  { id: 'penerjemah', label: 'Smart Translator', di: 'Alat → Smart Translator', ket: 'Pembaca kedua untuk dokumen di Smart Translator. Hasilnya dibandingkan dengan Google Vision; yang berbeda ditandai untuk dicek.', tanpa: 'Tanpa AI (Google Vision / Tesseract saja)', token: [1300, 4000] },
+  { id: 'surat_kuasa', label: 'Surat Kuasa — baca KTP', di: 'Alat → Surat Kuasa', ket: 'Mengisi identitas pemberi kuasa dari foto KTP.', tanpa: 'Tanpa AI (Tesseract, gratis)', token: [1300, 320] },
+  { id: 'bukti', label: 'Bukti transfer massal', di: 'Keuangan → Pengajuan → Bukti massal', ket: 'Membaca screenshot daftar transfer internet banking.', tanpa: 'Tanpa AI (Tesseract, gratis)', token: [1250, 900] },
+  // Dua fitur di bawah punya fungsi server sendiri (spesimen-ai, tarik-data-ai) → diatur lewat fungsi ai-setelan-lain. Tidak punya cara "tanpa AI".
+  { id: 'spesimen', lain: true, label: 'Pemisah Spesimen', di: 'Alat → Pemisah Spesimen', ket: 'Membaca nama & jabatan pejabat serta letak tanda tangan, paraf, dan stempel di tiap halaman. Dipakai juga oleh tombol “Cari alamat” instansi (lewat pencarian Google).' },
+  { id: 'tarik_data', lain: true, label: 'Tarik Data (beta)', di: 'Buat Project → Tarik Data', ket: 'Menyusun usulan sub project dari item invoice Zoho. Yang dikirim hanya teks item — alamat, telepon, dan email dibuang lebih dulu.' },
 ]
-const BAWAAN = () => ({ kurs: 17000, fitur: { penerjemah: { model: 'gemini-3-flash-preview', batas_rp: 100000 }, surat_kuasa: { model: 'gemini-3.5-flash-lite', batas_rp: 50000 }, bukti: { model: 'gemini-3.5-flash-lite', batas_rp: 50000, otomatis: true } } })
+const FITUR_LAIN = FITUR_AI.filter((f) => f.lain).map((f) => f.id)
+const BAWAAN_LAIN = { spesimen: { model: 'gemini-3.1-pro-preview', batas_rp: 300000 }, tarik_data: { model: 'gemini-3-flash-preview', batas_rp: 100000 } }
+const BAWAAN = () => ({ kurs: 17000, fitur: { penerjemah: { model: 'gemini-3-flash-preview', batas_rp: 100000 }, surat_kuasa: { model: 'gemini-3.5-flash-lite', batas_rp: 50000 }, bukti: { model: 'gemini-3.5-flash-lite', batas_rp: 50000, otomatis: true }, ...structuredClone(BAWAAN_LAIN) } })
 const KUNCI_DEMO = 'atlas_ai_demo'
 const demoBaca = () => { try { const s = JSON.parse(localStorage.getItem(KUNCI_DEMO) || 'null'); const b = BAWAAN(); return s ? { kurs: s.kurs || b.kurs, fitur: Object.fromEntries(Object.keys(b.fitur).map((k) => [k, { ...b.fitur[k], ...(s.fitur?.[k] || {}) }])) } : b } catch { return BAWAAN() } }
 
@@ -40,12 +45,24 @@ async function panggil(aksi, body, fungsi = 'gemini-ai') {
 export async function aiInfo() {
   if (!AI_LIVE) { const s = demoBaca(); return { ok: true, demo: true, aktif: false, atur: true, setelan: s, pakai: {}, katalog: KATALOG_CONTOH, fitur: Object.fromEntries(Object.entries(s.fitur).map(([k, f]) => [k, { model: f.model, otomatis: f.otomatis ?? null }])) } }
   const r = await panggil('info', {})
+  if (r.ok && r.setelan) { // pengatur: lengkapi dengan fitur yang diatur fungsi ai-setelan-lain
+    const l = await panggil('info', {}, 'ai-setelan-lain')
+    if (l.ok && l.fitur) r.setelan.fitur = { ...r.setelan.fitur, ...l.fitur }
+    else r.lainGagal = l.alasan || 'Pengaturan fitur ini belum bisa dimuat'
+  }
   if (r.ok && r.setelan && !r.fitur) r.fitur = Object.fromEntries(Object.entries(r.setelan.fitur).map(([k, f]) => [k, { model: f.model, otomatis: f.otomatis ?? null }]))
   return r
 }
 export async function aiAtur(patch) {
   if (!AI_LIVE) { const s = demoBaca(); if (patch.kurs != null) s.kurs = Math.round(Number(patch.kurs)); for (const [k, v] of Object.entries(patch.fitur || {})) s.fitur[k] = { ...s.fitur[k], ...v }; localStorage.setItem(KUNCI_DEMO, JSON.stringify(s)); return { ok: true, setelan: s } }
-  return panggil('atur', patch)
+  const pisah = (lain) => Object.fromEntries(Object.entries(patch.fitur || {}).filter(([k]) => FITUR_LAIN.includes(k) === lain))
+  const r = await panggil('atur', { ...patch, fitur: pisah(false) })
+  if (!r.ok) return r
+  // SELALU sesudah yang utama: fungsi gemini-ai menulis ulang daftar fiturnya, lalu ini menaruh kembali fitur lainnya.
+  const fl = Object.fromEntries(Object.entries(pisah(true)).map(([k, v]) => [k, { model: v.model, batas_rp: v.batas_rp }]))
+  const l = await panggil('atur', { fitur: fl }, 'ai-setelan-lain')
+  if (!l.ok) return { ok: false, alasan: `Tersimpan sebagian — Pemisah Spesimen & Tarik Data belum: ${l.alasan || 'server tidak menjawab'}` }
+  return { ...r, setelan: { ...r.setelan, fitur: { ...r.setelan.fitur, ...l.fitur } } }
 }
 /** Jalankan AI untuk satu gambar (data URL JPG/PNG). Gagal/dimatikan/batas tercapai → { ok:false, cadangan:true, alasan }. */
 export async function aiJalan(fitur, gambar) {
@@ -69,7 +86,7 @@ export function kanvasKeJpeg(c, maks = 2200, mutu = 0.9) {
   return s.toDataURL('image/jpeg', mutu)
 }
 /** Perkiraan biaya satu dokumen (rupiah) untuk model & fitur — angka kasar dari jumlah token rata-rata hasil uji. */
-export const kiraBiaya = (m, f, kurs) => (m && f ? ((f.token[0] * m.masuk + f.token[1] * m.keluar) / 1e6) * kurs : 0)
+export const kiraBiaya = (m, f, kurs) => (m && f?.token ? ((f.token[0] * m.masuk + f.token[1] * m.keluar) / 1e6) * kurs : 0)
 
 /** Tarik Data (beta): susun usulan sub project dari item invoice (teks saja; item kirim & baris alamat/telepon sudah dibuang). */
 export async function aiTarikData(items, lembaga) {

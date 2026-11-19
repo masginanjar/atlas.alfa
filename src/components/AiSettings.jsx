@@ -53,22 +53,26 @@ export default function AiSettings() {
         </p>
       </Card>
 
+      <p className="text-sm text-ink-mute" data-ai-jumlah>Ada <b className="text-ink">{FITUR_AI.length} fitur</b> ATLAS yang memakai AI. Fitur lain (OCR Google Vision, Zoho, Everpro, email) tidak memakai Gemini.</p>
+
       {FITUR_AI.map((ft) => {
-        const s = f.fitur[ft.id]; const m = kat.find((x) => x.id === s.model); const p = info.pakai?.[ft.id]; const terpakai = (p?.usd || 0) * f.kurs
+        const s = f.fitur[ft.id]
+        if (!s) return <Card key={ft.id} className="space-y-1 p-5" data-ai-fitur={ft.id}><h3 className="font-bold">{ft.label}</h3><p className="text-sm text-amber-800">{info.lainGagal || 'Pengaturan fitur ini belum bisa dimuat.'} Fitur tetap berjalan dengan pengaturan terakhir.</p></Card>
+        const m = kat.find((x) => x.id === s.model); const p = info.pakai?.[ft.id]; const terpakai = (p?.usd || 0) * f.kurs
         const persen = s.batas_rp > 0 ? Math.min(100, Math.round((terpakai / s.batas_rp) * 100)) : 0
         return (
           <Card key={ft.id} className="space-y-3 p-5" data-ai-fitur={ft.id}>
-            <div><h3 className="font-bold">{ft.label}</h3><p className="text-sm text-ink-mute">{ft.ket}</p></div>
+            <div><h3 className="font-bold">{ft.label}</h3>{ft.di && <p className="text-xs font-semibold text-brand">{ft.di}</p>}<p className="text-sm text-ink-mute">{ft.ket}</p></div>
             <div className="grid gap-3 md:grid-cols-2">
-              <Field label="Model AI" hint={m ? `±${rp(kiraBiaya(m, ft, f.kurs))} per dokumen (perkiraan)` : 'Tidak ada biaya AI'}>
+              <Field label="Model AI" hint={!m ? 'Tidak ada biaya AI' : ft.token ? `±${rp(kiraBiaya(m, ft, f.kurs))} per dokumen (perkiraan)` : p?.n ? `Rata-rata ±${rp(terpakai / p.n)} per pemakaian bulan ini` : 'Belum dipakai bulan ini — biaya per pemakaian belum diketahui'}>
                 <Select value={s.model} disabled={!bisaAtur} onChange={(e) => ubah(ft.id, { model: e.target.value })} className="max-md:min-h-11 max-md:text-base" data-ai-model={ft.id} aria-label={`Model AI untuk ${ft.label}`}>
-                  <option value="">{ft.tanpa}</option>
+                  {!ft.lain && <option value="">{ft.tanpa}</option>}
                   {Object.entries(TINGKAT).map(([t, l]) => <optgroup key={t} label={l}>{kat.filter((x) => x.tingkat === t).map((x) => <option key={x.id} value={x.id}>{l} — {x.label}</option>)}</optgroup>)}
                   {s.model && !m && <option value={s.model}>{s.model} (tidak ada di daftar)</option>}
                 </Select>
               </Field>
-              <Field label="Batas biaya per bulan (Rp)" hint="Tercapai → fitur ini kembali ke cara tanpa AI sampai bulan berikutnya">
-                <Input type="number" inputMode="numeric" min={0} step={10000} value={s.batas_rp} disabled={!bisaAtur || !s.model} onChange={(e) => ubah(ft.id, { batas_rp: Math.max(0, Number(e.target.value) || 0) })} className="max-md:min-h-11 max-md:text-base" data-ai-batas={ft.id} />
+              <Field label="Batas biaya per bulan (Rp)" hint={ft.lain ? 'Tercapai → fitur ini berhenti sampai bulan berikutnya (tidak ada cara tanpa AI). Minimal Rp 10.000' : 'Tercapai → fitur ini kembali ke cara tanpa AI sampai bulan berikutnya'}>
+                <Input type="number" inputMode="numeric" min={ft.lain ? 10000 : 0} step={10000} value={s.batas_rp} disabled={!bisaAtur || !s.model} onChange={(e) => ubah(ft.id, { batas_rp: Math.max(0, Number(e.target.value) || 0) })} className="max-md:min-h-11 max-md:text-base" data-ai-batas={ft.id} />
               </Field>
             </div>
             {ft.id === 'bukti' && (
@@ -79,7 +83,7 @@ export default function AiSettings() {
             )}
             {!info.demo && (
               <div className="text-xs text-ink-mute" data-ai-pakai={ft.id}>
-                <div className="flex flex-wrap justify-between gap-x-3"><span>Bulan ini: <b className="text-ink">{p?.n || 0}</b> dokumen · ±<b className="text-ink">{rp(terpakai)}</b></span>{s.batas_rp > 0 && <span>{persen}% dari batas</span>}</div>
+                <div className="flex flex-wrap justify-between gap-x-3"><span>Bulan ini: <b className="text-ink">{p?.n || 0}</b> {ft.lain ? 'kali dipakai' : 'dokumen'} · ±<b className="text-ink">{rp(terpakai)}</b></span>{s.batas_rp > 0 && <span>{persen}% dari batas</span>}</div>
                 <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-slate-100" role="progressbar" aria-valuenow={persen} aria-valuemin={0} aria-valuemax={100} aria-label={`Pemakaian ${ft.label}`}><div className={cx('h-full', persen >= 90 ? 'bg-rose-500' : 'bg-brand')} style={{ width: `${persen}%` }} /></div>
               </div>
             )}
