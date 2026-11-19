@@ -282,7 +282,10 @@ function migrate(m) {
       ['etranslator.nl', 'Akta kelahiran Indonesia untuk gemeente', 'geboorteakte vertalen', 'Layanan', 'Sedang', 5, '', 'Ide', ''],
       ['englishlink.co.id', 'Biaya penerjemah tersumpah 2026', 'biaya penerjemah tersumpah', 'Layanan', 'Rendah', -2, '', 'Siap Review', ''],
     ]
-    m.marketing_konten = C.map(([website, judul, kata_kunci, jenis, prioritas, n, jam, status, link]) => ({ id: uid(), website, judul, kata_kunci, jenis, prioritas, tanggal: hari(n), jam, pic: 'Contoh', status, link, catatan: '', created_at: new Date().toISOString(), updated_at: new Date().toISOString() }))
+    // contoh artikel otomatis yang menunggu persetujuan (naskah sintetis)
+    const NASKAH = `---\ntitle: Kenapa Ejaan Nama di Dokumen Perlu Dicek?\ndescription: Beda satu huruf di nama bisa bikin dokumen ditolak. Ini cara mengeceknya sebelum diterjemahkan.\ndate: ${hari(1)}\nkicker: Tips\n---\n\nSatu huruf yang beda di nama sering dianggap sepele. Padahal instansi di luar negeri membandingkan **setiap huruf** dengan paspor.\n\n## Yang perlu dicek\n\n- Nama di paspor, ijazah, dan akta\n- Urutan nama depan dan belakang\n- Tanggal lahir\n\n## FAQ\n\n### Kalau namanya memang beda?\n\nSiapkan surat keterangan dari instansi penerbit.\n`
+    C.push(['englishlink.co.id', 'Kenapa Ejaan Nama di Dokumen Perlu Dicek?', 'ejaan nama dokumen', 'Edukasi', 'Sedang', 1, '', 'Siap Review', ''])
+    m.marketing_konten = C.map(([website, judul, kata_kunci, jenis, prioritas, n, jam, status, link]) => ({ id: uid(), website, judul, kata_kunci, jenis, prioritas, tanggal: hari(n), jam, pic: status === 'Siap Review' ? 'Artikel otomatis' : 'Contoh', status, link, catatan: '', ...(status === 'Siap Review' ? { sumber: 'otomatis', berkas: [{ path: 'src/content/blog/id/kenapa-ejaan-nama-perlu-dicek.md', isi: NASKAH }] } : {}), ...(status === 'Sudah Terbit' ? { persetujuan: { status: 'disetujui', oleh: 'Contoh', pada: new Date().toISOString() } } : {}), created_at: new Date().toISOString(), updated_at: new Date().toISOString() }))
     changed = true
   }
   // Mitra contoh — diisi manual oleh CS, jadi cukup beberapa baris untuk demo.

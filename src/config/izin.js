@@ -90,7 +90,7 @@ export const MODUL = [
   ] },
   { id: 'marketing', label: 'Marketing', fitur: [
     // 20 Nov 2026: ide konten & status posting blog per website. Default deny → hanya Super Admin sampai diatur di Role & Hak Akses.
-    f('marketing-website', 'Website — ide konten & status posting blog', ['menu', 'lihat', 'tambah', 'ubah', 'hapus']),
+    f('marketing-website', 'Website — ide konten, persetujuan terbit & status posting blog', ['menu', 'lihat', 'tambah', 'ubah', 'hapus', 'setujui']),
   ] },
   { id: 'project', label: 'Project', fitur: [
     // 19 Nov 2026: Tarik Data (beta) — susun usulan sub project dari item invoice memakai AI (server: tarik-data-ai).
