@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { labelPrioritas } from '../config/priority.js'
 import { OfficialInvoice } from './NoReg.jsx'
 import { InvoiceNo, TandaAcc } from './badges.jsx'
 import { Eye, MoreHorizontal, Search, SlidersHorizontal, X, ArrowUp, ArrowDown, FolderOpen, Printer, ChevronDown } from 'lucide-react'
@@ -294,7 +295,7 @@ export default function ProjectSpreadsheet({ list, detailFor, onDetail, onFiles,
                   <select value={filters[k] || ''} onChange={(e) => set({ filters: { ...filters, [k]: e.target.value }, shownN: PAGE })}
                     className="w-full max-w-full rounded-lg border-0 bg-slate-50 py-2 pl-2.5 pr-7 text-sm ring-1 ring-slate-200 focus:ring-2 focus:ring-brand">
                     <option value="">Semua</option>
-                    {list.map((v) => <option key={v} value={v}>{v}</option>)}
+                    {list.map((v) => <option key={v} value={v}>{k === 'prioritas' ? labelPrioritas(v) : v}</option>)}
                   </select>
                 </label>
               ))}

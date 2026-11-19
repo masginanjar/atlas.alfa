@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { prioSub, prioSubBeda } from '../config/priority.js'
 import SalinChatOrder from '../components/SalinChatOrder.jsx'
 import EmailOtorisasi from '../components/EmailOtorisasi.jsx'
 import { subTerlihat } from '../lib/dokumenAL.js'
@@ -280,7 +281,7 @@ function DetailCanvas({ project, focusSub, tab, setTab, del, setEditing, setShar
             const hlm = sb.docs?.length ? sb.docs.reduce((a, d) => a + (Number(d.pages) || 0), 0) : (Number(sb.pages) || 0)
             return (
               <div key={sb.id} data-sub-card={sb.id} className="grid items-center gap-x-3 border-t border-[#EEF0F5] px-4 py-2.5 [grid-template-columns:minmax(0,2.2fr)_56px_56px_minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1.8fr)_250px]" style={{ background: w.bg }}>
-                <span className="flex min-w-0 items-center gap-2"><span className="inline-flex min-h-[22px] shrink-0 items-center rounded-lg bg-white px-2 text-[11px] font-bold" style={{ color: w.fg }}>{w.kode}</span><span className="min-w-0 truncate text-sm font-bold" title={sb.title}>{sb.title}</span></span>
+                <span className="flex min-w-0 items-center gap-2"><span className="inline-flex min-h-[22px] shrink-0 items-center rounded-lg bg-white px-2 text-[11px] font-bold" style={{ color: w.fg }}>{w.kode}</span>{prioSubBeda(project) && <PriorityBadge p={prioSub(project, sb)} iconOnly className="shrink-0" />}<span className="min-w-0 truncate text-sm font-bold" title={sb.title}>{sb.title}</span></span>
                 <span className="whitespace-nowrap text-sm">{dok} Dok</span>
                 <span className="whitespace-nowrap text-sm">{hlm} Hal</span>
                 <span className="min-w-0 truncate text-sm">{sb.lang_from && sb.lang_to ? `${sb.lang_from} → ${sb.lang_to}` : '—'}</span>
@@ -423,7 +424,7 @@ export function SubProject({ n, project, sub, compact, tanpaTahap, ringkas }) {
     <Card className="overflow-hidden" data-sub-card={sub.id}>
       <div className="flex items-start justify-between gap-2 p-4 pb-2">
         <div className="min-w-0">
-          <p className="text-[11px] font-semibold text-ink-mute">SUB {n}</p>
+          <p className="flex items-center gap-1.5 text-[11px] font-semibold text-ink-mute">SUB {n}{prioSubBeda(project) && <PriorityBadge p={prioSub(project, sub)} />}</p>
           <p className="font-bold">{sub.title}</p>
           <SubMeta sub={sub} />
         </div>

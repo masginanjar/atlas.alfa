@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { prioSub } from '../config/priority.js'
 import { Play, Send, FolderOpen, Hand, CheckCircle2, FileText, Upload, Loader2, Circle, Inbox, Building2, Headset, Printer, Eye, Download, ChevronDown, ChevronRight, Undo2, MapPin, Languages, X } from 'lucide-react'
 import { useApp } from '../lib/store.jsx'
 import { TolakTugasBtn } from './GantiPenerjemah.jsx'
@@ -490,7 +491,7 @@ function TaskRow({ project, sub, alt }) {
         </div>
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold text-ink" title={project.customer?.name}>{project.customer?.name}</p>
-          <p className="mt-0.5 flex items-center gap-1.5 text-xs text-ink-mute"><PriorityBadge p={project.about?.priority} /><span className="truncate">{daftar.length} dok · {pages} hlm</span></p>
+          <p className="mt-0.5 flex items-center gap-1.5 text-xs text-ink-mute"><PriorityBadge p={prioSub(project, sub)} /><span className="truncate">{daftar.length} dok · {pages} hlm</span></p>
         </div>
         <div className="min-w-0" data-kolom-cabang>
           <p className="truncate text-sm font-semibold text-ink" title="Cabang pemesan">{project.branch || '—'}</p>
@@ -506,7 +507,7 @@ function TaskRow({ project, sub, alt }) {
       {/* HP: kartu 4 baris — invoice · prioritas · deadline / nama / arah · dok · hlm / status, lalu tombol */}
       <div className="space-y-1 px-3 py-2.5 lg:hidden" data-kartu-tugas>
         <div className="flex items-start gap-2">
-          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5"><InvoiceNo project={project} /><PriorityBadge p={project.about?.priority} /></div>
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5"><InvoiceNo project={project} /><PriorityBadge p={prioSub(project, sub)} /></div>
           <div className="w-[118px] shrink-0 text-right [&>div>p]:text-right"><DeadlineJam project={project} /></div>
         </div>
         <p className="truncate text-[13px] font-bold text-ink">{project.customer?.name}</p>

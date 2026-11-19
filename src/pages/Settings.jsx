@@ -675,7 +675,7 @@ function People() {
       <Tabs tabs={Object.entries(PERSON_TYPES).filter(([k]) => k !== 'vendor').map(([k, l]) => ({ value: k, label: l, count: data.people.filter((p) => p.type === k).length }))} value={type} onChange={setType} />
       <CrudList table="people" rows={rows} title={PERSON_TYPES[type]} empty={`Belum ada ${PERSON_TYPES[type]}`}
         blank={() => ({ name: '', type, branch: can.seeAllBranches(user) ? 'Semua' : user.branch, phone: '', note: '' })}
-        columns={(r) => <><p className="text-sm font-semibold">{r.name}</p><p className="text-[11px] text-ink-mute">{r.branch === 'Semua' ? 'Semua cabang' : r.branch}{r.phone && ` · ${r.phone}`}</p>{r.note && <p className="mt-0.5 line-clamp-2 text-[11px] text-amber-800">{r.note}</p>}</>}
+        columns={(r) => <><p className="text-sm font-semibold">{r.name}{r.dari_form && <span className="ml-1.5 rounded-full bg-amber-50 px-1.5 py-0.5 align-middle text-[10px] font-bold text-amber-800 ring-1 ring-amber-200" title={`Ditambahkan dari form project${r.dibuat_oleh ? ` oleh ${r.dibuat_oleh}` : ''} — rapikan namanya bila perlu`}>Ditambah tim</span>}</p><p className="text-[11px] text-ink-mute">{r.branch === 'Semua' ? 'Semua cabang' : r.branch}{r.phone && ` · ${r.phone}`}</p>{r.note && <p className="mt-0.5 line-clamp-2 text-[11px] text-amber-800">{r.note}</p>}</>}
         renderForm={(e, set) => (
           <div className="space-y-3">
             <Field label="Nama" required><Input value={e.name} onChange={(x) => set({ ...e, name: x.target.value })} /></Field>

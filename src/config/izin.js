@@ -89,6 +89,8 @@ export const MODUL = [
     f('katalog', 'Katalog / Daftar Harga', ['menu', 'lihat', 'tambah', 'ubah', 'hapus', 'impor', 'ekspor'], { semua: dari(canSeeKatalog) }),
   ] },
   { id: 'project', label: 'Project', fitur: [
+    // 19 Nov 2026: Tarik Data (beta) — susun usulan sub project dari item invoice memakai AI (server: tarik-data-ai).
+    f('tarik-data', 'Tarik Data (beta) — susun sub project dari invoice', ['tambah'], { tambah: ['cs', 'admin_pusat', 'helper', 'direktur', 'supervisor'] }),
     f('project', 'Project', ['menu', 'lihat', 'detail', 'tambah', 'ubah', 'hapus', 'tugaskan', 'status', 'lampiran_lihat', 'lampiran_kelola', 'ekspor', 'cetak', 'bagikan', 'riwayat', 'massal'],
       { menu: plus(SEMUA, 'projects'), lihat: plus(SEMUA, 'projects'), detail: plus(SEMUA, 'projects'), lampiran_lihat: plus(SEMUA, 'projects'), riwayat: plus(SEMUA, 'projects'), status: plus(SEMUA, 'projects'),
         tambah: dari(can.editProject), ubah: dari(can.editProject), tugaskan: dari(can.editProject), lampiran_kelola: plus(SEMUA, 'projects'), ekspor: dari(can.editProject), cetak: dari(can.editProject), bagikan: dari(can.editProject), massal: dari(can.editProject),
@@ -165,6 +167,9 @@ export const MODUL = [
     f('jadwal', 'Jadwal Kerja', ['menu', 'lihat', 'tambah', 'ubah'], { semua: plus(SEMUA, 'jadwal') }),
     // 15 Nov 2026: login harian = absen hadir. Rekap kehadiran untuk Superadmin & Direktur.
     f('kehadiran', 'Rekap Kehadiran (login harian)', ['menu', 'lihat', 'ekspor'], { semua: ['superadmin', 'direktur'] }),
+    // 19 Nov 2026: hanya CS, Staf Apostille, Helper & Admin Pusat yang wajib login ulang tiap hari (absen). Role lain tetap masuk.
+    //  Dicentang = role ini WAJIB login setiap hari. Super Admin tidak pernah wajib (lihat wajibLoginHarian).
+    f('login-harian', 'Wajib login ulang setiap hari (absen hadir)', ['kelola'], { kelola: ['cs', 'staf_apostille', 'helper', 'admin_pusat'] }),
     f('notes', 'Catatan', ['menu', 'lihat', 'tambah', 'ubah', 'hapus', 'bagikan'], { semua: plus(SEMUA, 'notes') }),
   ] },
   { id: 'perusahaan', label: 'Perusahaan & Pengaturan', fitur: [
@@ -172,6 +177,8 @@ export const MODUL = [
     f('faq', 'FAQ', ['menu', 'lihat', 'ubah'], { menu: plus(SEMUA, 'faq'), lihat: plus(SEMUA, 'faq'), ubah: ['superadmin'] }),
     f('settings', 'Pengaturan', ['menu', 'lihat'], { semua: SEMUA }),
     f('pengaturan.pengguna', 'Pengguna', ['lihat', 'tambah', 'ubah', 'arsip'], { semua: dari(can.manageUsers) }),
+    // 19 Nov 2026: tim boleh menambah lembaga / kedutaan yang belum ada langsung dari form project ("Lembaga lain").
+    f('lembaga', 'Tambah lembaga / kedutaan dari form project', ['tambah'], { tambah: ['cs', 'admin_pusat', 'helper', 'staf_apostille', 'direktur', 'supervisor'] }),
     f('pengaturan.master', 'Master data & Kurir', ['lihat', 'tambah', 'ubah', 'hapus'], { semua: dari(can.managePeople) }),
     f('pengaturan.integrasi', 'Integrasi', ['lihat', 'atur'], { semua: dari(can.manageUsers) }),
     // 15 Nov 2026: pengaturan AI (Gemini) — fitur baru, bawaan hanya Superadmin.

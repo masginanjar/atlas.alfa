@@ -4,6 +4,8 @@
 //  Tanpa harga proyek, pembayaran pelanggan, maupun omset.
 //  Pilihan disimpan per pengguna di perangkat ini. Di HP tidak tersedia.
 // ============================================================
+import { PriorityBadge } from './Priority.jsx'
+import { prioSub, prioSubBeda } from '../config/priority.js'
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { Search, Plus, ChevronDown, ArrowLeft, ExternalLink, Maximize2, Minimize2, X, FolderOpen, Wallet, Eye, Copy, Languages, Stamp, UserCheck, Printer, LogOut, MoreHorizontal, Hash, ClipboardList } from 'lucide-react'
 import { useApp } from '../lib/store.jsx'
@@ -290,7 +292,7 @@ function BarisProses({ n, p, x, sel }) {
     setV(init)
   }, [x.stage, x.id]) // eslint-disable-line react-hooks/exhaustive-deps
   const pad = sel ? 'flex flex-nowrap items-center gap-2 text-[12.5px]' : 'flex flex-wrap items-center gap-2 px-4 py-2 text-[12.5px]'
-  const nama = sel ? null : <><span className="w-5 shrink-0 text-right font-bold text-ink-mute">{n}</span><span className="max-w-[260px] truncate font-bold text-ink" title={x.title}>{x.title}</span></>
+  const nama = sel ? null : <><span className="w-5 shrink-0 text-right font-bold text-ink-mute">{n}</span><span className="max-w-[260px] truncate font-bold text-ink" title={x.title}>{x.title}</span>{prioSubBeda(p) && <PriorityBadge p={prioSub(p, x)} iconOnly />}</>
   if (x.stage === DONE || !st) return (
     <div className={pad} data-baris-proses="selesai">{nama}<span className="rounded-md bg-emerald-100 px-2 py-0.5 text-[11.5px] font-bold text-emerald-700">✓ Selesai</span></div>
   )

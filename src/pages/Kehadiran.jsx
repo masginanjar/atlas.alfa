@@ -69,7 +69,7 @@ export default function Kehadiran() {
     <div className="space-y-3" data-halaman-kehadiran>
       <div>
         <h1 className="flex items-center gap-2 text-[17px] font-extrabold leading-tight tracking-tight"><UserCheck className="h-5 w-5 text-brand" />Kehadiran</h1>
-        <p className="mt-0.5 text-[12px] text-ink-mute">Login pertama setiap hari = absen hadir. Jam dalam WITA.</p>
+        <p className="mt-0.5 text-[12px] text-ink-mute">Login pertama setiap hari = absen hadir. Jam dalam WITA. Yang wajib login tiap hari hanya role yang dicentang di Role &amp; Hak Akses; role lain bisa tampak “tidak login” walau tetap bekerja.</p>
       </div>
 
       {/* Hari ini */}

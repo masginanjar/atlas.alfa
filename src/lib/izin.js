@@ -75,6 +75,21 @@ function hitung(user, role, kode) {
   return { boleh: true, cakupan: aksi === 'menu' ? undefined : i.cakupan || 'cabang', cabang: i.cabang, sumber: r._asal ? 'aturan lama' : 'role', alasan: `Diberikan oleh role ${r.nama || role}` }
 }
 
+/**
+ * Wajib login ulang setiap hari? Diatur per role di Role & Hak Akses ("Wajib login ulang setiap hari").
+ * Ini KEWAJIBAN, bukan hak: Super Admin tidak otomatis kena. Berlaku bila salah satu role pengguna (utama/tambahan) dicentang.
+ * Pengecualian per pengguna: "larang" = dibebaskan, "izinkan" = diwajibkan.
+ */
+export const KODE_LOGIN_HARIAN = 'login-harian.kelola'
+export function wajibLoginHarian(user) {
+  if (!user) return false
+  const ex = KECUALI.filter((k) => k.user_id === user.id && k.kode === KODE_LOGIN_HARIAN && berlaku(k))
+  if (ex.some((k) => k.nilai === 'larang')) return false
+  if (ex.some((k) => k.nilai === 'izinkan')) return true
+  const roles = [...new Set([user.base_role || user.role, ...(user.extra_roles || [])].filter(Boolean))]
+  return roles.some((kode) => { if (kode === 'superadmin') return false; const r = konfigRole(kode); return r.aktif !== false && !!r.izin?.[KODE_LOGIN_HARIAN]?.aktif })
+}
+
 /** Pemeriksaan singkat. */
 export const boleh = (user, kode) => izinEfektif(user, kode).boleh
 /** Menu tampil? (visibilitas — terpisah dari akses data). */

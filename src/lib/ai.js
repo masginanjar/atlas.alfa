@@ -70,3 +70,9 @@ export function kanvasKeJpeg(c, maks = 2200, mutu = 0.9) {
 }
 /** Perkiraan biaya satu dokumen (rupiah) untuk model & fitur — angka kasar dari jumlah token rata-rata hasil uji. */
 export const kiraBiaya = (m, f, kurs) => (m && f ? ((f.token[0] * m.masuk + f.token[1] * m.keluar) / 1e6) * kurs : 0)
+
+/** Tarik Data (beta): susun usulan sub project dari item invoice (teks saja; item kirim & baris alamat/telepon sudah dibuang). */
+export async function aiTarikData(items, lembaga) {
+  if (!AI_LIVE) return { ok: false, demo: true, alasan: 'AI hanya berjalan di ATLAS live' }
+  return panggil('susun', { items, lembaga }, 'tarik-data-ai')
+}

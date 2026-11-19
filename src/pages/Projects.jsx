@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { labelPrioritas, prioSub, prioSubBeda } from '../config/priority.js'
 import SalinChatOrder from '../components/SalinChatOrder.jsx'
 import EmailOtorisasi from '../components/EmailOtorisasi.jsx'
 import { OfficialInvoice } from '../components/NoReg.jsx'
@@ -240,7 +241,7 @@ export default function Projects({ tabAwal }) {
               </select></label>
             <label className="block text-xs font-semibold text-ink-soft">Prioritas
               <select value={prFilter} onChange={(e) => setPrFilter(e.target.value)} className="mt-1 h-10 w-full rounded-xl border-0 bg-white px-3 text-sm font-semibold ring-1 ring-slate-200">
-                <option value="">Semua prioritas</option>{['Sameday', 'Super Ekspres', 'Ekspres', 'Normal'].map((k) => <option key={k} value={k}>{k}</option>)}
+                <option value="">Semua prioritas</option>{['Sameday', 'Super Ekspres', 'Ekspres', 'Normal'].map((k) => <option key={k} value={k}>{labelPrioritas(k)}</option>)}
               </select></label>
             {!worker && (can.seeAllBranches(user) || branchesOf(user).length > 1) && <label className="block text-xs font-semibold text-ink-soft">Cabang
               <select value={branchFilter} onChange={(e) => setBranchFilter(e.target.value)} aria-label="Filter cabang" className="mt-1 h-10 w-full rounded-xl border-0 bg-white px-3 text-sm font-semibold ring-1 ring-slate-200">
@@ -969,12 +970,12 @@ function ProjectList({ status = 'aktif', setStatus = () => {}, statusOpsi = [], 
         footer={<><Button variant="outline" className="flex-1" onClick={() => { setPrFilter(''); setPrOpen(false) }}>Tampilkan semua</Button><Button className="flex-[2]" onClick={() => setPrOpen(false)}>Selesai</Button></>}>
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-2">
-            {PRIOS.map((k) => <Button key={k} variant={prFilter === k ? 'primary' : 'outline'} onClick={() => { setPrFilter(k); setPrOpen(false) }}><span className="flex items-center gap-2">{k !== 'Normal' && <PriorityBadge p={k} iconOnly />}{k} <span className="opacity-60">({prCount(k)})</span></span></Button>)}
+            {PRIOS.map((k) => <Button key={k} variant={prFilter === k ? 'primary' : 'outline'} onClick={() => { setPrFilter(k); setPrOpen(false) }}><span className="flex items-center gap-2">{k !== 'Normal' && <PriorityBadge p={k} iconOnly />}{k === 'Normal' ? k : labelPrioritas(k).replace(k, '').trim()} <span className="opacity-60">({prCount(k)})</span></span></Button>)}
           </div>
-          <p className="text-[11px] text-ink-mute">Urutan kecepatan: Sameday → Super Ekspres → Ekspres → Normal. Filter bisa digabung dengan filter Deadline & Cabang.</p>
+          <p className="text-[11px] text-ink-mute">Urutan kecepatan: Sameday → Super Ekspres (Speed 100) → Ekspres (Speed 50) → Normal. Filter bisa digabung dengan filter Deadline & Cabang.</p>
         </div>
       </Sheet>
-      {prFilter && <div className="flex items-center gap-2 border-b border-slate-100 bg-brand-soft/40 px-4 py-1.5 text-xs lg:hidden"><span className="font-semibold text-brand">Prioritas: {prFilter}</span><button type="button" onClick={() => setPrFilter('')} className="ml-auto font-semibold text-ink-mute hover:text-rose-600">Hapus</button></div>}
+      {prFilter && <div className="flex items-center gap-2 border-b border-slate-100 bg-brand-soft/40 px-4 py-1.5 text-xs lg:hidden"><span className="font-semibold text-brand">Prioritas: {labelPrioritas(prFilter)}</span><button type="button" onClick={() => setPrFilter('')} className="ml-auto font-semibold text-ink-mute hover:text-rose-600">Hapus</button></div>}
       {pref.grup ? kelompokkan([...late, ...list]).map((g) => (
         <div key={g.key} data-grup-tenggat={g.key}>
           <button type="button" onClick={() => setLipat((v) => { const n = new Set(v); n.has(g.key) ? n.delete(g.key) : n.add(g.key); return n })} aria-expanded={!lipat.has(g.key)}
@@ -1155,7 +1156,7 @@ function ProjectExpand({ p: p0, onLangkah, awal }) {
           <div key={sb.id || i} className="border-t border-[rgba(20,27,52,0.08)]">
           <div role="button" tabIndex={0} aria-expanded={aktif === sb.id} onClick={() => setAktif((a) => (a === sb.id ? '' : sb.id))} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setAktif((a) => (a === sb.id ? '' : sb.id)) } }}
             title="Klik untuk mengerjakan di sini" className={cx('grid cursor-pointer grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 px-4 py-2.5 hover:bg-white/40 lg:grid-cols-[minmax(120px,2fr)_48px_48px_minmax(100px,1fr)_minmax(70px,0.8fr)_minmax(130px,1.5fr)_auto]', aktif === sb.id && 'bg-white/50')} data-sub-baris>
-            <span className="col-span-2 min-w-0 truncate text-[13px] font-bold lg:col-span-1" title={sb.title}>{sb.title || '—'}<span className="block truncate text-[12.5px] font-normal text-[#5E6380] lg:hidden">{[`${dok} Dok`, `${hlm} Hal`, arah !== '—' && arah, who].filter(Boolean).join(' · ')}</span></span>
+            <span className="col-span-2 min-w-0 truncate text-[13px] font-bold lg:col-span-1" title={sb.title}>{prioSubBeda(p) && <PriorityBadge p={prioSub(p, sb)} iconOnly className="mr-1.5 align-middle" />}{sb.title || '—'}<span className="block truncate text-[12.5px] font-normal text-[#5E6380] lg:hidden">{[`${dok} Dok`, `${hlm} Hal`, arah !== '—' && arah, who].filter(Boolean).join(' · ')}</span></span>
             <span className="hidden whitespace-nowrap text-sm tabular-nums lg:block">{dok} Dok</span>
             <span className="hidden whitespace-nowrap text-sm tabular-nums lg:block">{hlm} Hal</span>
             <span className="hidden truncate whitespace-nowrap text-sm lg:block">{arah}</span>

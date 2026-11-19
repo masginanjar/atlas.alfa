@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import PilihLembaga from './PilihLembaga.jsx'
+import { PrioritasSub } from './Priority.jsx'
 import { Trash2, Upload, Paperclip, X, IdCard } from 'lucide-react'
 import { useApp } from '../lib/store.jsx'
 import { SUB_TYPES, COUNTRIES, OBJEK_APOSTILLE, points } from '../config/subtypes.js'
@@ -12,18 +14,20 @@ import { newSub, usesDocs, isTerjemahan, docsOf, fromDocs, docFileName, safeName
  * Isiannya ke samping; di HP tiap kolom turun rapi (penuh / setengah lebar).
  * Dokumen hanya lewat satu tombol "Upload / tarik file (bisa banyak)":
  *  • terjemahan: tiap file = satu baris dokumen di sub yang sama
- *  • apostille / legalisasi: satu sub = satu dokumen; file berikutnya jadi sub sendiri (onPecah)
+ *  • apostille / legalisasi: sama — tiap file = satu baris dokumen di sub yang sama (19 Nov 2026; dulu 1 sub = 1 dokumen)
  */
 const LANGS = ['Indonesia', 'Inggris', 'Mandarin', 'Jepang', 'Korea', 'Arab', 'Belanda', 'Jerman', 'Prancis', 'Spanyol', 'Rusia', 'Lainnya']
-/** Reguler / Non Reguler hanya untuk pasangan bahasa Indonesia · Inggris · Belanda. Bahasa lain: Normal / Ekspres. */
+/** Reguler / Non Reguler hanya untuk pasangan bahasa Indonesia · Inggris · Belanda (dikerjakan tim internal).
+ *  Bahasa lain (ke vendor, mis. Mandarin): TIDAK ada pilihan jenis per dokumen — kecepatannya memakai Prioritas sub project (19 Nov 2026). */
 const BHS_REGULER = ['Indonesia', 'Inggris', 'Belanda']
 export const opsiJenis = (sub) => (BHS_REGULER.includes(sub.lang_from) && (!sub.lang_to || BHS_REGULER.includes(sub.lang_to))
   ? [['reguler', 'Reguler'], ['non_reguler', 'Non Reguler']]
-  : [['normal', 'Normal'], ['ekspres', 'Ekspres']])
+  : [])
 /** Jenis dokumen disesuaikan saat bahasa berubah: jenis yang tidak berlaku lagi kembali ke pilihan pertama. */
 const rapikanJenis = (sub) => {
   if (!isTerjemahan(sub.type) || !Array.isArray(sub.docs)) return Array.isArray(sub.docs) ? { ...sub, docs: sub.docs.map((d) => (d.file && d.file_name ? { ...d, file_name: tanpaNo(d.file_name) } : d)) } : sub
   const ops = opsiJenis(sub).map(([v]) => v)
+  if (!ops.length) return { ...sub, docs: nomori(sub, sub.docs.map((d) => { if (d.kind === undefined) return d; const { kind, ...r } = d; return r })) } // bahasa vendor: tanpa jenis per dokumen
   return { ...sub, docs: nomori(sub, sub.docs.map((d) => (ops.includes(d.kind || 'reguler') ? d : { ...d, kind: ops[0] }))) }
 }
 
@@ -46,19 +50,25 @@ const nomori = (sub, docs) => (!isTerjemahan(sub.type) ? docs : docs.map((d, i) 
   ? { ...d, desc: tanpaNo(d.desc), file_name: `${i + 1}. ${tanpaNo(d.file_name ?? docFileName(d))}` }
   : d)))
 /**
- * Apostille & legalisasi (satu dokumen per sub): nomor urut otomatis di awal nama file, berurutan antar sub project
+ * Apostille & legalisasi: nomor urut otomatis di awal nama file, berurutan antar sub project
  * ("1. …", "2. …") — ikut bergeser saat sub ditambah / dihapus. Mengembalikan array yang sama bila tidak ada yang berubah.
  */
 export function nomoriAntarSub(subs) {
   let n = 0; let ubah = false
   const hasil = subs.map((x) => {
     if (!['apostille', 'legalisasi'].includes(x.type) || !Array.isArray(x.docs)) return x
-    const d = x.docs[0]; if (!d?.file) return x
-    n += 1
-    const nama = `${n}. ${tanpaNo(d.file_name ?? docFileName(d))}`; const desc = tanpaNo(d.desc)
-    if (nama === d.file_name && desc === d.desc) return x
+    let beda = false
+    const docs = x.docs.map((d) => {
+      if (!d?.file) return d
+      n += 1
+      const nama = `${n}. ${tanpaNo(d.file_name ?? docFileName(d))}`; const desc = tanpaNo(d.desc)
+      if (nama === d.file_name && desc === d.desc) return d
+      beda = true
+      return { ...d, file_name: nama, desc }
+    })
+    if (!beda) return x
     ubah = true
-    return { ...x, ...fromDocs([{ ...d, file_name: nama, desc }, ...x.docs.slice(1)]) }
+    return { ...x, ...fromDocs(docs) }
   })
   return ubah ? hasil : subs
 }
@@ -89,8 +99,11 @@ export async function pasangKeSub(sub, fileList) {
   const hal = await Promise.all(list.map(hitungHalaman))
   const maks = MAKS_DOK[sub.type] || 0
   const next = docsOf(sub).filter(terisi); const sisa = []
-  const jenis = isTerjemahan(sub.type) ? opsiJenis(sub)[0][0] : undefined
+  const jenis = isTerjemahan(sub.type) ? opsiJenis(sub)[0]?.[0] : undefined
   list.forEach((f, n) => {
+    // Baris dokumen yang sudah bernama tetapi belum ada filenya (mis. hasil Tarik Data) diisi lebih dulu, urut dari atas — namanya dipertahankan.
+    const k = next.findIndex((d) => !d.file && !d.existing && String(d.desc || '').trim())
+    if (k >= 0) { const d = next[k]; next[k] = { ...d, pages: hal[n] > 0 ? hal[n] : (d.pages || 1), file: f, file_name: `${safeName(tanpaNo(d.desc)) || 'dokumen'}${extOf(f.name)}`, name_edited: true }; return }
     if (maks && next.length >= maks) { sisa.push(f); return }
     const desc = namaDasar(f.name)
     next.push({ desc, pages: hal[n] > 0 ? hal[n] : 1, ...(jenis ? { kind: next[next.length - 1]?.kind || jenis } : {}), file: f, file_name: `${safeName(desc) || 'dokumen'}${extOf(f.name)}`, name_edited: false })
@@ -121,7 +134,7 @@ function TombolUnggah({ label, onFiles, banyak = true, salah, tinggi = 'h-9', da
 }
 
 /** Satu dokumen: nama (sekaligus nama file) bisa diganti; × = lepas dokumen dari sub. */
-function Berkas({ d, i, onUbah, onLepas, className }) {
+function Berkas({ d, i, onUbah, onLepas, onFile, className }) {
   const adaFile = !!d.file
   return (
     <div className={cx('flex h-9 min-w-0 items-center gap-1.5 rounded-[10px] pl-2 pr-1 ring-1 max-md:h-11', adaFile ? 'bg-[#E2F5E8] text-[#17693A] ring-[#B9E3C6]' : 'bg-slate-50 text-ink-mute ring-slate-200', className)}>
@@ -131,12 +144,18 @@ function Berkas({ d, i, onUbah, onLepas, className }) {
         : <input value={adaFile ? (d.file_name ?? docFileName(d)) : d.desc} aria-label={`Nama dokumen / file ${i + 1}`} title="Nama dokumen sekaligus nama file — bisa diganti" data-nama-file
             onChange={(e) => onUbah(adaFile ? { file_name: e.target.value, name_edited: true, desc: namaDasar(e.target.value) } : { desc: e.target.value })}
             className="h-[26px] min-w-0 flex-1 rounded-md border-0 bg-white px-1.5 text-sm font-semibold text-[#124D2B] focus:outline-none focus:ring-2 focus:ring-brand max-md:h-9 max-md:text-base" />}
+      {!adaFile && !d.existing && onFile && (
+        <label title="Pilih file untuk dokumen ini" data-pilih-file className="inline-flex h-7 shrink-0 cursor-pointer items-center gap-1 rounded-md bg-[#3457D5] px-2 text-[11px] font-bold text-white hover:opacity-90 max-md:h-9 max-md:px-2.5">
+          <Upload className="h-3.5 w-3.5" /><span className="max-[359px]:hidden">File</span>
+          <input type="file" className="hidden" accept="application/pdf,image/*,.doc,.docx" aria-label={`Pilih file dokumen ${i + 1}`} onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) onFile(f) }} />
+        </label>
+      )}
       <button type="button" onClick={onLepas} aria-label={`Lepas dokumen ${i + 1}`} className="grid h-7 w-7 shrink-0 place-items-center rounded-md hover:bg-white hover:text-rose-600 max-md:h-9 max-md:w-9"><X className="h-3.5 w-3.5" /></button>
     </div>
   )
 }
 
-export default function SubBaris({ n, sub, onChange, onRemove, branch, error, onPecah, daftarTr = [], onKeduanya, onApostilleHasil }) {
+export default function SubBaris({ n, sub, onChange, onRemove, branch, error, onPecah, daftarTr = [], onKeduanya, onApostilleHasil, prioProject = 'Normal' }) {
   const { data } = useApp()
   const [seret, setSeret] = useState(false)
   const [bacaId, setBacaId] = useState(null)
@@ -151,6 +170,9 @@ export default function SubBaris({ n, sub, onChange, onRemove, branch, error, on
   const setDocs = (next) => set(fromDocs(next.length ? nomori(sub, next) : [{ desc: '', pages: 1 }]))
   const ubahDok = (i, patch) => setDocs(docs.map((d, j) => (j === i ? { ...d, ...patch } : d)))
   const pasang = async (files) => { const r = await pasangKeSub(sub, files); onChange(r.sub); if (r.sisa.length) onPecah?.(r.sisa, r.sub) }
+  /** Pasang SATU file ke baris dokumen tertentu (baris bernama yang belum ada filenya). */
+  const pasangSatu = async (i, f) => { const hal = await hitungHalaman(f).catch(() => 0); setDocs(docs.map((d, j) => (j === i ? { ...d, pages: hal > 0 ? hal : (d.pages || 1), file: f, file_name: `${safeName(tanpaNo(d.desc)) || 'dokumen'}${extOf(f.name)}`, name_edited: true } : d))) }
+  const catTarik = sub._tarik?.catatan || []
   const jenisOps = opsiJenis(sub)
   // Apostille atas HASIL TERJEMAHAN: tidak ada file yang diunggah sekarang — sub ini menunggu hasil dari sub terjemahan yang dipilih.
   const tunggu = sub.type === 'apostille' && sub.objek === 'terjemahan'
@@ -211,15 +233,15 @@ export default function SubBaris({ n, sub, onChange, onRemove, branch, error, on
       </div>
 
       {isTerjemahan(sub.type) && (
-        <Kol label={docs.length ? `Dokumen · ${docs.length} file · ${nHal} hlm · jenis: ${jenisOps.map(([, l]) => l).join(' / ')}` : 'Dokumen · belum ada file'} wajib style={{ flex: '4 0.4 340px' }}>
+        <Kol label={docs.length ? `Dokumen · ${docs.length} file · ${nHal} hlm${jenisOps.length ? ` · jenis: ${jenisOps.map(([, l]) => l).join(' / ')}` : ''}` : 'Dokumen · belum ada file'} wajib style={{ flex: '4 0.4 340px' }}>
           <div className="flex flex-col gap-1">
             {docs.map((d, i) => (
               <div key={i} className="flex items-center gap-1.5 max-[359px]:flex-wrap" data-baris-dok>
-                <Berkas d={d} i={i} className="flex-1" onUbah={(p) => ubahDok(i, p)} onLepas={() => setDocs(docs.filter((_, j) => j !== i))} />
-                <select value={jenisOps.some(([v]) => v === (d.kind || 'reguler')) ? (d.kind || 'reguler') : jenisOps[0][0]} onChange={(e) => ubahDok(i, { kind: e.target.value })} aria-label={`Jenis dokumen ${i + 1}`} data-jenis-dok
+                <Berkas d={d} i={i} className="flex-1" onUbah={(p) => ubahDok(i, p)} onFile={(f) => pasangSatu(i, f)} onLepas={() => setDocs(docs.filter((_, j) => j !== i))} />
+                {jenisOps.length > 0 && <select value={jenisOps.some(([v]) => v === (d.kind || 'reguler')) ? (d.kind || 'reguler') : jenisOps[0][0]} onChange={(e) => ubahDok(i, { kind: e.target.value })} aria-label={`Jenis dokumen ${i + 1}`} data-jenis-dok
                   className={cx(inputCls, '!w-[104px] flex-none !px-1.5 !text-[13px] font-semibold max-md:!w-[96px]')}>
                   {jenisOps.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                </select>
+                </select>}
                 <input type="number" min="1" inputMode="numeric" value={d.pages} aria-label={`Jumlah halaman dokumen ${i + 1}`} title="Jumlah halaman"
                   onChange={(e) => ubahDok(i, { pages: Math.max(0, Number(e.target.value)) })} className={cx(inputCls, '!w-[54px] flex-none !px-1 text-center font-semibold')} />
               </div>
@@ -231,7 +253,7 @@ export default function SubBaris({ n, sub, onChange, onRemove, branch, error, on
       )}
 
       {['apostille', 'legalisasi'].includes(sub.type) && (
-        <Kol label={tunggu ? 'Dokumen · menunggu hasil terjemahan' : 'Dokumen'} wajib style={{ flex: '4 0.4 240px' }}>
+        <Kol label={tunggu ? 'Dokumen · menunggu hasil terjemahan' : docs.length > 1 ? `Dokumen · ${docs.length} file` : 'Dokumen'} wajib style={{ flex: '4 0.4 240px' }}>
           {tunggu
             ? (daftarTr.length
               ? <select value={sub.sumber_sub ? String(sub.sumber_sub) : ''} onChange={(e) => pilihSumber(e.target.value)} aria-label="Hasil terjemahan dari sub project" aria-invalid={errOn('dokumen')} data-sumber-sub
@@ -239,9 +261,12 @@ export default function SubBaris({ n, sub, onChange, onRemove, branch, error, on
                   <option value="">Pilih hasil terjemahan yang mana…</option>{daftarTr.map((t) => <option key={String(t.ref)} value={String(t.ref)}>Sub {t.n} · {t.nama}</option>)}
                 </select>
               : <p className="flex min-h-9 items-center rounded-[10px] bg-amber-50 px-2.5 text-xs text-amber-900 ring-1 ring-amber-200 max-md:min-h-11" data-tanpa-tr>Tambahkan dulu sub Terjemahan — hasilnya yang akan diapostille.</p>)
-            : docs[0]
-            ? <Berkas d={docs[0]} i={0} onUbah={(p) => ubahDok(0, p)} onLepas={() => setDocs([])} />
-            : <TombolUnggah data="data-unggah-banyak" salah={errOn('dokumen')} label={seret ? 'Lepas file di sini' : 'Upload / tarik file (bisa banyak)'} onFiles={pasang} />}
+            : (
+              <div className="flex flex-col gap-1" data-dok-al>
+                {docs.map((d, i) => <Berkas key={i} d={d} i={i} onUbah={(p) => ubahDok(i, p)} onFile={(f) => pasangSatu(i, f)} onLepas={() => setDocs(docs.filter((_, j) => j !== i))} />)}
+                <TombolUnggah data="data-unggah-banyak" salah={errOn('dokumen')} label={seret ? 'Lepas file di sini' : docs.length ? 'Upload / tarik file lagi (bisa banyak)' : 'Upload / tarik file (bisa banyak)'} onFiles={pasang} />
+              </div>
+            )}
         </Kol>
       )}
 
@@ -291,7 +316,7 @@ export default function SubBaris({ n, sub, onChange, onRemove, branch, error, on
       )}
 
       {['apostille', 'legalisasi'].includes(sub.type) && (
-        <Kol label="ID pemohon · KTP / Paspor" wajib style={{ flex: '1.6 1 200px' }}>
+        <Kol label={sub.type === 'legalisasi' ? 'ID pemohon · tidak wajib' : 'ID pemohon · KTP / Paspor'} wajib={sub.type === 'apostille'} style={{ flex: '1.6 1 200px' }}>
           {adaId ? (
             <div className="flex h-9 min-w-0 items-center gap-1 rounded-[10px] bg-[#EEEBFF] pl-2 pr-1 text-[#3B2F9E] ring-1 ring-[#D4CEFA] max-md:h-11" data-id-pemohon={tipeId}>
               <IdCard className="h-4 w-4 shrink-0" />
@@ -317,8 +342,7 @@ export default function SubBaris({ n, sub, onChange, onRemove, branch, error, on
       )}
       {extra.includes('institution') && (
         <Kol label="Lembaga" wajib hp="half" style={{ flex: '1 1 118px' }}>
-          <PilihCari ringkas label="Lembaga" invalid={errOn('lembaga')} value={sub.institution} onChange={(v) => set({ institution: v })} placeholder="Pilih lembaga…" kosong="Lembaga tidak ditemukan"
-            options={of('lembaga').map((p) => ({ value: p.id, label: p.name, note: p.note || '' }))} />
+          <PilihLembaga ringkas branch={branch} invalid={errOn('lembaga')} value={sub.institution} onChange={(v) => set({ institution: v })} />
         </Kol>
       )}
       {extra.includes('objek') && (
@@ -328,6 +352,9 @@ export default function SubBaris({ n, sub, onChange, onRemove, branch, error, on
           </select>
         </Kol>
       )}
+      <Kol label="Prioritas" hp="half" style={{ flex: '0 0 150px' }}>
+        <PrioritasSub value={sub.priority || prioProject} onChange={(v) => set({ priority: v })} />
+      </Kol>
       {extra.includes('executor') && (
         <Kol label="Eksekutor" wajib style={{ flex: '1.2 1 140px' }}>
           <select value={sub.executor_id ? `${sub.executor_kind}:${sub.executor_id}` : ''} aria-label="Eksekutor" aria-invalid={errOn('eksekutor')} data-eksekutor
@@ -344,8 +371,9 @@ export default function SubBaris({ n, sub, onChange, onRemove, branch, error, on
         : <span className="w-9 flex-none max-[1199px]:hidden" />}
       </div>
 
-      {(ketId || ketIkut || lembaga?.note || error) && (
+      {(ketId || ketIkut || lembaga?.note || error || catTarik.length > 0) && (
         <div className="mt-1.5 space-y-1">
+          {catTarik.length > 0 && <ul className="space-y-0.5 rounded-lg bg-violet-50 px-2.5 py-1.5 text-[11px] leading-relaxed text-violet-900 ring-1 ring-violet-200" data-catatan-tarik>{sub._tarik.judul && <li className="font-bold">Dari item invoice: {sub._tarik.judul}</li>}{catTarik.map((c, k) => <li key={k}>• {c}</li>)}</ul>}
           {ketId && <p className="text-[11px] text-[#3B2F9E]" data-ket-id>{ketId}</p>}
           {!ketId && ketIkut && <p className="text-[11px] text-[#3B2F9E]" data-ket-ikut>{ketIkut}</p>}
           {lembaga?.note && <p className="rounded-lg bg-amber-50 px-2.5 py-1.5 text-[11px] leading-relaxed text-amber-900 ring-1 ring-amber-200">{lembaga.note}</p>}

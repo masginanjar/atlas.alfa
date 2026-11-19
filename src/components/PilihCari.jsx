@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ChevronDown, Check, Search } from 'lucide-react'
+import { ChevronDown, Check, Search, Plus } from 'lucide-react'
 import { cx } from './ui.jsx'
 
 /**
@@ -11,9 +11,11 @@ import { cx } from './ui.jsx'
  *          options:Array<string|{value:string,label:string,note?:string}>,
  *          placeholder?:string, label:string, kosong?:string, invalid?:boolean}} p
  */
-export default function PilihCari({ value, onChange, options = [], placeholder = 'Pilih…', label, kosong = 'Tidak ditemukan', invalid, disabled, ringkas }) {
+export default function PilihCari({ value, onChange, options = [], placeholder = 'Pilih…', label, kosong = 'Tidak ditemukan', invalid, disabled, ringkas, onTambah, labelTambah = 'Tambah' }) {
   const [open, setOpen] = useState(false)
   const [q, setQ] = useState('')
+  const [sibuk, setSibuk] = useState(false)
+  const [galat, setGalat] = useState('')
   const ref = useRef(null)
   const cariRef = useRef(null)
 
@@ -21,7 +23,7 @@ export default function PilihCari({ value, onChange, options = [], placeholder =
   const cur = list.find((o) => o.value === value)
   const cocok = useMemo(() => {
     const s = q.trim().toLowerCase()
-    return s ? list.filter((o) => o.label.toLowerCase().includes(s)) : list
+    return s ? list.filter((o) => `${o.label} ${o.alias || ''}`.toLowerCase().includes(s)) : list
   }, [list, q])
 
   useEffect(() => {
@@ -36,6 +38,16 @@ export default function PilihCari({ value, onChange, options = [], placeholder =
     return () => clearTimeout(t)
   }, [open])
 
+  // Tambah pilihan baru dari sini (mis. kedutaan yang belum ada). Baru dianggap berhasil setelah tersimpan.
+  const baru = q.trim().replace(/\s+/g, ' ')
+  const sudahAda = list.some((o) => o.label.trim().toLowerCase() === baru.toLowerCase())
+  const tambah = async () => {
+    if (!onTambah || sibuk || baru.length < 3 || sudahAda) return
+    setSibuk(true); setGalat('')
+    try { const v = await onTambah(baru); if (v) { onChange(v); setOpen(false) } }
+    catch (e) { setGalat(String(e?.message || 'Gagal menyimpan — coba lagi')) }
+    finally { setSibuk(false) }
+  }
   const onKey = (e) => {
     if (e.key === 'Escape') { e.preventDefault(); setOpen(false) }
     if (e.key === 'Enter' && cocok.length === 1) { e.preventDefault(); onChange(cocok[0].value); setOpen(false) }
@@ -52,7 +64,7 @@ export default function PilihCari({ value, onChange, options = [], placeholder =
         <ChevronDown className={cx('h-4 w-4 shrink-0 text-ink-mute transition', open && 'rotate-180')} />
       </button>
       {open && !disabled && (
-        <div className={cx('absolute z-30 mt-1 w-full rounded-xl bg-white shadow-xl ring-1 ring-slate-200', ringkas ? 'md:w-max md:min-w-full md:max-w-[320px]' : 'max-w-full')}>
+        <div className={cx('absolute z-30 mt-1 w-full rounded-xl bg-white shadow-xl ring-1 ring-slate-200', ringkas ? 'md:w-max md:min-w-full md:max-w-[320px]' : 'max-w-full', onTambah && 'max-md:w-[min(86vw,20rem)] max-md:max-w-none')}>
           <div className="border-b border-slate-100 p-2">
             <label className="relative block min-w-0">
               <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-mute" aria-hidden="true" />
@@ -77,6 +89,17 @@ export default function PilihCari({ value, onChange, options = [], placeholder =
             ))}
             {!cocok.length && <li className="px-3 py-4 text-center text-xs text-ink-mute">{kosong}</li>}
           </ul>
+          {onTambah && (
+            <div className="border-t border-slate-100 p-1.5" data-pilihcari-tambah>
+              {baru.length >= 3 && !sudahAda
+                ? <button type="button" onClick={tambah} disabled={sibuk} data-aksi="tambah-pilihan"
+                    className="flex min-h-11 w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm font-semibold text-brand hover:bg-brand-soft disabled:opacity-60 md:min-h-9">
+                    <Plus className="h-4 w-4 shrink-0" /><span className="min-w-0 flex-1 break-words leading-snug">{sibuk ? 'Menyimpan…' : `${labelTambah}: “${baru}”`}</span>
+                  </button>
+                : <p className="px-2.5 py-1.5 text-[11px] leading-relaxed text-ink-mute">{sudahAda ? 'Nama itu sudah ada di daftar — pilih di atas.' : `Tidak ada di daftar? Ketik namanya di kolom cari (mis. “Kedutaan Besar Jepang”), lalu tekan ${labelTambah}.`}</p>}
+              {galat && <p role="alert" className="px-2.5 pb-1 text-[11px] font-semibold text-rose-700">{galat}</p>}
+            </div>
+          )}
         </div>
       )}
     </div>

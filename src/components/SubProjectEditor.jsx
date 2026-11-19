@@ -1,4 +1,6 @@
 import { useLayoutEffect, useRef, useState, useEffect } from 'react'
+import PilihLembaga from './PilihLembaga.jsx'
+import { PrioritasSub } from './Priority.jsx'
 import { Trash2, Plus, RotateCcw, Files, BookOpen, Languages, ArrowLeftRight, UserPen, Globe2, Landmark, UserCog, Stamp, ScrollText, Shapes, Lock, Upload, Paperclip, X, IdCard } from 'lucide-react'
 
 const TYPE_ICON = { terjemahan: Languages, terjemahan_nt: Languages, apostille: Stamp, legalisasi: ScrollText, jasa_lain: Shapes }
@@ -85,7 +87,7 @@ export async function hitungHalaman(file) {
   } catch { return 0 }
 }
 
-function DocTable({ docs, onChange, invalid, simple = false, uploadLabel = 'Upload file (opsional)', maks = 0, onLebih }) {
+function DocTable({ docs, onChange, invalid, tanpaJenis = false, simple = false, uploadLabel = 'Upload file (opsional)', maks = 0, onLebih }) {
   const [seret, setSeret] = useState(false)
   /**
    * Pasang 1–banyak file sekaligus: tiap file = 1 baris dokumen (nama file jadi nama dokumen, bisa diganti).
@@ -150,7 +152,8 @@ function DocTable({ docs, onChange, invalid, simple = false, uploadLabel = 'Uplo
               </label>
             )}
           </div>
-          {!simple && <select value={d.kind || 'reguler'} onChange={(e) => upd(i, { kind: e.target.value })} aria-label={`Jenis dokumen ${i + 1}`} title="Reguler / Non Reguler"
+          {!simple && tanpaJenis && <span className="max-sm:col-span-2 max-sm:col-start-2 text-center text-[11px] text-ink-mute" title="Bahasa ke vendor: tanpa jenis per dokumen — pakai Prioritas sub project">ikut prioritas</span>}
+          {!simple && !tanpaJenis && <select value={d.kind || 'reguler'} onChange={(e) => upd(i, { kind: e.target.value })} aria-label={`Jenis dokumen ${i + 1}`} title="Reguler / Non Reguler"
             className={cx('max-sm:col-span-2 max-sm:col-start-2 max-sm:h-11 max-sm:text-sm h-9 w-full min-w-0 rounded-lg border-0 px-1 text-xs font-semibold ring-1 focus:outline-none focus:ring-2 focus:ring-brand', d.kind === 'non_reguler' ? 'bg-violet-50 text-violet-800 ring-violet-200' : 'bg-white text-ink ring-slate-200')}>
             <option value="reguler">Reguler</option><option value="non_reguler">Non Reguler</option>
           </select>}
@@ -184,7 +187,7 @@ function DocTable({ docs, onChange, invalid, simple = false, uploadLabel = 'Uplo
   )
 }
 
-export default function SubProjectEditor({ n, sub, onChange, onRemove, branch, locked, error, ringkas, onPecah }) {
+export default function SubProjectEditor({ n, sub, onChange, onRemove, branch, locked, error, ringkas, onPecah, prioProject = 'Normal' }) {
   const { data, user } = useApp()
   // Salah bahasa / harus ganti vendor padahal alur sudah berjalan: yang berizin boleh membuka kunci (alur diulang saat disimpan). Tidak untuk dokumen yang sudah dibayar / selesai.
   const sudahBayar = [DONE, ...VENDOR_PAID_STAGES].includes(sub.stage) || !!sub.data?.paid_date
@@ -240,11 +243,15 @@ export default function SubProjectEditor({ n, sub, onChange, onRemove, branch, l
       {error && <FieldError className="-mt-2 mb-3">{error}</FieldError>}
 
       <div className="space-y-5">
+        <label className="flex flex-wrap items-center gap-2" data-prio-sub-baris>
+          <span className="text-[13px] font-semibold text-ink-soft">Prioritas sub project ini</span>
+          <PrioritasSub value={sub.priority || prioProject} onChange={(v) => onChange({ ...sub, priority: v })} className="!w-auto max-md:!w-full" />
+        </label>
         {usesDocs(sub.type) ? (
           <div>
             <span className="mb-1.5 block text-[13px] font-semibold text-ink-soft">{isTerjemahan(sub.type) ? 'Detail Dokumen' : `Dokumen yang akan di-${sub.type === 'apostille' ? 'apostille' : 'legalisasi'}`} <span className="text-rose-500" aria-hidden>*</span></span>
-            {/* Apostille & legalisasi: satu sub project = satu dokumen yang diproses. */}
-            <DocTable docs={docsOf(sub)} invalid={errOn('dokumen')} simple={!isTerjemahan(sub.type)} maks={MAKS_DOK[sub.type] || 0}
+            {/* Apostille & legalisasi: satu sub project boleh berisi beberapa dokumen. */}
+            <DocTable docs={docsOf(sub)} invalid={errOn('dokumen')} simple={!isTerjemahan(sub.type)} tanpaJenis={isTerjemahan(sub.type) && !(BHS_INTERNAL.includes(sub.lang_from) && (!sub.lang_to || BHS_INTERNAL.includes(sub.lang_to)))} maks={MAKS_DOK[sub.type] || 0}
               uploadLabel={isTerjemahan(sub.type) ? 'Upload file (opsional)' : 'Upload scan (opsional)'} onChange={(docs) => set(fromDocs(docs))}
               onLebih={onPecah ? (files) => onPecah(files) : undefined} />
           </div>
@@ -316,7 +323,7 @@ export default function SubProjectEditor({ n, sub, onChange, onRemove, branch, l
         )}
 
         {['apostille', 'legalisasi'].includes(sub.type) && (
-          <Field label="Nomor ID Pemohon / No. NIB / SK Kemenkumham Perusahaan" icon={IdCard} required
+          <Field label={`Nomor ID Pemohon / No. NIB / SK Kemenkumham Perusahaan${sub.type === 'legalisasi' ? ' (tidak wajib)' : ''}`} icon={IdCard} required={sub.type === 'apostille'}
             hint={bacaId === 'baca' ? 'Membaca nomor dari KTP…' : bacaId?.ok ? `Nomor terbaca otomatis (${bacaId.mesin}) — cocokkan dengan KTP sebelum disimpan.` : bacaId?.gagal ? 'Nomor tidak terbaca otomatis — ketik manual.' : 'Unggah KTP: nomornya dibaca otomatis (tanpa mengetik) dan dipakai untuk Surat Kuasa. NIB / SK Kemenkumham diketik manual.'}>
             <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
               <Input value={sub.applicant_id || ''} onChange={(e) => set({ applicant_id: e.target.value })} placeholder="mis. 5171xxxxxxxxxxxx / NIB 1234567890123 / AHU-0012345.AH.01.01.2024" />
@@ -331,7 +338,7 @@ export default function SubProjectEditor({ n, sub, onChange, onRemove, branch, l
               ) : (
                 <label className={cx('inline-flex min-h-[44px] cursor-pointer items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold ring-1 md:min-h-0',
                   errOn('id / dokumen pemohon') ? 'bg-rose-50 text-rose-700 ring-rose-300' : 'bg-white text-brand ring-brand/30 hover:bg-brand-soft')} data-upload-id>
-                  <Upload className="h-3.5 w-3.5 shrink-0" />Upload KTP / ID pemohon * <span className="font-normal">· nomor dibaca otomatis</span>
+                  <Upload className="h-3.5 w-3.5 shrink-0" />Upload KTP / ID pemohon{sub.type === 'apostille' ? ' *' : ''} <span className="font-normal">· nomor dibaca otomatis</span>
                   <input type="file" className="hidden" accept="image/*,application/pdf" aria-label="File ID pemohon" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) unggahId(f) }} />
                 </label>
               )}
@@ -348,10 +355,8 @@ export default function SubProjectEditor({ n, sub, onChange, onRemove, branch, l
               </Field>
             )}
             {extra.includes('institution') && (
-              <Field label="Lembaga" icon={Landmark} required hint={!of('lembaga').length ? 'Belum ada lembaga — tambahkan di Setting → Master Data' : undefined}>
-                <PilihCari label="Lembaga" invalid={errOn('lembaga')} value={sub.institution}
-                  onChange={(v) => set({ institution: v })} placeholder="Pilih lembaga…" kosong="Lembaga tidak ditemukan"
-                  options={of('lembaga').map((p) => ({ value: p.id, label: p.name, note: p.note || '' }))} />
+              <Field label="Lembaga" icon={Landmark} required hint={!of('lembaga').length ? 'Belum ada lembaga — ketik namanya lalu "Tambah lembaga lain"' : undefined}>
+                <PilihLembaga branch={branch} invalid={errOn('lembaga')} value={sub.institution} onChange={(v) => set({ institution: v })} />
                 {/* Persyaratan lembaga — diisi di Setting → Master Data, bukan di kode. */}
                 {(() => { const l = of('lembaga').find((p) => p.id === sub.institution); return l?.note
                   ? <p className="mt-1.5 rounded-lg bg-amber-50 px-2.5 py-1.5 text-[11px] leading-relaxed text-amber-900 ring-1 ring-amber-200">{l.note}</p>
@@ -388,8 +393,12 @@ export default function SubProjectEditor({ n, sub, onChange, onRemove, branch, l
   )
 }
 
-/** Batas jumlah dokumen per sub project. Apostille & legalisasi: 1 dokumen saja. */
-export const MAKS_DOK = { apostille: 1, legalisasi: 1 }
+/** Bahasa yang dikerjakan tim internal → punya jenis Reguler / Non Reguler per dokumen. Bahasa lain (vendor) memakai Prioritas sub project. */
+const BHS_INTERNAL = ['Indonesia', 'Inggris', 'Belanda']
+
+/** Batas jumlah dokumen per sub project. 19 Nov 2026: apostille & legalisasi TIDAK lagi dibatasi 1 dokumen —
+ *  satu sub boleh berisi beberapa dokumen (seperti terjemahan), dengan pengaturan yang sama untuk semuanya. */
+export const MAKS_DOK = {}
 
 /** Validasi sub project sebelum disimpan. Mengembalikan pesan error atau null. */
 export function validateSub(s, i) {
@@ -401,8 +410,8 @@ export function validateSub(s, i) {
   if (extra.includes('country') && !s.country.trim()) return `${label}: pilih tujuan negara`
   if (extra.includes('institution') && !s.institution) return `${label}: pilih lembaga`
   if (extra.includes('objek') && !s.objek) return `${label}: pilih yang diapostille (asli / terjemahan / keduanya)`
-  // Apostille & legalisasi tidak bisa jalan tanpa scan ID / dokumen pemohon.
-  if (['apostille', 'legalisasi'].includes(s.type) && !s.applicant_file && !s.data?.dokumen_id) return `${label}: upload scan ID / dokumen pemohon dulu (wajib)`
+  // Apostille tidak bisa jalan tanpa scan ID / dokumen pemohon. Legalisasi: tidak wajib (19 Nov 2026).
+  if (s.type === 'apostille' && !s.applicant_file && !s.data?.dokumen_id) return `${label}: upload scan ID / dokumen pemohon dulu (wajib)`
   const maks = MAKS_DOK[s.type]
   if (maks && points(s.description).length > maks) return `${label}: apostille/legalisasi maksimal ${maks} dokumen per sub project — pisahkan jadi sub project sendiri`
   if (extra.includes('executor') && !s.executor_id) return `${label}: pilih eksekutor`

@@ -1,4 +1,6 @@
 import { autoDeadline } from '../lib/waktu.js'
+import { prioSub, prioTertinggi } from '../config/priority.js'
+import { tarikData } from '../lib/tarikData.js'
 import { useEffect, useState } from 'react'
 import { Search, Plus, Check, Loader2, UserRound, Receipt, Upload, X, FileText, RefreshCw, Headset, Building2, Printer, CalendarPlus, CalendarClock, Flag, ClipboardList, Truck, Layers, CloudUpload, StickyNote, Sparkles, Pencil, Copy, ChevronDown, ChevronUp, ChevronLeft } from 'lucide-react'
 import { useApp } from '../lib/store.jsx'
@@ -62,6 +64,21 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
   const [busy, setBusy] = useState(false)
   const [queue, setQueue] = useState([]) // file yang akan diunggah: {_k, file, name, sub_ref}
   const [progress, setProgress] = useState('')
+  // Tarik Data (beta): usulan sub project dari item invoice — { sibuk } | { ok, n, mesin, dilewati, sebelum } | { galat }
+  const [tarikSt, setTarikSt] = useState(null)
+  const subTerisi = (x) => !!x.id || points(x.description).length > 0 || (x.docs || []).some((d) => d.file || String(d.desc || '').trim()) || !!x.applicant_file
+  const jalankanTarik = async () => {
+    if (!invoiceItems?.items?.length || tarikSt?.sibuk) return
+    setTarikSt({ sibuk: true })
+    const r = await tarikData(invoiceItems.items, { buatSub: (t) => (page ? subBaru(t, data) : newSub(t)), lembaga: data.people.filter((p) => p.type === 'lembaga' && (p.branch === branch || p.branch === 'Semua')) })
+      .catch(() => ({ ok: false, alasan: 'Tarik Data gagal — isi sub project manual' }))
+    if (!r.ok) return setTarikSt({ galat: r.alasan })
+    const sebelum = subs
+    setSubs([...subs.filter(subTerisi), ...r.subs]) // sub yang sudah diisi manual dipertahankan; baris kosong diganti usulan
+    setTarikSt({ ok: true, n: r.subs.length, mesin: r.mesin, dilewati: r.dilewati || [], sebelum })
+  }
+  const urungTarik = () => { if (tarikSt?.sebelum) setSubs(tarikSt.sebelum); setTarikSt(null) }
+  const propTarik = !editing && bolehIzin(user, 'tarik-data.tambah') ? { onTarik: jalankanTarik, onUrung: urungTarik, tarik: tarikSt } : {}
   const [autoFill, setAutoFill] = useState(null) // ringkasan isian otomatis dari item invoice Zoho (alamat/kurir/prioritas)
   const [invoiceItems, setInvoiceItems] = useState(null) // item invoice Zoho — hanya ditampilkan (view) untuk dibaca/disalin saat mengisi sub project
   const [editShip, setEditShip] = useState(false)
@@ -137,6 +154,15 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
   // s._ulang = kunci dibuka dari editor (ganti bahasa/penerjemah/vendor) → diperlakukan seperti belum berjalan: alur & tahap dihitung ulang saat disimpan.
   const isStarted = (s) => !s._ulang && !!s.id && s.stage !== stagesOf(s.flow || project?.category || deriveFlow(s, vendorOf(s)))[0].key
 
+  // Prioritas per sub project (19 Nov 2026). Pilihan di bagian Project = berlaku untuk SEMUA sub;
+  // tiap sub boleh diubah sendiri, dan prioritas project otomatis mengikuti yang tertinggi.
+  const pilihPrio = (v) => { setA('priority')({ target: { value: v } }); setSubs((arr) => arr.map((x) => (x.priority ? { ...x, priority: v } : x))) }
+  useEffect(() => {
+    if (!subs.some((x) => x.priority)) return
+    if (subs.some((x) => !x.priority)) { setSubs((arr) => arr.map((x) => (x.priority ? x : { ...x, priority: about.priority || 'Normal' }))); return }
+    const maks = prioTertinggi(subs.map((x) => x.priority))
+    if (maks !== (about.priority || 'Normal')) setA('priority')({ target: { value: maks } })
+  }, [subs, about.priority]) // eslint-disable-line react-hooks/exhaustive-deps
   const setA = (k) => (e) => setAbout((a) => {
     const next = { ...a, [k]: e.target.value }
     // Deadline otomatis mengikuti prioritas (tetap bisa diubah): Sameday = hari masuk, Super Ekspres +1, Ekspres +2, Normal +3 hari kerja
@@ -145,7 +171,8 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
   })
 
   const [tried, setTried] = useState(false)
-  // Apostille / Legalisasi: 1 sub = 1 dokumen. File ke-2 dst. yang ditarik sekaligus otomatis jadi sub project baru
+  // (Dulu: apostille / legalisasi 1 sub = 1 dokumen. Sejak 19 Nov 2026 tidak dibatasi → fungsi ini hanya terpakai bila suatu jenis diberi batas lagi di MAKS_DOK.)
+  // File ke-2 dst. yang ditarik sekaligus otomatis jadi sub project baru
   // dengan jenis, negara/lembaga, objek & eksekutor yang sama — ID pemohon tetap diisi per dokumen.
   const pecahJadiSub = (i) => (files) => {
     setSubs((arr) => {
@@ -209,8 +236,8 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
         const flow = isStarted(s) ? (s.flow || project?.category || deriveFlow(s, vendorOf(s))) : deriveFlow(s, vendorOf(s))
         const first = stagesOf(flow)[0].key
         const docs = usesDocs(s.type) && s.docs ? s.docs.filter((d) => d.desc.trim()).map(({ file, file_name, name_edited, existing, ...d }) => d) : undefined
-        const { applicant_file, _ulang, _ulang_alasan, _id_ikut, _id_lepas, ...rest } = s // file ID pemohon diunggah terpisah (lihat idUploads)
-        const base = { ...rest, title, file_count: pts.length, data, flow, docs }
+        const { applicant_file, _ulang, _ulang_alasan, _id_ikut, _id_lepas, _tarik, ...rest } = s // file ID pemohon diunggah terpisah (lihat idUploads)
+        const base = { ...rest, title, file_count: pts.length, data, flow, docs, priority: prioSub({ about }, s) } // prioritas per sub; kosong = ikut pilihan project
         if (s.id && _ulang) {
           // Penugasan diulang: data pelaksana & pengajuan lama dibuang, tahap kembali ke awal alur yang baru, alasan masuk riwayat.
           const bersih = { ...data, translator: s.translator && s.translator_kind !== 'vendor' ? s.translator : '', vendor: vendorId || '', coordinator: '',
@@ -230,7 +257,7 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
       })
       const row = {
         ...(project ?? {}), invoice_no: inv, branch, customer, sub_projects,
-        about: { ...about, deadline: about.deadline ? new Date(about.deadline).toISOString() : null, received_at: about.received_at?.slice(0, 10) || null },
+        about: { ...about, priority: prioTertinggi(sub_projects.map((x) => x.priority)), deadline: about.deadline ? new Date(about.deadline).toISOString() : null, received_at: about.received_at?.slice(0, 10) || null },
         ...(editing ? {} : { created_by: user.id }),
         // penghubung ke invoice Zoho (dipakai menu Faktur & badge pembayaran)
         ...(project?.zoho_invoice_id || preset?.zoho_invoice_id ? { zoho_invoice_id: project?.zoho_invoice_id || preset.zoho_invoice_id } : {}),
@@ -390,7 +417,7 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
                 : <div className="flex h-10 items-center justify-between gap-2 rounded-xl bg-slate-50 px-3 text-sm ring-1 ring-slate-200"><span>Sama dengan cabang <b>{branch}</b></span><button type="button" onClick={() => setUbahPrint(true)} className="text-xs font-semibold text-brand hover:underline" data-aksi="print-beda">beda?</button></div>}
             </Field>
             <Field label="Prioritas" icon={Flag} hint="Tenggat terisi otomatis dari prioritas; tetap bisa diubah.">
-              <PrioritySelect value={about.priority} onChange={(v) => setA('priority')({ target: { value: v } })} />
+              <PrioritySelect value={about.priority} onChange={pilihPrio} />
             </Field>
             <Field label="Tanggal Masuk" icon={CalendarPlus} required><Input type="date" value={about.received_at?.slice(0, 10) || ''} onChange={setA('received_at')} /></Field>
             <Field label="Deadline" icon={CalendarClock} required error={E('deadline')} hint={about.priority === 'Sameday' ? 'Sameday: sama dengan tanggal masuk · jam WITA' : 'Jam WITA — bawaan 17.00 (jam kerja)'} className="sm:col-span-2">
@@ -408,7 +435,7 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
         {/* ===== 3 · Sub project ===== */}
         <SectionCard tone="mint" icon={Layers} title="3 · Sub project & dokumen" aside={`${subs.length} sub project`}>
           <div className="space-y-4">
-            {!editing && invoiceItems && <InvoiceItemsView inv={invoiceItems} />}
+            {!editing && invoiceItems && <InvoiceItemsView inv={invoiceItems} {...propTarik} />}
             {autoFill && (autoFill.ship || autoFill.courier || autoFill.priority) && (
               <div role="status" className="flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-xl bg-amber-50 px-3.5 py-2.5 text-xs text-amber-900 ring-1 ring-amber-200">
                 <Sparkles className="h-4 w-4 shrink-0 text-amber-600" />
@@ -417,7 +444,7 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
               </div>
             )}
             {subs.map((s, i) => (
-              <SubProjectEditor key={s.id ?? s._k} n={i + 1} sub={s} branch={branch} error={tried ? errs.subs[i] : null}
+              <SubProjectEditor prioProject={about.priority || 'Normal'} key={s.id ?? s._k} n={i + 1} sub={s} branch={branch} error={tried ? errs.subs[i] : null}
                 locked={isStarted(s)} onPecah={pecahJadiSub(i)}
                 onChange={(next) => setSubs((arr) => arr.map((x, j) => (j === i ? next : x)))}
                 onRemove={subs.length > 1 && !isStarted(s) ? () => setSubs((a) => a.filter((_, j) => j !== i)) : null} />
@@ -453,7 +480,7 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
     const dl = String(about.deadline || '').slice(0, 10)
     const autoDl = autoDeadline(about.received_at, about.priority)
     const setDl = (v) => setAbout((a) => ({ ...a, deadline: v }))
-    const setPrio = (v) => setA('priority')({ target: { value: v } })
+    const setPrio = pilihPrio
     const chip = (on) => cx('inline-flex h-9 items-center rounded-lg px-3 text-[12.5px] font-semibold ring-1', on ? 'bg-ink text-white ring-ink' : 'bg-white text-ink-soft ring-slate-300 hover:ring-ink')
     const ubahSub = (i, patch) => setSubs((arr) => arr.map((x, j) => (j === i ? { ...x, ...patch } : x)))
     const setDok = (i, x, patch) => {
@@ -517,7 +544,7 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
               const sederhana = x.type === 'terjemahan' && (x.docs || []).length <= 1 && !lengkap.has(x._k ?? x.id) && !isStarted(x) && !(tried && errs.subs[i] && !/dokumen/i.test(errs.subs[i]))
               if (!sederhana) return (
                 <div key={x.id ?? x._k}>
-                  <SubProjectEditor ringkas n={i + 1} sub={x} branch={branch} error={err} locked={isStarted(x)} onPecah={pecahJadiSub(i)}
+                  <SubProjectEditor prioProject={about.priority || 'Normal'} ringkas n={i + 1} sub={x} branch={branch} error={err} locked={isStarted(x)} onPecah={pecahJadiSub(i)}
                     onChange={(next) => setSubs((arr) => arr.map((y, j) => (j === i ? next : y)))}
                     onRemove={subs.length > 1 && !isStarted(x) ? () => setSubs((a) => a.filter((_, j) => j !== i)) : null} />
                 </div>
@@ -675,7 +702,7 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
           <h2 className="text-xs font-bold uppercase tracking-[0.06em] text-[#5E6380]">2 · Project</h2>
           <div className="flex flex-wrap items-start gap-2.5">
             <KolBaru label="Prioritas" wajib hp="half" style={{ flex: '1 1 140px' }}>
-              <PrioritySelect value={about.priority} onChange={(v) => setA('priority')({ target: { value: v } })} />
+              <PrioritySelect value={about.priority} onChange={pilihPrio} />
             </KolBaru>
             <KolBaru label="Deadline (WITA)" wajib style={{ flex: '1.6 1 236px' }} error={E('deadline')}>
               <div className="flex gap-1.5">
@@ -709,7 +736,7 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
             <h2 className="text-xs font-bold uppercase tracking-[0.06em] text-[#5E6380]">3 · Sub project & dokumen</h2>
             <span className="text-xs text-[#5E6380]" data-ringkasan-sub>{subs.length} sub project · {nDokumen} dokumen · {nHalaman} halaman</span>
           </div>
-          {invoiceItems && <InvoiceItemsView inv={invoiceItems} />}
+          {invoiceItems && <InvoiceItemsView inv={invoiceItems} {...propTarik} />}
           {autoFill && (autoFill.ship || autoFill.courier || autoFill.priority) && (
             <div role="status" className="flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-xl bg-amber-50 px-3.5 py-2 text-xs text-amber-900 ring-1 ring-amber-200">
               <Sparkles className="h-4 w-4 shrink-0 text-amber-600" />
@@ -717,7 +744,7 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
             </div>
           )}
           {subs.map((s, i) => (
-            <SubBaris key={s.id ?? s._k} n={i + 1} sub={s} branch={branch} error={tried ? errs.subs[i] : null} onPecah={pecahJadiSub(i)}
+            <SubBaris prioProject={about.priority || 'Normal'} key={s.id ?? s._k} n={i + 1} sub={s} branch={branch} error={tried ? errs.subs[i] : null} onPecah={pecahJadiSub(i)}
               daftarTr={daftarTr} onKeduanya={pecahKeduanya(i)} onApostilleHasil={tambahApostilleHasil(i)}
               onChange={(next) => setSubs((arr) => arr.map((x, j) => (j === i ? next : x)))}
               onRemove={subs.length > 1 ? () => setSubs((a) => a.filter((_, j) => j !== i)) : null} />
@@ -726,7 +753,7 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
             onDragOver={(e) => { if ([...(e.dataTransfer?.types || [])].includes('Files')) { e.preventDefault(); setSeretBawah(true) } }} onDragLeave={() => setSeretBawah(false)}
             onDrop={(e) => { if (e.dataTransfer?.files?.length) { e.preventDefault(); setSeretBawah(false); tarikKeBawah(e.dataTransfer.files) } }}>
             <span className="inline-flex items-center gap-2 text-sm font-semibold"><Upload className="h-[18px] w-[18px]" />{seretBawah ? 'Lepas file di sini' : 'Tarik file ke sini'}</span>
-            <span className="min-w-0 flex-[1_1_280px] text-xs text-[#5E6380]">Jenis dokumen: Reguler / Non Reguler hanya untuk bahasa Indonesia, Inggris, Belanda; bahasa lain Normal / Ekspres. Terjemahan: tiap file jadi satu baris dokumen dalam sub yang sama. Apostille & legalisasi: tiap file jadi sub project sendiri.</span>
+            <span className="min-w-0 flex-[1_1_280px] text-xs text-[#5E6380]">Jenis dokumen Reguler / Non Reguler hanya untuk bahasa Indonesia, Inggris, Belanda; bahasa lain (ke vendor) cukup pakai Prioritas. Terjemahan, apostille & legalisasi: tiap file jadi satu baris dokumen dalam sub yang sama.</span>
             {Object.entries(SUB_TYPES).map(([k, t]) => (
               <button key={k} type="button" onClick={() => tambahSub(k)} data-aksi={`tambah-sub-${k}`} className="inline-flex h-9 items-center gap-1.5 rounded-[10px] bg-white px-3 text-[13px] font-semibold text-ink ring-1 ring-[#D9DBE7] hover:ring-ink max-md:h-11"><Plus className="h-3.5 w-3.5" />{t.short || t.label}</button>
             ))}
@@ -792,7 +819,7 @@ function KolBaru({ label, wajib, hp = 'full', style, error, children }) {
 }
 
 /** Item & deskripsi invoice Zoho — hanya tampilan (tidak mengisi apa pun), untuk dibaca / disalin saat mengisi sub project secara manual. */
-function InvoiceItemsView({ inv }) {
+function InvoiceItemsView({ inv, onTarik, onUrung, tarik }) {
   const { notify } = useApp()
   const [open, setOpen] = useState(true)
   const items = inv.items || []
@@ -802,10 +829,21 @@ function InvoiceItemsView({ inv }) {
     <div className="overflow-hidden rounded-xl bg-white ring-1 ring-emerald-200" data-testid="invoice-items">
       <div className="flex flex-wrap items-center gap-2 bg-emerald-50 px-3.5 py-2">
         <Receipt className="h-4 w-4 shrink-0 text-emerald-700" />
-        <p className="min-w-0 flex-1 text-xs text-emerald-900"><b className="font-semibold">Item invoice {invoiceLabel(inv.invoice_no)}</b> <span className="text-emerald-800/80">· hanya tampilan — baca/salin lalu isi sub project di bawah secara manual</span></p>
+        <p className="min-w-0 flex-1 text-xs text-emerald-900"><b className="font-semibold">Item invoice {invoiceLabel(inv.invoice_no)}</b> <span className="text-emerald-800/80">· {onTarik ? 'isi sub project manual, atau coba Tarik Data (beta)' : 'hanya tampilan — baca/salin lalu isi sub project di bawah secara manual'}</span></p>
+        {onTarik && items.length > 0 && <button type="button" onClick={onTarik} disabled={!!tarik?.sibuk} data-aksi="tarik-data" title="Susun sub project otomatis dari item invoice ini — hasilnya tetap bisa diubah"
+          className="inline-flex min-h-8 items-center gap-1.5 rounded-lg bg-violet-600 px-2.5 py-1 text-[11.5px] font-bold text-white hover:bg-violet-700 disabled:opacity-60 max-md:min-h-11 max-md:px-3 max-md:text-[13px]">
+          {tarik?.sibuk ? <Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" /> : <Sparkles className="h-3.5 w-3.5" />}{tarik?.sibuk ? 'Menganalisa…' : 'Tarik Data (beta)'}</button>}
         {items.length > 0 && <button type="button" onClick={() => copy(items.map((it, i) => `${i + 1}. ${textOf(it)}`).join('\n\n'), 'Semua item')} className="inline-flex items-center gap-1 rounded-lg bg-white px-2 py-1 text-[11px] font-semibold text-emerald-800 ring-1 ring-emerald-300 hover:bg-emerald-100"><Copy className="h-3 w-3" />Salin semua</button>}
         <button type="button" onClick={() => setOpen((o) => !o)} className="rounded-lg p-1 text-emerald-800 hover:bg-emerald-100" aria-label={open ? 'Sembunyikan item invoice' : 'Tampilkan item invoice'} aria-expanded={open}>{open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</button>
       </div>
+      {tarik?.galat && <p role="alert" className="border-t border-rose-100 bg-rose-50 px-3.5 py-2 text-xs font-semibold text-rose-800" data-tarik-galat>{tarik.galat}. Sub project tidak diubah — isi manual seperti biasa.</p>}
+      {tarik?.ok && (
+        <div role="status" className="flex flex-wrap items-center gap-2 border-t border-violet-100 bg-violet-50 px-3.5 py-2 text-xs text-violet-900" data-tarik-hasil={tarik.mesin}>
+          <Sparkles className="h-3.5 w-3.5 shrink-0" />
+          <p className="min-w-0 flex-1"><b className="font-bold">{tarik.n} sub project disusun dari invoice (beta)</b> — {tarik.mesin === 'ai' ? 'dianalisa AI' : 'DEMO: disusun dengan aturan sederhana, bukan AI (AI hanya berjalan di ATLAS live)'}. Periksa lagi tiap sub, lalu tinggal pilih filenya. Belum ada yang tersimpan.{tarik.dilewati?.length > 0 && <span className="block text-violet-800/80">Tidak dijadikan sub: {tarik.dilewati.join(' · ')}</span>}</p>
+          <button type="button" onClick={onUrung} data-aksi="urung-tarik" className="inline-flex min-h-8 items-center rounded-lg bg-white px-2.5 py-1 text-[11.5px] font-bold text-violet-800 ring-1 ring-violet-300 hover:bg-violet-100 max-md:min-h-11 max-md:px-3">Urungkan</button>
+        </div>
+      )}
       {open && (items.length === 0
         ? <p className="px-3.5 py-3 text-xs text-ink-mute">Item invoice belum ada di salinan Zoho (disinkron tiap 10 menit) — isi sub project manual dari invoice.</p>
         : (

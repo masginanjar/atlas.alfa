@@ -10,7 +10,7 @@ import { broadcastSignOut, markActivity, setIdleReason, simpanTujuan, ambilTujua
 import { CHAT_ENABLED } from './flags.js'
 import { DONE, stagesOf, flowOf, isBilled, regComplete, stageLabel, namaLangkah } from '../config/workflows.js'
 import { docListOf } from '../config/workflows.js'
-import { setKonfigIzin, boleh } from './izin.js'
+import { setKonfigIzin, boleh, wajibLoginHarian } from './izin.js'
 import { barisRegistrasi, ambilNomor, kodeArah, jumlahDok, namaDefault } from './registrasi.js'
 import { cariStok, cariPeringatan, kunciPeringatan, teksPeringatan, sudahTercatat, arahLabel, canKelolaAffidavit, AMBANG_RENDAH } from './affidavit.js'
 
@@ -142,10 +142,15 @@ export function AppProvider({ children }) {
   useEffect(() => {
     db.currentUser().then(async (u) => {
       if (u && !masukHariIni()) {
-        // Login harian: sesi dari hari sebelumnya tidak berlaku → wajib login (= absen) lagi hari ini
-        setHarianReason(); simpanTujuan()
-        await db.signOut().catch(() => {}); broadcastSignOut()
-        return
+        // Login harian hanya untuk role yang diwajibkan (Role & Hak Akses). Aturan role dimuat dulu supaya keputusannya benar.
+        const [roles, kecuali] = await Promise.all([db.list('akses_role').catch(() => null), db.list('akses_pengecualian').catch(() => null)])
+        if (roles) setKonfigIzin(roles, kecuali || [])
+        if (wajibLoginHarian(u)) {
+          // sesi dari hari sebelumnya tidak berlaku → wajib login (= absen) lagi hari ini
+          setHarianReason(); simpanTujuan()
+          await db.signOut().catch(() => {}); broadcastSignOut()
+          return
+        }
       }
       if (u) {
         // Samakan persona di server dengan sesi ini (tab baru / muat ulang)

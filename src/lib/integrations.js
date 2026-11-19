@@ -28,7 +28,7 @@ async function api(path, opts = {}) {
 const DEMO_INVOICES = {
   'z-6': [{ invoice_no: 'INV-000240', date: '2026-11-02', total: 1250000, status: 'sent' }, { invoice_no: 'INV-000241', date: '2026-11-03', total: 600000, status: 'draft' }],
   'z-7': [{ invoice_no: 'INV-000242', date: '2026-11-03', total: 850000, status: 'paid' }],
-  'z-2': [{ invoice_no: 'INV-000243', date: '2026-11-03', total: 400000, status: 'sent' }],
+  'z-2': [{ invoice_no: 'INV-000243', date: '2026-11-03', total: 400000, status: 'sent' }, { invoice_no: 'INV-000244', date: '2026-11-19', total: 5238000, status: 'sent' }],
 }
 
 // Contoh item invoice (format persis seperti yang diketik staf di Zoho) — untuk mencoba isi otomatis di demo
@@ -44,6 +44,14 @@ const DEMO_INVOICE_ITEMS = {
   ],
   'INV-000242': [
     { name: 'Spanyol ⇄ Indonesia  ⇄ Spanyol | Sworn', description: 'Spanish - IND SAME-DAY\n1. Dokumen Spanyol 2 halaman\n\nSoftcopy Only : budi@example.com', unit: 'page', quantity: 2, rate: 300000, item_total: 600000 },
+  ],
+  // Contoh untuk mencoba "Tarik Data (beta)": tiga legalisasi beda lembaga dengan daftar dokumen yang sama (nama karangan).
+  'INV-000244': [
+    { name: 'Legalisasi Kemenkumham', description: '1. Ijazah Dewi Contoh\n2. Transkrip Dewi Contoh\n3. SKCK Dewi Contoh', unit: 'pcs', quantity: 3, rate: 425000, item_total: 1275000 },
+    { name: 'Legalisasi Kemenlu', description: '1. Ijazah Dewi Contoh\n2. Transkrip Dewi Contoh\n3. SKCK Dewi Contoh', unit: 'pcs', quantity: 3, rate: 450000, item_total: 1350000 },
+    { name: 'Legalisasi Kedutaan Taiwan / TETO', description: '1. Ijazah Dewi Contoh\n2. Transkrip Dewi Contoh\n3. SKCK Dewi Contoh', unit: 'pcs', quantity: 3, rate: 850000, item_total: 2550000 },
+    { name: 'Fee Akomodasi (Apostille, Notaris, dan Legalisasi)', description: '', unit: '', quantity: 1, rate: 35000, item_total: 35000 },
+    { name: 'Delivery Fee', description: 'Jenis Ekspedisi : JNT\nNama: Dewi Contoh\nNomor hp: 0812-0000-0000\nAlamat: Jl. Contoh No. 1, Kelurahan Contoh\nKota Surabaya\nKode pos. 60000', unit: 'doc', quantity: 1, rate: 28000, item_total: 28000 },
   ],
   'INV-000243': [
     { name: 'Legalisasi Kemenag', description: 'LEGALISASI KEMENAG\n1. Dokumen SKBM Dewi', unit: '', quantity: 1, rate: 600000, item_total: 600000 },

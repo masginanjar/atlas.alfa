@@ -2,17 +2,20 @@ import { useEffect, useRef, useState } from 'react'
 import { Clock, LogOut } from 'lucide-react'
 import { useApp } from '../lib/store.jsx'
 import { IDLE_MS, WARN_MS, lastActivity, watchIdle, masukHariIni } from '../lib/session.js'
+import { wajibLoginHarian } from '../lib/izin.js'
 import { Button } from './ui.jsx'
 
 const mmss = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
 
 /**
- * Penjaga sesi: wajib login sekali setiap hari (WITA). Batas 3 jam tanpa aktivitas sudah dihapus (IDLE_MS = Infinity).
+ * Penjaga sesi: role yang diwajibkan (Role & Hak Akses → "Wajib login ulang setiap hari") harus login sekali setiap hari (WITA); role lain tetap masuk. Batas 3 jam tanpa aktivitas sudah dihapus (IDLE_MS = Infinity).
  * Peringatan muncul 5 menit sebelumnya dengan tombol "Lanjutkan Sesi".
  * Kartu peringatan tidak merebut fokus — pengguna boleh terus mengetik.
  */
 export default function SessionGuard() {
-  const { signOut } = useApp()
+  const { signOut, baseUser, user } = useApp()
+  const siapa = baseUser || user
+  const siapaRef = useRef(siapa); siapaRef.current = siapa
   const [left, setLeft] = useState(null) // detik tersisa saat peringatan tampil
   const ctl = useRef(null)
 
@@ -28,7 +31,7 @@ export default function SessionGuard() {
 
   // Login harian: begitu ganti hari (WITA), keluar dan wajib login lagi — login itu = absen hadir.
   useEffect(() => {
-    const cek = () => { if (!masukHariIni()) signOut('harian') }
+    const cek = () => { if (!masukHariIni() && wajibLoginHarian(siapaRef.current)) signOut('harian') }
     const t = setInterval(cek, 30000)
     const vis = () => { if (document.visibilityState === 'visible') cek() }
     document.addEventListener('visibilitychange', vis)
