@@ -15,7 +15,7 @@ import { infoDeadline } from './BarisCanvas.jsx'
 const kunciHari = (dl) => (String(dl).length > 10 ? new Date(new Date(dl).getTime() + 8 * 3600e3).toISOString().slice(0, 10) : String(dl).slice(0, 10))
 const HARI = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab']
 
-export default function DasborPelaksana({ projects = [], angka = {}, perbaikan = [], atas = null }) {
+export default function DasborPelaksana({ projects = [], angka = {}, perbaikan = [], atas = null, tanpaPekerjaan = false }) {
   const { user } = useApp()
   const [berkas, setBerkas] = useState(null)
   const [saring, setSaring] = useState('aktif')
@@ -64,6 +64,7 @@ export default function DasborPelaksana({ projects = [], angka = {}, perbaikan =
       {atas && <div className="grid gap-3 lg:grid-cols-2 lg:items-start [&>*]:min-w-0" data-performa-atas>{atas}</div>}
       <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
       <div className="flex min-w-0 flex-col gap-3">
+        {tanpaPekerjaan && !utama && <p className="rounded-2xl bg-white px-4 py-6 text-center text-sm text-ink-mute ring-1 ring-slate-200 dark:bg-white/5 dark:ring-white/10">Tidak ada pekerjaan aktif. Daftar lengkap ada di menu <a href="#/projects" className="font-semibold text-brand underline-offset-2 hover:underline">Project</a>.</p>}
       {utama && (
         <section className="flex flex-col gap-3 rounded-2xl bg-[#141B34] p-4 text-white md:flex-row md:items-center md:p-5" data-kerjakan-sekarang>
           <div className="flex min-w-0 flex-1 flex-col gap-1.5">
@@ -75,7 +76,8 @@ export default function DasborPelaksana({ projects = [], angka = {}, perbaikan =
           <div className="shrink-0 rounded-xl bg-white p-1.5 text-[#141B34] max-md:[&_button]:min-h-11"><AksiTugasBaris project={utama.p} hp /></div>
         </section>
       )}
-        <section className="overflow-hidden rounded-2xl bg-white ring-1 ring-slate-200 dark:bg-white/5 dark:ring-white/10">
+        {/* Tabel "Pekerjaan saya" tidak ditampilkan untuk penerjemah & proofreader (daftarnya ada di halaman Project) */}
+        <section className={cx('overflow-hidden rounded-2xl bg-white ring-1 ring-slate-200 dark:bg-white/5 dark:ring-white/10', tanpaPekerjaan && 'hidden')} data-pekerjaan-saya>
           <div className="flex flex-wrap items-center gap-2 px-4 py-3">
             <h2 className="mr-1 text-[15px] font-bold">Pekerjaan saya</h2>
             {[['semua', 'Semua', baris.length], ['aktif', 'Aktif', aktif.length], ['selesai', 'Selesai', selesai.length]].map(([k, l, n]) => (
