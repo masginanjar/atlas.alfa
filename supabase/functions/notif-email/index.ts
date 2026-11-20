@@ -5,7 +5,7 @@
 //    (dibaca atas nama pemanggil → RLS berlaku) dan dari akun penerjemah. Browser tidak bisa memilih alamat tujuan.
 //  • Hanya terkirim bila akun penerjemah: aktif, `notif_email_aktif` = true, dan `notif_email` terisi
 //    (keduanya dijaga trigger users_kunci_jaga — hanya admin pengelola pengguna yang bisa mengubah).
-//  • Isi: No Invoice, judul dokumen, jumlah dokumen & halaman, arah bahasa, prioritas, deadline, tombol buka ATLAS.
+//  • Isi SINGKAT (diminta pemilik 20 Nov): No Invoice, judul dokumen, jumlah dokumen & halaman, arah bahasa, prioritas, deadline, tombol buka ATLAS.
 //    TANPA lampiran, TANPA nama / kontak pelanggan.
 //  • Satu email per penerjemah per project per panggilan. Pasangan project–sub–penerjemah yang sudah pernah
 //    dikirimi tidak dikirimi lagi (notif_email_log) → aman dari kirim ganda.
@@ -22,7 +22,6 @@ const PENGIRIM = "ATLAS 247 <notifikasi@247translator.id>";
 const TAUTAN = "https://app.247translator.id";
 const samar = (e: string) => e.replace(/^(.{2})[^@]*(@.*)$/, "$1•••$2");
 const esc = (s: unknown) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
-const LABEL_PRIO: Record<string, string> = { Normal: "Normal", Ekspres: "Ekspres (Speed 50)", "Super Ekspres": "Super Ekspres (Speed 100)", Sameday: "Sameday" };
 // deno-lint-ignore no-explicit-any
 type Baris = Record<string, any>;
 
@@ -30,8 +29,8 @@ const tglJam = (v: unknown) => {
   if (!v) return "—";
   const d = new Date(String(v));
   if (Number.isNaN(d.getTime())) return String(v);
-  const tgl = d.toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Makassar" });
-  return String(v).length > 10 ? `${tgl}, pukul ${d.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Makassar" }).replace(":", ".")} WITA` : tgl;
+  const tgl = d.toLocaleDateString("id-ID", { weekday: "short", day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Makassar" });
+  return String(v).length > 10 ? `${tgl}, ${d.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Makassar" }).replace(":", ".")} WITA` : tgl;
 };
 const kosongNama = (t: unknown) => !String(t ?? "").replace(/^\s*\d+\s*[.)\-]?\s*/, "").trim();
 const judulSub = (sb: Baris) => {
@@ -43,26 +42,16 @@ const jmlHal = (sb: Baris) => (Array.isArray(sb.docs) && sb.docs.length ? sb.doc
 const pemegang = (s: Baris) => (s?.stage === "penerjemahan" && (s?.translator_kind || "translator") === "translator" ? String(s?.translator || s?.data?.translator || "") : "");
 
 function susun(nama: string, no: string, deadline: string, baris: { judul: string; rinci: string }[], contoh: boolean) {
-  const subjek = `${contoh ? "[CONTOH] " : ""}Tugas baru: ${no} · deadline ${deadline}`;
-  const teks = [`Halo ${nama},`, "", "Ada tugas terjemahan baru untuk Anda di ATLAS.", "", `No Invoice : ${no}`, `Deadline   : ${deadline}`, "",
-    ...baris.map((b, i) => `${i + 1}. ${b.judul}${b.rinci ? `\n   ${b.rinci}` : ""}`), "", `Buka di ATLAS: ${TAUTAN}`, "",
-    "Dokumen tidak dilampirkan di email ini — silakan buka dan unduh di ATLAS. Email ini dikirim otomatis, mohon tidak dibalas.",
-    ...(contoh ? ["", "— Ini email CONTOH dengan data buatan, bukan tugas sungguhan."] : [])].join("\n");
-  const html = `<!doctype html><html lang="id"><body style="margin:0;padding:0;background:#f1f3f8;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#141b34">
-<div style="max-width:560px;margin:0 auto;padding:16px">
-<div style="background:#ffffff;border-radius:16px;padding:20px;border:1px solid #e7e8f0">
-<p style="margin:0 0 4px;font-size:12px;letter-spacing:.04em;color:#6b7280">ATLAS · 247 SWORN TRANSLATOR</p>
-<p style="margin:12px 0 0;font-size:16px">Halo ${esc(nama)},</p>
-<p style="margin:8px 0 16px;font-size:16px">Ada tugas terjemahan baru untuk Anda di ATLAS.</p>
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f6f7fb;border-radius:12px;font-size:15px"><tr><td style="padding:12px 14px">
-<p style="margin:0;color:#6b7280;font-size:12px">No Invoice</p><p style="margin:2px 0 10px;font-weight:600">${esc(no)}</p>
-<p style="margin:0;color:#6b7280;font-size:12px">Deadline</p><p style="margin:2px 0 0;font-weight:600">${esc(deadline)}</p>
-</td></tr></table>
-${baris.map((b, i) => `<div style="margin-top:10px;padding:12px 14px;border:1px solid #e7e8f0;border-radius:12px"><p style="margin:0;font-size:15px;font-weight:600">${i + 1}. ${esc(b.judul)}</p>${b.rinci ? `<p style="margin:4px 0 0;font-size:14px;color:#4b5563">${esc(b.rinci)}</p>` : ""}</div>`).join("")}
-<p style="margin:18px 0 0"><a href="${TAUTAN}" style="display:inline-block;background:#141b34;color:#ffffff;text-decoration:none;font-weight:600;font-size:15px;padding:13px 22px;border-radius:10px">Buka di ATLAS</a></p>
-<p style="margin:16px 0 0;font-size:12px;color:#6b7280">Dokumen tidak dilampirkan di email ini — silakan buka dan unduh di ATLAS. Email ini dikirim otomatis, mohon tidak dibalas.</p>
-${contoh ? `<p style="margin:10px 0 0;font-size:12px;color:#b45309">Ini email CONTOH dengan data buatan, bukan tugas sungguhan.</p>` : ""}
-</div></div></body></html>`;
+  const subjek = `${contoh ? "[CONTOH] " : ""}Tugas baru ${no} · DL ${deadline}`;
+  const teks = [`Halo ${nama}, ada tugas baru:`, `${no} · DL ${deadline}`, ...baris.map((b, i) => `${i + 1}. ${b.judul}${b.rinci ? ` — ${b.rinci}` : ""}`), `Buka di ATLAS: ${TAUTAN}`,
+    ...(contoh ? ["(Email contoh, bukan tugas sungguhan.)"] : [])].join("\n");
+  const html = `<!doctype html><html lang="id"><body style="margin:0;padding:16px;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#141b34;font-size:15px;line-height:1.5">
+<p style="margin:0 0 6px">Halo ${esc(nama)}, ada tugas baru:</p>
+<p style="margin:0 0 6px;font-weight:600">${esc(no)} · DL ${esc(deadline)}</p>
+${baris.map((b, i) => `<p style="margin:0 0 2px">${i + 1}. ${esc(b.judul)}${b.rinci ? ` <span style="color:#4b5563">— ${esc(b.rinci)}</span>` : ""}</p>`).join("")}
+<p style="margin:14px 0 0"><a href="${TAUTAN}" style="display:inline-block;background:#141b34;color:#ffffff;text-decoration:none;font-weight:600;padding:12px 20px;border-radius:10px">Buka di ATLAS</a></p>
+${contoh ? `<p style="margin:10px 0 0;font-size:12px;color:#b45309">Email contoh, bukan tugas sungguhan.</p>` : ""}
+</body></html>`;
   return { subjek, teks, html };
 }
 
@@ -102,7 +91,7 @@ Deno.serve(async (req: Request) => {
     const { count } = await admin.from("notif_email_log").select("id", { count: "exact", head: true }).eq("oleh", saya.id).eq("jenis", "contoh").gte("at", new Date(Date.now() - 3600e3).toISOString());
     if ((count ?? 0) >= 10) return json({ ok: false, alasan: "Terlalu banyak email contoh dalam 1 jam — tunggu sebentar" });
     const besok = new Date(Date.now() + 86400e3).toISOString();
-    const isi = susun(String(t.doc?.nickname || t.doc?.name || "Penerjemah"), "1090000000123", tglJam(besok), [{ judul: "Akta Kelahiran, Kartu Keluarga", rinci: "2 dokumen · 3 halaman · Indonesia → Inggris · Ekspres (Speed 50)" }], true);
+    const isi = susun(String(t.doc?.nickname || t.doc?.name || "Penerjemah"), "1090000000123", tglJam(besok), [{ judul: "Akta Kelahiran, Kartu Keluarga", rinci: "2 dok · 3 hal · Indonesia → Inggris · Ekspres" }], true);
     try { await kirimResend(kunci, ke, isi, `contoh-${t.id}-${Date.now()}`); }
     catch (e) { await admin.from("notif_email_log").insert({ jenis: "contoh", oleh: saya.id, penerima: t.id, hasil: "gagal" }); return json({ ok: false, alasan: pesanGalat(e) }); }
     await admin.from("notif_email_log").insert({ jenis: "contoh", oleh: saya.id, penerima: t.id, hasil: "ok" });
@@ -138,7 +127,7 @@ Deno.serve(async (req: Request) => {
     const ke = String(t?.doc?.notif_email ?? "").trim();
     const subs = subsSemua.filter((s) => !pernah.has(`${s.id}:${id}`));
     if (!t || (t.active ?? t.doc?.active) === false || t.doc?.notif_email_aktif !== true || !EMAIL.test(ke) || !subs.length) { dilewati += subsSemua.length; continue; }
-    const baris = subs.map((s) => ({ judul: judulSub(s), rinci: [jmlDok(s) && `${jmlDok(s)} dokumen`, jmlHal(s) && `${jmlHal(s)} halaman`, s.lang_from && s.lang_to && `${s.lang_from} → ${s.lang_to}`, LABEL_PRIO[String(s.priority || p.about?.priority || "Normal")] ?? String(s.priority || p.about?.priority || "Normal")].filter(Boolean).join(" · ") }));
+    const baris = subs.map((s) => ({ judul: judulSub(s), rinci: [jmlDok(s) && `${jmlDok(s)} dok`, jmlHal(s) && `${jmlHal(s)} hal`, s.lang_from && s.lang_to && `${s.lang_from} → ${s.lang_to}`, String(s.priority || p.about?.priority || "Normal")].filter(Boolean).join(" · ") }));
     const catat = (hasil: string) => admin.from("notif_email_log").insert(subs.map((s) => ({ jenis: "tugas", oleh: saya.id, penerima: id, project_id, sub_id: String(s.id), hasil })));
     try {
       await kirimResend(kunci, ke, susun(String(t.doc?.nickname || t.doc?.name || "Penerjemah"), no, deadline, baris, false), `tugas-${project_id}-${id}-${subs.map((s) => s.id).join(".")}`.slice(0, 250));

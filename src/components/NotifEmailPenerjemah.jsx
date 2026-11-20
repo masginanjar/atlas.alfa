@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Mail, Send, ChevronDown } from 'lucide-react'
 import { Field, Input, cx } from './ui.jsx'
 import { invoiceLabel } from '../config/access.js'
-import { labelPrioritas, prioSub } from '../config/priority.js'
+import { prioSub } from '../config/priority.js'
 import { daftarDokChat } from './SalinChatOrder.jsx'
 import { ALAMAT_ATLAS, EMAIL_SAH, NOTIF_LIVE, PENGIRIM_NOTIF, kirimEmailContoh } from '../lib/notifEmail.js'
 
@@ -16,8 +16,8 @@ const tglJam = (v) => {
   if (!v) return '—'
   const d = new Date(v)
   if (Number.isNaN(d.getTime())) return String(v)
-  const tgl = d.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
-  return String(v).length > 10 ? `${tgl}, pukul ${d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }).replace(':', '.')} WITA` : tgl
+  const tgl = d.toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
+  return String(v).length > 10 ? `${tgl}, ${d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }).replace(':', '.')} WITA` : tgl
 }
 const jmlDok = (sb) => sb.docs?.length || sb.file_count || 0
 const jmlHal = (sb) => (sb.docs?.length ? sb.docs.reduce((a, d) => a + (Number(d.pages) || 0), 0) : Number(sb.pages) || 0)
@@ -29,13 +29,13 @@ export function isiEmailTugas(project, subs, penerjemah) {
     judul: daftarDokChat(sb, false).join(', ') || sb.title || 'Dokumen',
     dok: jmlDok(sb), hal: jmlHal(sb),
     arah: sb.lang_from && sb.lang_to ? `${sb.lang_from} → ${sb.lang_to}` : '',
-    prioritas: labelPrioritas(prioSub(project, sb)),
+    prioritas: prioSub(project, sb),
   }))
   return {
     dari: PENGIRIM_NOTIF,
     ke: String(penerjemah?.notif_email || '').trim(),
-    subjek: `Tugas baru: ${no}${baris[0]?.arah ? ` · ${baris[0].arah}` : ''} · deadline ${tglJam(project?.about?.deadline)}`,
-    sapaan: `Halo ${penerjemah?.nickname || penerjemah?.name || 'Penerjemah'},`,
+    subjek: `Tugas baru ${no} · DL ${tglJam(project?.about?.deadline)}`,
+    sapaan: `Halo ${penerjemah?.nickname || penerjemah?.name || 'Penerjemah'}, ada tugas baru:`,
     no, deadline: tglJam(project?.about?.deadline), baris,
     tautan: ALAMAT_ATLAS,
   }
@@ -54,23 +54,15 @@ export function PratinjauEmail({ isi }) {
         <p className="break-words"><span className="text-ink-mute">Kepada:</span> {isi.ke || '(alamat belum diisi)'}</p>
         <p className="break-words text-xs font-semibold text-ink">{isi.subjek}</p>
       </div>
-      <div className="space-y-3 px-3 py-3 text-sm text-ink">
+      <div className="space-y-2 px-3 py-3 text-sm text-ink">
         <p>{isi.sapaan}</p>
-        <p>Ada tugas terjemahan baru untuk Anda di ATLAS.</p>
-        <dl className="grid grid-cols-[6.5rem_1fr] gap-x-2 gap-y-1 rounded-lg bg-slate-50 p-3 text-[13px]">
-          <dt className="text-ink-mute">No Invoice</dt><dd className="font-semibold">{isi.no}</dd>
-          <dt className="text-ink-mute">Deadline</dt><dd className="font-semibold">{isi.deadline}</dd>
-        </dl>
-        <ol className="space-y-2">
+        <p className="break-words font-semibold">{isi.no} · DL {isi.deadline}</p>
+        <ol className="space-y-1">
           {isi.baris.map((b, i) => (
-            <li key={i} className="rounded-lg p-3 ring-1 ring-slate-200">
-              <p className="break-words font-semibold">{i + 1}. {b.judul}</p>
-              <p className="mt-0.5 text-[13px] text-ink-soft">{[b.dok && `${b.dok} dokumen`, b.hal && `${b.hal} halaman`, b.arah, b.prioritas].filter(Boolean).join(' · ')}</p>
-            </li>
+            <li key={i} className="break-words">{i + 1}. {b.judul}<span className="text-ink-soft"> — {[b.dok && `${b.dok} dok`, b.hal && `${b.hal} hal`, b.arah, b.prioritas].filter(Boolean).join(' · ')}</span></li>
           ))}
         </ol>
         <p><span className="inline-flex min-h-11 items-center rounded-lg bg-slate-900 px-4 text-sm font-semibold text-white">Buka di ATLAS</span></p>
-        <p className="text-[11px] text-ink-mute">Dokumen tidak dilampirkan di email ini — silakan buka dan unduh di ATLAS ({isi.tautan.replace('https://', '')}). Email ini dikirim otomatis, mohon tidak dibalas.</p>
       </div>
     </div>
   )
@@ -93,7 +85,7 @@ export default function NotifEmailPenerjemah({ e, set, bisaUbah }) {
   return (
     <div className="rounded-xl bg-slate-50 p-3 ring-1 ring-slate-200" data-notif-email>
       <div className="flex items-center gap-3">
-        <div className="min-w-0 flex-1"><p className="flex items-center gap-1.5 text-sm font-semibold"><Mail className="h-4 w-4 shrink-0" />Email notifikasi tugas</p><p className="text-[11px] text-ink-mute">Saat ada project baru ditugaskan ke penerjemah ini, ia mendapat email berisi No Invoice, dokumen, dan deadline. Tanpa lampiran.</p></div>
+        <div className="min-w-0 flex-1"><p className="flex items-center gap-1.5 text-sm font-semibold"><Mail className="h-4 w-4 shrink-0" />Email notifikasi tugas</p><p className="text-[11px] text-ink-mute">Saat ada project baru ditugaskan ke penerjemah ini, ia mendapat email singkat: No Invoice, dokumen, deadline. Tanpa lampiran.</p></div>
         <button type="button" role="switch" aria-checked={nyala} aria-label="Email notifikasi tugas" disabled={!bisaUbah}
           onClick={() => set({ ...e, notif_email_aktif: !nyala })}
           className={cx("relative h-7 w-12 shrink-0 rounded-full transition disabled:opacity-50 max-md:h-8 max-md:w-14 max-md:before:absolute max-md:before:-inset-x-1 max-md:before:-inset-y-1.5 max-md:before:content-['']", nyala ? 'bg-brand' : 'bg-slate-300')}><span className={cx('absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition max-md:h-7 max-md:w-7', nyala ? 'left-[1.375rem] max-md:left-[1.625rem]' : 'left-0.5')} /></button>
