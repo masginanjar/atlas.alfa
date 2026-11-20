@@ -101,6 +101,16 @@ export const teksOtoUntuk = (viewer, stage) => (stage?.key === 'otorisasi' && !s
 export const labelRoleUntuk = (viewer, u) => (!seeOtoTeam(viewer) && u?.role === 'otorisator' ? 'Otorisator' : roleLabel(u))
 /** Nama otorisator yang boleh ditampilkan ke `viewer` (klaim "sedang diproses …", dsb.). */
 export const namaOtoUntuk = (viewer, nama) => (seeOtoTeam(viewer) ? nama : PROOFREADER_TEAM.lead)
+/**
+ * PROOFREADER TETAP PER PENERJEMAH (20 Nov 2026): Super Admin menetapkan di Pengaturan → Pengguna (akun penerjemah, isian `proofreader_tetap`).
+ * Bila diisi, hasil penerjemah itu SELALU dikirim ke proofreader tersebut — penerjemah tidak memilih.
+ * Dikembalikan null bila belum diatur atau proofreader-nya sudah nonaktif (kembali ke cara biasa).
+ */
+export function proofreaderTetap(sub, users = [], pelaku = null) {
+  const tr = users.find((u) => u.id === (sub?.data?.translator || pelaku?.id))
+  const id = tr?.proofreader_tetap
+  return id ? users.find((u) => u.id === id && u.active !== false && rolesOf(u).includes('proofreader')) || null : null
+}
 /** Proofreader aktif dengan antrean paling sedikit — dipakai saat penerjemah mengirim ke Tim Proofreader. */
 export function pickProofreader(users, projects = []) {
   const pool = users.filter((u) => u.role === 'proofreader' && u.active !== false)

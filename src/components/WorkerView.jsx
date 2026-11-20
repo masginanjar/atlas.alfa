@@ -14,7 +14,7 @@ import { cx } from './ui.jsx'
 import { tgl, daysLeft } from '../lib/format.js'
 import TimeAgo from './TimeAgo.jsx'
 import { stageArrivedAt } from '../lib/format.js'
-import { placeOf, seeProofreaderIdentity, pickProofreader, invoiceLabel} from '../config/access.js'
+import { placeOf, seeProofreaderIdentity, pickProofreader, invoiceLabel, proofreaderTetap, displayNameFor } from '../config/access.js'
 
 /**
  * Tampilan SEDERHANA untuk Penerjemah & Proofreader:
@@ -111,6 +111,7 @@ function OrderCard({ project, sub, cfg }) {
   // Pengguna biasa (mis. penerjemah) mengirim ke TIM Proofreader, bukan ke orang tertentu:
   // sistem memilih proofreader dengan antrean paling sedikit, namanya tidak dibagikan.
   const teamOnly = !seeProofreaderIdentity(user)
+  const tetap = proofreaderTetap(sub, data.users, user) // proofreader tetap dari Super Admin → tidak ada pilihan
   const [pr, setPr] = useState(sub.data?.proofreader || (teamOnly ? '' : proofreaders.find((u) => u.branch === project.branch)?.id || proofreaders[0]?.id || ''))
   const [note, setNote] = useState(sub.data?.catatan_proofread || '')
   const isTr = user.role === 'penerjemah'
@@ -143,11 +144,11 @@ function OrderCard({ project, sub, cfg }) {
     await processStage(project, sub.id, { [cfg.fileKey]: list[0] || null, [`${cfg.fileKey}_list`]: list }, false)
   }, 'File dihapus')
   const next = () => run('next', () => {
-    const target = isTr && !isNT ? (teamOnly ? pickProofreader(data.users, data.projects) : pr) : null
+    const target = isTr && !isNT ? (tetap ? tetap.id : teamOnly ? pickProofreader(data.users, data.projects) : pr) : null
     if (isTr && !isNT && !target) throw new Error('Tidak ada proofreader aktif — hubungi Direktur')
     return processStage(project, sub.id, isNT ? {} : isTr ? { proofreader: target } : { catatan_proofread: note }, true)
   }, isNT ? 'Selesai — dokumen kembali ke CS' : isTr ? 'Terkirim ke Tim Proofreader' : 'Lanjut ke Otorisator')
-  const canNext = isTr ? !!uploaded && (isNT || teamOnly ? proofreaders.length > 0 : !!pr) : !!uploaded
+  const canNext = isTr ? !!uploaded && (tetap ? true : isNT || teamOnly ? proofreaders.length > 0 : !!pr) : !!uploaded
 
   return (
     <div className="space-y-3 rounded-3xl bg-white p-4 shadow-sm ring-1 ring-slate-200 sm:p-5">
@@ -188,7 +189,8 @@ function OrderCard({ project, sub, cfg }) {
       </Step>
 
       <Step n={3} title={isNT ? 'Selesai → Kembali ke CS' : cfg.next} done={false} active={canNext}>
-        {isTr && !isNT && !teamOnly && (
+        {isTr && !isNT && tetap && <p className="mb-3 rounded-xl bg-white px-3 py-2 text-sm ring-1 ring-slate-200" data-proofreader-tetap>Proofreader: <b>{displayNameFor(user, tetap)}</b> <span className="text-[11px] text-ink-mute">· sudah ditetapkan admin</span></p>}
+        {isTr && !isNT && !teamOnly && !tetap && (
           <select value={pr} onChange={(e) => setPr(e.target.value)} aria-label="Proofreader"
             className="mb-3 h-11 w-full rounded-xl border-0 px-3 text-sm ring-1 ring-slate-300 focus:ring-2 focus:ring-brand">
             <option value="">— Pilih proofreader —</option>

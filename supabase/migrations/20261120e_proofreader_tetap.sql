@@ -1,0 +1,4 @@
+-- 20 Nov 2026 — Proofreader tetap per penerjemah (users.doc.proofreader_tetap): hanya Super Admin yang boleh menetapkan/mengubah.
+-- Diterapkan lewat fungsi public.users_kunci_jaga() (lihat 20261120d): ditambah pemeriksaan
+--   coalesce(new.doc->>'proofreader_tetap','') is distinct from coalesce(old.doc->>'proofreader_tetap','') → wajib role superadmin
+-- (INSERT dengan proofreader_tetap terisi juga wajib superadmin). Isi lengkap fungsi ada di database (migrasi proofreader_tetap_jaga).

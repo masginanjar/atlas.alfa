@@ -10,7 +10,7 @@ import { useApp } from '../lib/store.jsx'
 import { boleh } from '../lib/izin.js'
 import { go } from '../lib/router.js'
 import { drive } from '../lib/integrations.js'
-import { perluVendor, can, biayaVendorTersembunyi, bolehPajakApostille, PERSON_TYPES, ROLES, scopeByBranch, activeClaim, placeOf, branchesOf, printBranchOf, displayNameFor, seeProofreaderIdentity, seeOtoTeam, namaOtoUntuk, teksOtoUntuk, PROOFREADER_TEAM, proofreaderTeamName, pickProofreader, invoiceLabel, coordinatorFor, foreignLang, bolehItemCeklis, lewatIzinApostille, rolesOf } from '../config/access.js'
+import { perluVendor, can, biayaVendorTersembunyi, bolehPajakApostille, PERSON_TYPES, ROLES, scopeByBranch, activeClaim, placeOf, branchesOf, printBranchOf, displayNameFor, seeProofreaderIdentity, seeOtoTeam, namaOtoUntuk, teksOtoUntuk, PROOFREADER_TEAM, proofreaderTetap, proofreaderTeamName, pickProofreader, invoiceLabel, coordinatorFor, foreignLang, bolehItemCeklis, lewatIzinApostille, rolesOf } from '../config/access.js'
 import TugaskanPenerjemah from '../components/TugaskanPenerjemah.jsx'
 import { saveBlob, dataUrlToBlob } from '../lib/download.js'
 import ResiFields from '../components/ResiFields.jsx'
@@ -566,6 +566,11 @@ function Collected({ project, sub }) {
 }
 
 /** Kirim ke Tim Proofreader: identitas perorangan tidak dibagikan ke pengguna biasa. */
+/** Proofreader tetap (ditetapkan Super Admin per penerjemah) — tampil saja, tidak bisa dipilih. */
+function PrTetap({ label, value, onPick, tetap, nama }) {
+  useEffect(() => { if (value !== tetap.id) onPick(tetap.id) }, [tetap.id]) // eslint-disable-line react-hooks/exhaustive-deps
+  return <Field label={label}><p className="rounded-lg bg-slate-50 px-3 py-2 text-sm font-semibold ring-1 ring-slate-200" data-proofreader-tetap>{nama} <span className="text-[11px] font-normal text-ink-mute">· sudah ditetapkan admin</span></p></Field>
+}
 function TeamPick({ label, value, onPick, users, projects, empty }) {
   useEffect(() => { if (!value && !empty) onPick(pickProofreader(users, projects)) }, []) // eslint-disable-line react-hooks/exhaustive-deps
   return (
@@ -751,6 +756,8 @@ function StagePanelIsi({ project, sub, stage, ringkas }) {
             const opts = data.users.filter((u) => u.role === role && u.active !== false)
               .sort((a, b) => (b.branch === project.branch) - (a.branch === project.branch) || a.name.localeCompare(b.name))
             // Proofreader: pengguna biasa mengirim ke TIM, sistem yang memilih orangnya
+            const prTetap = role === 'proofreader' ? proofreaderTetap(sub, data.users, user) : null
+            if (prTetap && user.role !== 'superadmin') return <PrTetap key={f.key} label={f.label} value={v} onPick={set} tetap={prTetap} nama={displayNameFor(user, prTetap)} />
             if (role === 'proofreader' && !seeProofreaderIdentity(user)) {
               return <TeamPick key={f.key} label={f.label} value={v} onPick={set} users={data.users} projects={data.projects} empty={!opts.length} />
             }

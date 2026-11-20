@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { db, TABLES, MODE } from './db.js'
 import { catatMonitor, jenisError } from './monitor.js'
 import { describe } from './activity.js'
-import { branchesOf, APOSTILLE_FUND, ROLES, roleLabel, displayNameFor, WORKER_ROLES, branchOfInvoice, can, bolehItemCeklis, rolesOf } from '../config/access.js'
+import { branchesOf, APOSTILLE_FUND, ROLES, roleLabel, displayNameFor, WORKER_ROLES, branchOfInvoice, can, bolehItemCeklis, rolesOf, proofreaderTetap } from '../config/access.js'
 import { zoho } from './integrations.js'
 import { startHeartbeat, statusOf } from './presence.js'
 import { threadOf, myMessages, unreadByThread, pingQuota, openChatBus, PING_MAX_24H, PING_GAP_MS } from './chat.js'
@@ -399,6 +399,8 @@ export function AppProvider({ children }) {
     // PRESTASI MENGIKUTI PENUGASAN, bukan orang yang menekan tombol: bila tahap dilanjutkan oleh role lain
     // (Super Admin / Direktur / Admin Pusat / Supervisor), hasil kerja tetap dicatat atas nama pelaksana yang ditugaskan.
     const atasNama = values?.__atas_nama; delete merged.__atas_nama
+    // Proofreader tetap (ditetapkan Super Admin per penerjemah): siapa pun yang mengirim, selain Super Admin, tidak bisa memilih proofreader lain.
+    if (advance && stage.fields?.some((f) => f.type === 'user:proofreader')) { const tetap = proofreaderTetap({ data: merged }, data.users, user); if (tetap && user.role !== 'superadmin') merged = { ...merged, proofreader: tetap.id } }
     if (advance && stage.key === 'penerjemahan' && merged.translator && merged.translator !== user.id) merged = { ...merged, translated_by: merged.translator, translated_via: user.id }
     if (advance && stage.key === 'otorisasi' && user.role !== 'otorisator') {
       const klaim = s.data?.claim?.by

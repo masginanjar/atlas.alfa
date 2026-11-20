@@ -1091,6 +1091,14 @@ function Users() {
               {!bolehIzin(user, 'pengaturan.pengguna.ubah') && <p className="mt-1 text-[11px] text-amber-700">Hanya admin dengan izin mengubah pengguna yang dapat mengganti pengaturan ini.</p>}
             </div>
           )}
+          {user.role === 'superadmin' && (e.role === 'penerjemah' || (e.extra_roles || []).includes('penerjemah')) && (
+            <Field label="Proofreader tetap" hint="Hanya Super Admin yang mengatur. Bila diisi, hasil penerjemah ini selalu dikirim ke proofreader tersebut — penerjemah tidak bisa memilih.">
+              <Select value={e.proofreader_tetap || ''} onChange={(x) => set({ ...e, proofreader_tetap: x.target.value || '' })} data-proofreader-tetap-atur className="max-md:min-h-11 max-md:text-base">
+                <option value="">— Tidak ditetapkan (cara biasa) —</option>
+                {data.users.filter((u) => u.active !== false && u.id !== e.id && (u.role === 'proofreader' || (u.extra_roles || []).includes('proofreader'))).sort((a, b) => a.name.localeCompare(b.name)).map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+              </Select>
+            </Field>
+          )}
           {user.role === 'superadmin' && (
             <Field label="Jabatan tersembunyi — boleh bertindak sebagai" hint="Hanya Superadmin yang melihat pengaturan ini. Saat dipilih lewat 'Ganti peran', semua riwayat, ping, dan klaim tercatat atas nama akun persona itu — tim tidak melihat siapa yang sebenarnya login. Perpindahannya tercatat di log audit (Superadmin saja).">
               <div className="flex flex-wrap gap-1.5">

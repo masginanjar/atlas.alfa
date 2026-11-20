@@ -3,7 +3,7 @@ import { prioSub } from '../config/priority.js'
 import { Play, Send, FolderOpen, Hand, CheckCircle2, FileText, Upload, Loader2, Circle, Inbox, Building2, Headset, Printer, Eye, Download, ChevronDown, ChevronRight, Undo2, MapPin, Languages, X } from 'lucide-react'
 import { useApp } from '../lib/store.jsx'
 import { TolakTugasBtn } from './GantiPenerjemah.jsx'
-import { can, activeClaim, placeOf, seeProofreaderIdentity, pickProofreader, invoiceLabel, namaOtoUntuk } from '../config/access.js'
+import { can, activeClaim, placeOf, seeProofreaderIdentity, pickProofreader, invoiceLabel, namaOtoUntuk, proofreaderTetap, displayNameFor } from '../config/access.js'
 import { flowOf, stagesOf } from '../config/workflows.js'
 import { SUB_TYPES } from '../config/subtypes.js'
 import { fieldFiles, uploadProjectFiles, collect } from './FileManager.jsx'
@@ -74,7 +74,9 @@ function useTask(project, sub, onDone) {
   const people = pick ? data.users.filter((u) => u.role === String(pick.type).split(':')[1] && u.active !== false) : null
   // Proofreader tampil sebagai SATU identitas tim untuk pengguna biasa:
   // tidak ada daftar nama, sistem memilih yang antreannya paling sedikit.
-  const teamPick = pick && String(pick.type) === 'user:proofreader' && !seeProofreaderIdentity(user)
+  // Proofreader tetap (ditetapkan Super Admin untuk penerjemah ini) → tidak ada pilihan
+  const tetap = pick && String(pick.type) === 'user:proofreader' ? proofreaderTetap(sub, data.users, user) : null
+  const teamPick = !tetap && pick && String(pick.type) === 'user:proofreader' && !seeProofreaderIdentity(user)
   const noteField = noteFieldOf(stage)
   const [who, setWho] = useState(() => sub.data?.[pick?.key] || '')
   const [note, setNote] = useState(() => sub.data?.[noteField?.key] || '')
@@ -127,7 +129,7 @@ function useTask(project, sub, onDone) {
     const all = files.filter((_, i) => i !== index)
     await processStage(project, sub.id, { [fileKey]: all[0] || null, [`${fileKey}_list`]: all }, false)
   }, 'File hasil dihapus')
-  const target = () => (teamPick ? pickProofreader(data.users, data.projects) : who)
+  const target = () => (tetap ? tetap.id : teamPick ? pickProofreader(data.users, data.projects) : who)
   const values = () => ({ ...(pick ? { [pick.key]: target() } : {}), ...(noteField && note ? { [noteField.key]: note } : {}) })
   const next = async () => {
     const keOtorisasiSelesai = stage.key === 'otorisasi'
@@ -137,8 +139,8 @@ function useTask(project, sub, onDone) {
     return ok
   }
   const blocked = stage.fields.some((f) => f.required && f.type === 'file' && !files.length) ? 'Upload hasil dulu'
-    : pick?.required && !(teamPick ? people?.length : who) ? (teamPick ? 'Belum ada proofreader aktif — hubungi Direktur' : `Pilih ${pick.label} dulu`) : ''
-  return { stage, started, claim, files, sources, pick, teamPick, people, who, setWho, noteField, note, setNote, busy, start, upload, replace, remove, next, blocked, namerDialog, cekTypo, baruTypo, gantiTypo, tandaTypo, fileKey }
+    : pick?.required && !(tetap || (teamPick ? people?.length : who)) ? (teamPick ? 'Belum ada proofreader aktif — hubungi Direktur' : `Pilih ${pick.label} dulu`) : ''
+  return { stage, started, claim, files, sources, pick, teamPick, people, who, setWho, noteField, note, setNote, busy, start, upload, replace, remove, next, blocked, namerDialog, cekTypo, baruTypo, gantiTypo, tandaTypo, fileKey, tetap }
 }
 
 /** Kotak deadline di atas lembar kerja: batas (H-1 untuk pelaksana) + sisa waktu. */
@@ -370,7 +372,10 @@ function WorkSheetBerkas({ project, sub, t, onClose }) {
         {((t.pick && !t.teamPick) || t.noteField) && (
           <section className="space-y-2">
             <p className="text-[11px] font-bold uppercase tracking-wide text-ink-mute">{t.pick && t.teamPick ? 'Catatan' : '3. Sebelum dikirim'}</p>
-            {t.pick && !t.teamPick && (
+            {t.pick && t.tetap && (
+              <p className="rounded-xl bg-white px-3 py-2 text-sm ring-1 ring-slate-200" data-proofreader-tetap><span className="block text-xs font-semibold text-ink-soft">{t.pick.label}</span><span className="block font-semibold">{displayNameFor(user, t.tetap)}</span><span className="block text-[11px] text-ink-mute">Sudah ditetapkan admin</span></p>
+            )}
+            {t.pick && !t.teamPick && !t.tetap && (
               <label className="block text-xs font-semibold text-ink-soft">{t.pick.label}{t.pick.required && <span className="text-rose-500"> *</span>}
                 <select value={t.who} onChange={(e) => t.setWho(e.target.value)} className="mt-1 h-10 w-full rounded-xl border-0 bg-white px-3 text-sm ring-1 ring-slate-300 focus:ring-2 focus:ring-brand">
                   <option value="">— Pilih {t.pick.label} —</option>
