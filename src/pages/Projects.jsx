@@ -64,7 +64,9 @@ export default function Projects({ tabAwal }) {
   const [tableState, setTableState] = useState(() => { let v = 'deadline'; try { v = localStorage.getItem('atlas-sort') || 'deadline' } catch { /* abaikan */ } return { q: '', sortKey: v === 'baru' ? 'timestamp' : 'deadline', sortDir: v === 'baru' ? 'desc' : 'asc', filters: {}, shownN: 36 } })
   const VIEWS = ['list', 'tabel']
   // Tampilan kartu dihapus; preferensi lama yang masih 'grid' jatuh ke list.
-  const [view, setViewRaw] = useState(() => { try { const v = localStorage.getItem('atlas-view'); return VIEWS.includes(v) ? v : (window.matchMedia?.('(max-width: 767px)').matches ? 'list' : 'tabel') } catch { return 'tabel' } }) // bawaan: Tabel (pilihan pengguna tetap diingat)
+  const [viewPilih, setViewRaw] = useState(() => { try { const v = localStorage.getItem('atlas-view'); return VIEWS.includes(v) ? v : (window.matchMedia?.('(max-width: 767px)').matches ? 'list' : 'tabel') } catch { return 'tabel' } }) // bawaan: Tabel (pilihan pengguna tetap diingat)
+  // Pelaksana (penerjemah / proofreader / otorisator) hanya memakai tampilan Tabel — saklar Kartu/Tabel tidak ditampilkan.
+  const view = isWorkRole(user) ? 'tabel' : viewPilih
   const setView = (v) => { setViewRaw(v); try { localStorage.setItem('atlas-view', v) } catch { /* abaikan */ } }
   // urutan: 'deadline' (terdekat dulu) atau 'baru' (project terbaru dulu) — tombol saklar, tersimpan per perangkat
   const [sort, setSortRaw] = useState(() => { try { return localStorage.getItem('atlas-sort') || 'deadline' } catch { return 'deadline' } })
@@ -229,7 +231,7 @@ export default function Projects({ tabAwal }) {
         const tabStatus = [['aktif', 'Aktif', nAktif], ['selesai', 'Selesai', scoped.length - nAktif], ['semua', 'Semua', scoped.length]].map(([key, label, n]) => ({ key, label, n: status === key ? 0 : n, ket: n }))
         const nFilter = [!!prFilter, branchFilter !== 'Semua', !!bpFilter.print, !!dlFilter].filter(Boolean).length
         const nHariIni = scoped.filter((p) => !isDone(p) && p.about?.deadline && String(p.about.deadline).slice(0, 10) === dayKey()).length
-        const saklarView = (
+        const saklarView = worker ? null : (
           <div className="flex shrink-0 rounded-xl bg-white p-1 ring-1 ring-slate-200" data-saklar-view>
             {[['list', List, 'Kartu'], ['tabel', Table2, 'Tabel']].map(([k, Icon, l]) => (
               <button key={k} onClick={() => setView(k)} aria-label={l} title={l} aria-pressed={view === k}
@@ -238,7 +240,7 @@ export default function Projects({ tabAwal }) {
           </div>
         )
         const menuTampilan = (
-          <TampilanMenu setView={setView} pref={pref} setPref={setPref} zoom={zoom} setZoom={setZoom} density={density} setDensity={setDensity} setFull={setFull} view={view}
+          <TampilanMenu setView={worker ? undefined : setView} pref={pref} setPref={setPref} zoom={zoom} setZoom={setZoom} density={density} setDensity={setDensity} setFull={setFull} view={view}
             kolom={{ COLUMNS: COLUMNS.filter((c) => !(worker ? SEMBUNYI_LIST : []).includes(c.key)), colsAktif, saveCols, semua: ALL_COLS.filter((k) => !(worker ? SEMBUNYI_LIST : []).includes(k)) }}
             kolomTabel={TABLE_COLS.filter((c) => !(worker ? SEMBUNYI_TABEL : []).includes(c.key))}
             current={{ name: namaView, tab, q, status, sort, cepat, dlFilter, prFilter, bpFilter, cols: colsAktif, view }} apply={terapkanView} />
