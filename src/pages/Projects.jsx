@@ -36,6 +36,7 @@ import CentangApostille from '../components/CentangApostille.jsx'
 import { WaktuDibuat, PrioPill, DeadlinePill, CabangPrint, eksekutorOf, dibuatBaru, warnaKategori, infoDeadline, BG_SELESAI } from '../components/BarisCanvas.jsx'
 import LayarKerja from './LayarKerja.jsx'
 import RincianDokumen from '../components/RincianDokumen.jsx'
+import NamaFoto from '../components/NamaFoto.jsx'
 import TugaskanPenerjemah from '../components/TugaskanPenerjemah.jsx'
 import { coordinatorFor, bolehPajakApostille, accEmail, subMilikUntuk } from '../config/access.js'
 import { PingButton } from '../components/Ping.jsx'
@@ -806,7 +807,7 @@ export const COLUMNS = [
   { key: 'pelanggan', label: 'Pelanggan', w: 'minmax(0,142fr)', cls: 'flex min-w-0 flex-col gap-[3px]',
     cell: (p) => <>
       <span className="flex min-w-0 items-center gap-1.5"><span className="min-w-0 truncate text-[15px] font-bold leading-[26px]" title={p.customer?.name}>{p.customer?.name}</span><NoteIcon note={p.about?.notes} /><DemoBadge project={p} /></span>
-      <span className="truncate text-xs text-[#5E6380]">{(p.about?.cs_name || '').replace(/\s*\(.*\)\s*$/, '') ? `CS ${(p.about.cs_name).replace(/\s*\(.*\)\s*$/, '')}` : '—'}</span>
+      {(p.about?.cs_name || '').replace(/\s*\(.*\)\s*$/, '') ? <NamaFoto nama={(p.about.cs_name).replace(/\s*\(.*\)\s*$/, '')} awalan="CS " size={16} className="text-xs text-[#5E6380]" /> : <span className="truncate text-xs text-[#5E6380]">—</span>}
     </> },
   { key: 'prioritas', label: 'Prioritas', w: 'minmax(0,118fr)', cls: 'min-w-0',
     cell: (p) => <><PrioPill p={p.about?.priority || 'Normal'} /><span className="mt-[3px] block whitespace-nowrap text-xs text-[#5E6380]" data-sub-teks>{p.sub_projects?.length || 0} sub</span></> },
@@ -1093,7 +1094,7 @@ function SubCount({ p }) {
 function CsName({ p }) {
   const cs = (p.about?.cs_name || '').replace(/\s*\(.*\)\s*$/, '')
   if (!cs) return null
-  return <span className="mt-0.5 block min-h-4 truncate text-[11px] leading-4 text-ink-mute">CS {cs}</span>
+  return <NamaFoto nama={cs} awalan="CS " size={16} className="mt-0.5 min-h-4 text-[11px] leading-4 text-ink-mute" />
 }
 /** Baris HP: lingkaran jumlah sub + prioritas (hanya bila bukan Normal), lalu nama CS. */
 function SubCountPrio({ p }) {
@@ -1172,7 +1173,7 @@ function ProjectExpand({ p: p0, onLangkah, awal }) {
             <span className="hidden whitespace-nowrap text-sm tabular-nums lg:block">{dok} Dok</span>
             <span className="hidden whitespace-nowrap text-sm tabular-nums lg:block">{hlm} Hal</span>
             <span className="hidden truncate whitespace-nowrap text-sm lg:block">{arah}</span>
-            <span className="hidden min-w-0 truncate text-sm font-semibold lg:block" title={who}>{who || '—'}</span>
+            <span className="hidden min-w-0 text-sm font-semibold lg:block">{who ? <NamaFoto nama={who} /> : '—'}</span>
             <span className="flex min-w-0 items-center gap-2.5">
               <span className="min-w-0 truncate text-sm font-bold">{tahap}{berikut && <span className="text-xs font-medium" style={{ color: w.fg }}> ▸ {berikut}</span>}</span>
               <span className="flex w-24 shrink-0 gap-[3px]" role="img" aria-label={selesai ? 'Semua tahap selesai' : `Tahap ${idx + 1} dari ${st.length}`}>

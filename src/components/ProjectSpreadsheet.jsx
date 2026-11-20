@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import NamaFoto, { FotoNama } from './NamaFoto.jsx'
 import { labelPrioritas } from '../config/priority.js'
 import { OfficialInvoice } from './NoReg.jsx'
 import { InvoiceNo, TandaAcc } from './badges.jsx'
@@ -34,17 +35,18 @@ function Lingkar({ warna, judul, children }) {
 }
 
 /** Sel yang isinya bisa lebih dari satu — klik untuk melihat semuanya. */
-function SelGanda({ ringkas, semua, align }) {
+function SelGanda({ ringkas, semua, align, foto }) {
   const [buka, setBuka] = useState(false)
   if (!semua?.length) return <span className="text-ink-mute">—</span>
-  if (semua.length === 1) return <span className="block truncate" title={semua[0]}>{semua[0]}</span>
+  if (semua.length === 1) return foto ? <NamaFoto nama={semua[0]} /> : <span className="block truncate" title={semua[0]}>{semua[0]}</span>
   return (
     <button type="button" onClick={(e) => { e.stopPropagation(); setBuka((b) => !b) }}
       title={semua.join('\n')} aria-expanded={buka}
       className={cx('block w-full min-w-0 text-left hover:underline', align)}>
       {buka
-        ? <span className="block space-y-0.5">{semua.map((v, i) => <span key={i} className="block break-words">{v}</span>)}</span>
-        : <span className="block truncate">{ringkas}</span>}
+        ? <span className="block space-y-0.5">{semua.map((v, i) => (foto ? <NamaFoto key={i} nama={v} /> : <span key={i} className="block break-words">{v}</span>))}</span>
+        : foto ? <span className="flex min-w-0 items-center gap-1.5"><span className="flex shrink-0 -space-x-1.5">{semua.slice(0, 3).map((v, i) => <FotoNama key={i} nama={v} />)}</span><span className="min-w-0 truncate">{ringkas}</span></span>
+          : <span className="block truncate">{ringkas}</span>}
     </button>
   )
 }
@@ -103,7 +105,7 @@ function BarisSub({ subs, kolom, tanpaTahap }) {
               <td className="whitespace-nowrap px-2 py-1.5 tabular-nums text-ink-mute">{i + 1}</td>
               <td className="max-w-[320px] truncate px-2 py-1.5 font-semibold" title={x.judul}>{x.judul || '—'}</td>
               <td className="whitespace-nowrap px-2 py-1.5">{x.arah || '—'}</td>
-              <td className="max-w-[160px] truncate px-2 py-1.5" title={x.orang}>{x.orang || '—'}</td>
+              <td className="max-w-[180px] px-2 py-1.5">{x.orang ? <NamaFoto nama={x.orang} /> : '—'}</td>
               <td className="px-2 py-1.5 text-right tabular-nums">{x.dok}</td>
               <td className="px-2 py-1.5 text-right tabular-nums">{x.hal}</td>
               {!tanpaTahap && <td className="px-2 py-1.5 text-brand">{x.raw ? <CentangApostille p={x.p} sb={x.raw} label={x.tahap || '—'} /> : (x.tahap || '—')}{x.raw && <StatusVendor sb={x.raw} />}</td>}
@@ -270,7 +272,7 @@ export default function ProjectSpreadsheet({ list, detailFor, onDetail, onFiles,
           <span className="tabular-nums">{r.deadline ? tanggal(r.deadline) : '—'}</span>
         </Lingkar>{pref.urgensi && sisaWaktu(r.p) && <span className={cx('block text-[10.5px] font-bold', grupOf(r.p) === 'terlambat' ? 'text-rose-600' : 'text-orange-600')}>{sisaWaktu(r.p)}</span>}</>)
     }
-    if (key === 'cabangCs') return <span className="flex min-w-0 flex-col leading-tight"><span className="truncate font-semibold">{r.cabang || '—'}</span>{r.cs && <span className="truncate text-[11.5px] text-ink-mute">CS {r.cs}</span>}</span>
+    if (key === 'cabangCs') return <span className="flex min-w-0 flex-col leading-tight"><span className="truncate font-semibold">{r.cabang || '—'}</span>{r.cs && <NamaFoto nama={r.cs} awalan="CS " size={16} className="mt-0.5 text-[11.5px] text-ink-mute" />}</span>
     if (key === 'dokumen' && dokRingkas) return <span className="flex flex-col whitespace-nowrap leading-tight"><span className="font-semibold">{r.dokAll?.length || r.jmlDok || 0} dokumen</span>{r.jmlHal ? <span className="text-[11.5px] text-ink-mute">{r.jmlHal} hlm</span> : null}</span>
     if (key === 'dokumen') return !r.dokAll?.length ? <span className="text-ink-mute">—</span> : (
       <ol className="min-w-0 space-y-0.5 text-[12.5px] leading-snug" data-dok-baris>
@@ -278,7 +280,8 @@ export default function ProjectSpreadsheet({ list, detailFor, onDetail, onFiles,
         {r.dokAll.length > 5 && <li className="text-[11px] font-semibold text-ink-mute" title={r.dokAll.slice(5).join('\n')}>+{r.dokAll.length - 5} dokumen lagi</li>}
       </ol>)
     if (key === 'arah') return <SelGanda ringkas={r.arah} semua={r.arahAll} />
-    if (key === 'orang') return <SelGanda ringkas={r.orang} semua={r.orangAll} />
+    if (key === 'orang') return <SelGanda foto ringkas={r.orang} semua={r.orangAll} />
+    if (key === 'cs') return <NamaFoto nama={r.cs} />
     if (key === 'layanan') return <SelGanda ringkas={r.layanan} semua={r.layananAll} />
     if (key === 'jmlDok' || key === 'jmlHal') return <span className="block tabular-nums md:text-right">{r[key] || 0}</span>
     if (key === 'prioritas') return <span className={cx('inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold',
