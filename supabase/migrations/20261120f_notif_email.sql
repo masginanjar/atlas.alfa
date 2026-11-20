@@ -1,5 +1,5 @@
 -- 20 Nov 2026 — Email notifikasi tugas ke penerjemah (fungsi server `notif-email`, dikirim lewat Resend).
--- BELUM DITERAPKAN sampai pemilik bilang "live kan".
+-- Diterapkan ke database 20 Nov 2026 malam (fungsi notif-email v1 ikut di-deploy). Tidak berpengaruh sampai front-end live memanggilnya.
 
 -- 1) Log pengiriman (metadata saja: tanpa isi email, tanpa alamat). Juga dipakai mencegah email ganda
 --    untuk pasangan project–sub–penerjemah yang sama. Tertutup: RLS aktif TANPA policy → hanya fungsi server.
