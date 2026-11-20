@@ -554,6 +554,8 @@ body { font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif; }
 [data-ringkas-grid] [data-ringkasan-pengajuan] dl > div > dt { width: auto; }
 [data-ringkas-grid] [data-ringkasan-pengajuan] dl > div > dd { flex: none; }
 [data-ringkas-grid] > label:has([data-rekening]) { grid-column: 1 / -1; }
+/* Pilihan sumber dana (4 kartu) butuh selebar baris — di satu kolom sempit kartunya saling menumpuk */
+[data-ringkas-grid] > label:has([data-sumber-dana]) { grid-column: 1 / -1; }
 [data-ringkas-grid] [data-rekening] { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; padding: 6px 12px; }
 [data-ringkas-grid] [data-rekening] dd { margin-right: 14px; }
 

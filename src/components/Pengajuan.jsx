@@ -154,14 +154,14 @@ export function SumberDanaPicker({ value, onChange, className, recommended, layo
     </div>
   )
   return (
-    <div role="radiogroup" aria-label="Sumber dana" className={cx('grid grid-cols-2 gap-2 sm:grid-cols-4', className)}>
+    <div role="radiogroup" aria-label="Sumber dana" data-sumber-dana className={cx('grid grid-cols-2 gap-2 sm:grid-cols-4', className)}>
       {SUMBER_DANA.map((d) => {
         const on = value === d.code
         return (
           <button key={d.code} type="button" role="radio" aria-checked={on} onClick={() => onChange(d.code)} title={d.name}
-            className={cx('flex flex-col items-start rounded-xl px-3 py-2 text-left ring-1 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand',
+            className={cx('flex min-w-0 flex-col items-start overflow-hidden rounded-xl px-3 py-2 text-left ring-1 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand',
               on ? 'bg-brand text-white ring-brand' : 'bg-white text-ink ring-slate-300 hover:ring-brand')}>
-            <span className="flex items-center gap-1.5 text-sm font-bold"><Landmark className="h-3.5 w-3.5" /><TandaDana code={d.code} />{on && <CheckCircle2 className="h-3.5 w-3.5" />}{recommended === d.code && <span className={cx('rounded-full px-1.5 text-[9px] font-bold uppercase', on ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-700')}>Rekomendasi</span>}</span>
+            <span className="flex max-w-full flex-wrap items-center gap-1.5 text-sm font-bold"><Landmark className="h-3.5 w-3.5" /><TandaDana code={d.code} />{on && <CheckCircle2 className="h-3.5 w-3.5" />}{recommended === d.code && <span className={cx('rounded-full px-1.5 text-[9px] font-bold uppercase', on ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-700')}>Rekomendasi</span>}</span>
             <span className={cx('text-[10px] leading-tight', on ? 'text-white/80' : 'text-ink-mute')}>{d.name}</span>
             <span className={cx('mt-1 text-[10px] font-semibold leading-tight', on ? 'text-white' : sum[d.code]?.remaining < 0 ? 'text-rose-600' : 'text-ink-soft')}>
               Menunggu {rupiah(sum[d.code]?.waiting || 0)}{sum[d.code]?.remaining !== null && sum[d.code]?.remaining !== undefined ? ` · Sisa ${rupiah(sum[d.code].remaining)}` : ''}
