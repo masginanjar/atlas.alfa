@@ -877,7 +877,6 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
             onDragOver={(e) => { if ([...(e.dataTransfer?.types || [])].includes('Files')) { e.preventDefault(); setSeretBawah(true) } }} onDragLeave={() => setSeretBawah(false)}
             onDrop={(e) => { if (e.dataTransfer?.files?.length) { e.preventDefault(); setSeretBawah(false); tarikKeBawah(e.dataTransfer.files) } }}>
             <span className="inline-flex items-center gap-2 text-sm font-semibold"><Upload className="h-[18px] w-[18px]" />{seretBawah ? 'Lepas file di sini' : 'Tarik file ke sini'}</span>
-            <span className="min-w-0 flex-[1_1_280px] text-xs text-[#5E6380]">Jenis dokumen Reguler / Non Reguler hanya untuk bahasa Indonesia, Inggris, Belanda; bahasa lain (ke vendor) cukup pakai Prioritas. Terjemahan, apostille & legalisasi: tiap file jadi satu baris dokumen dalam sub yang sama.</span>
             {Object.entries(SUB_TYPES).map(([k, t]) => (
               <button key={k} type="button" onClick={() => tambahSub(k)} data-aksi={`tambah-sub-${k}`} className="inline-flex h-9 items-center gap-1.5 rounded-[10px] bg-white px-3 text-[13px] font-semibold text-ink ring-1 ring-[#D9DBE7] hover:ring-ink max-md:h-11"><Plus className="h-3.5 w-3.5" />{t.short || t.label}</button>
             ))}
