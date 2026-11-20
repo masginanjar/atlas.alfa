@@ -115,7 +115,7 @@ function BarisSub({ subs, kolom, tanpaTahap }) {
   )
 }
 
-export default function ProjectSpreadsheet({ list, detailFor, onDetail, onFiles, onPrint, state, setState, hideCols = [], renderAksi, pref = {}, tanpaCari, kepalaAksi, renderIsi, subMilik = null, tanpaTahap = false, selaluBuka = false, kolomKhusus = [], tanpaIsi = false, lebarAksi = '', renderBawahHp = null, selesaiUntuk = null }) {
+export default function ProjectSpreadsheet({ list, detailFor, onDetail, onFiles, onPrint, state, setState, hideCols = [], renderAksi, pref = {}, tanpaCari, kepalaAksi, renderIsi, subMilik = null, tanpaTahap = false, selaluBuka = false, kolomKhusus = [], tanpaIsi = false, dokRingkas = false, lebarAksi = '', renderBawahHp = null, selesaiUntuk = null }) {
   // Baris hijau muda = selesai. Untuk pelaksana "selesai" = bagiannya sudah beres (selesaiUntuk), bukan seluruh project.
   const beres = (p) => (selesaiUntuk ? selesaiUntuk(p) : isDone(p))
   // lebar area tabel yang terlihat → isi baris (sub project) selalu pas kiri-kanan, tidak melebar ke kanan
@@ -270,6 +270,8 @@ export default function ProjectSpreadsheet({ list, detailFor, onDetail, onFiles,
           <span className="tabular-nums">{r.deadline ? tanggal(r.deadline) : '—'}</span>
         </Lingkar>{pref.urgensi && sisaWaktu(r.p) && <span className={cx('block text-[10.5px] font-bold', grupOf(r.p) === 'terlambat' ? 'text-rose-600' : 'text-orange-600')}>{sisaWaktu(r.p)}</span>}</>)
     }
+    if (key === 'cabangCs') return <span className="flex min-w-0 flex-col leading-tight"><span className="truncate font-semibold">{r.cabang || '—'}</span>{r.cs && <span className="truncate text-[11.5px] text-ink-mute">CS {r.cs}</span>}</span>
+    if (key === 'dokumen' && dokRingkas) return <span className="flex flex-col whitespace-nowrap leading-tight"><span className="font-semibold">{r.dokAll?.length || r.jmlDok || 0} dokumen</span>{r.jmlHal ? <span className="text-[11.5px] text-ink-mute">{r.jmlHal} hlm</span> : null}</span>
     if (key === 'dokumen') return !r.dokAll?.length ? <span className="text-ink-mute">—</span> : (
       <ol className="min-w-0 space-y-0.5 text-[12.5px] leading-snug" data-dok-baris>
         {r.dokAll.slice(0, 5).map((d, i) => <li key={i} className="flex min-w-0 gap-1.5"><span className="shrink-0 tabular-nums text-ink-mute">{i + 1}.</span><span className="min-w-0 break-words md:line-clamp-2" title={d}>{d}</span></li>)}
@@ -363,7 +365,7 @@ export default function ProjectSpreadsheet({ list, detailFor, onDetail, onFiles,
             <thead>
               <tr>
                 {KOLOM.map((c) => (
-                  <th key={c.key} scope="col" style={tanpaIsi && !lebar[c.key] ? (c.key === 'dokumen' ? { width: '34%', minWidth: '170px' } : undefined) : { width: lebar[c.key] || c.w, minWidth: lebar[c.key] || c.w }}
+                  <th key={c.key} scope="col" style={tanpaIsi && !lebar[c.key] ? (c.key === 'dokumen' ? (dokRingkas ? { minWidth: '96px' } : { width: '34%', minWidth: '170px' }) : undefined) : { width: lebar[c.key] || c.w, minWidth: lebar[c.key] || c.w }}
                     className={cx('relative sticky top-0 z-10 whitespace-nowrap border-b border-slate-200 bg-slate-50 px-3 py-2 text-left text-xs font-bold text-ink-soft',
                       c.sticky && 'left-0 z-20 shadow-[6px_0_8px_-6px_rgba(15,23,42,.25)] md:shadow-none')}>
                     <span onPointerDown={(e) => mulaiTarik(e, c.key, c.w)} onDoubleClick={() => simpanLebar({ ...lebar, [c.key]: undefined })} title="Tarik untuk mengubah lebar · klik dua kali untuk kembali"
@@ -383,8 +385,8 @@ export default function ProjectSpreadsheet({ list, detailFor, onDetail, onFiles,
             <tbody>
               {hasil.length === 0 && <tr><td colSpan={KOLOM.length + 1} className="px-4 py-10 text-sm text-ink-mute" data-kosong-filter>Tidak ada project yang cocok dengan filter ini — ubah pilihan di judul kolom atau tekan Reset.</td></tr>}
               {tampil.map((r, i) => (
-                <tr key={r.id} {...(tanpaIsi ? {} : { onClick: () => toggleBaris(r.id), ...bisaDitekan(() => toggleBaris(r.id)), 'aria-expanded': terbuka(r.id), title: 'Klik untuk melihat sub project' })} data-grup={grupOf(r.p)}
-                  className={cx(!tanpaIsi && 'cursor-pointer', 'border-b border-slate-100 align-top last:border-0 md:hover:bg-brand-soft/40',
+                <tr key={r.id} {...(tanpaIsi && !renderIsi ? {} : { onClick: () => toggleBaris(r.id), ...bisaDitekan(() => toggleBaris(r.id)), 'aria-expanded': terbuka(r.id), title: tanpaIsi ? 'Klik untuk melihat rincian dokumen' : 'Klik untuk melihat sub project' })} data-grup={grupOf(r.p)}
+                  className={cx((!tanpaIsi || renderIsi) && 'cursor-pointer', 'border-b border-slate-100 align-top last:border-0 md:hover:bg-brand-soft/40',
                     detailFor?.id === r.id ? 'bg-brand-soft/60' : terbuka(r.id) ? 'bg-brand-soft/40' : beres(r.p) ? 'bg-[#DDF5E4] dark:bg-[#143524]' : i % 2 === 1 ? 'bg-slate-100 md:bg-slate-50/60' : 'bg-white')} data-selesai={beres(r.p) ? '' : undefined}>
                   {KOLOM.map((c) => (
                     <td key={c.key} data-label={c.label}
@@ -424,10 +426,15 @@ export default function ProjectSpreadsheet({ list, detailFor, onDetail, onFiles,
                 if (tanpaIsi) {
                   // HP: aksi tugas (Mulai / Lanjutkan / Tolak) di baris sendiri di bawah project — selebar layar, mudah dijangkau jempol
                   const bawah = renderBawahHp?.(r.p)
-                  return bawah ? [...out, tr, (
+                  const barisBawah = !bawah ? null : (
                     <tr key={`${r.id}-aksi-hp`} className="border-b border-slate-100 bg-slate-50/70 md:hidden" data-aksi-hp>
                       <td colSpan={KOLOM.length + 1} className="p-0"><div className="sticky left-0 min-w-0 px-3 py-2" style={lebarTampak ? { width: lebarTampak } : undefined}>{bawah}</div></td>
-                    </tr>)] : [...out, tr]
+                    </tr>)
+                  const isi = renderIsi && terbuka(r.id) ? (
+                    <tr key={`${r.id}-isi`} className="border-b border-slate-100 bg-[#eef4fb] dark:bg-white/5" data-isi-pelaksana>
+                      <td colSpan={KOLOM.length + 1} className="p-0"><div className="sticky left-0 min-w-0" style={lebarTampak ? { width: lebarTampak } : undefined}>{renderIsi(r.p)}</div></td>
+                    </tr>) : null
+                  return [...out, tr, ...(isi ? [isi] : []), ...(bawah ? [barisBawah] : [])]
                 }
                 if (!terbuka(r.id)) return [...out, tr]
                 return [...out, tr, (

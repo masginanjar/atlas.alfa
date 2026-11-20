@@ -112,6 +112,7 @@ export const TABLE_COLS = [
   { key: 'cs', label: 'CS', w: '112px', sort: (r) => r.cs.toLowerCase() },
   { key: 'arah', label: 'Arah Bahasa', w: '164px', sort: (r) => (r.arahAll[0] || '').toLowerCase() },
   // khusus: hanya tampil bila diminta (daftar project pelaksana) — rincian dokumen langsung di baris
+  { key: 'cabangCs', label: 'Cabang & CS', w: '130px', khusus: true, sort: (r) => `${r.cabang} ${r.cs}`.toLowerCase() },
   { key: 'dokumen', label: 'Dokumen', w: '300px', khusus: true, sort: (r) => (r.dokAll[0] || '').toLowerCase() },
   { key: 'orang', label: 'Penerjemah/Vendor', w: '156px', sort: (r) => (r.orangAll[0] || '').toLowerCase() },
   { key: 'jmlDok', label: 'Dok', w: '72px', num: true, sort: (r) => r.jmlDok },

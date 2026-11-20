@@ -92,7 +92,7 @@ export function patchEverywhere(next, f, value) {
   }
 }
 
-export default function FileManager({ project, readOnly }) {
+export default function FileManager({ project, readOnly, kelompok }) {
   const { user, save, notify, ask } = useApp()
   // SATU folder aktif: yang dilihat = yang jadi tujuan upload.
   // Acuannya ID sub project, bukan namanya — sub bernama sama tidak tertukar.
@@ -206,12 +206,18 @@ export default function FileManager({ project, readOnly }) {
   const tampil = 'detail'
   const diAkar = folder === 'all'
   const isiFolder = (id) => all.filter((f) => diFolder(f, id))
-  const daftarFolder = diAkar ? [
+  const semuaFolder = [
     { id: idFolder(SCAN), nama: SCAN, tetap: true },
     ...folderBuatan.map((nama) => ({ id: idFolder(nama), nama })),
     ...(bolehAL(user) && (subs.some(subAL) || all.some(isAL)) ? [{ id: SUB_AL, nama: LABEL_AL, tetap: true }] : []),
-  ].map((x) => ({ ...x, n: isiFolder(x.id).length })).filter((x) => (!x.tetap || x.n > 0 || x.id === idFolder(SCAN)) && (fileLain || (x.id !== idFolder(SCAN) && x.n > 0))) : [] // pelaksana: folder Hasil Scan & folder kosong tidak ditampilkan
+  ].map((x) => ({ ...x, n: isiFolder(x.id).length })).filter((x) => (!x.tetap || x.n > 0 || x.id === idFolder(SCAN)) && (fileLain || (x.id !== idFolder(SCAN) && x.n > 0))) // pelaksana: folder Hasil Scan & folder kosong tidak ditampilkan
+  const daftarFolder = diAkar && !kelompok ? semuaFolder : []
+  const navFolder = [{ id: 'all', nama: 'File Project', n: all.filter((f) => !isAL(f) && !letak(f)).length }, ...semuaFolder]
+  // Tampilan berkelompok (popup/panel File Project): berkas dikumpulkan menurut asalnya (Dokumen Sumber, Hasil Terjemahan, …)
+  const grupBerkas = (() => { const m = new Map(); berkasUrut().forEach((f) => { const k = f.source || 'Berkas lain'; if (!m.has(k)) m.set(k, []); m.get(k).push(f) }); return [...m.entries()] })
+
   const berkas = shown
+  const berkasUrut = () => shown
   // ---- folder buatan sendiri ----
   const [folderBaru, setFolderBaru] = useState(null)
   const buatFolder = async () => {
@@ -290,7 +296,7 @@ export default function FileManager({ project, readOnly }) {
       </div>
 
       {/* Bilah alamat */}
-      <div className="flex items-center gap-1 px-2 py-1.5">
+      <div className={cx('flex items-center gap-1 px-2 py-1.5', kelompok && !busy && 'hidden')}>
         <button type="button" onClick={() => buka('all')} disabled={diAkar} aria-label="Naik satu folder" className="grid h-8 w-8 place-items-center rounded text-ink-soft hover:bg-slate-100 disabled:opacity-30"><ChevronRight className="h-4 w-4 rotate-180" /></button>
         <nav aria-label="Lokasi folder" className="flex min-h-9 min-w-0 flex-1 items-center gap-1 overflow-hidden rounded-md px-2 text-[13px] ring-1 ring-slate-200 dark:ring-white/10">
           <IkonFolder />
@@ -313,7 +319,35 @@ export default function FileManager({ project, readOnly }) {
       )}
       {/* Isi */}
       <div className="min-h-[140px] border-t border-slate-100 dark:border-white/10" data-isi-explorer onDragOver={(e) => { if (!readOnly) e.preventDefault() }} onDrop={(e) => { if (readOnly) return; e.preventDefault(); onUpload(e.dataTransfer.files) }}>
-        {!daftarFolder.length && !berkas.length ? (
+        {kelompok ? (
+          <div className="md:grid md:grid-cols-[210px_minmax(0,1fr)]" data-tampil-kelompok>
+            <nav aria-label="Folder" className="flex gap-1.5 overflow-x-auto border-b border-slate-100 p-2.5 md:flex-col md:overflow-visible md:border-b-0 md:border-r md:bg-slate-50/60 dark:border-white/10 dark:md:bg-white/5">
+              {navFolder.map((x) => (
+                <button key={x.id} type="button" onClick={() => buka(x.id)} aria-current={folder === x.id ? 'true' : undefined} data-folder-nav
+                  className={cx('flex min-h-11 shrink-0 items-center gap-2 rounded-xl px-3 text-left text-[13px] font-semibold ring-1 md:min-h-10', folder === x.id ? 'bg-brand-soft/60 text-ink ring-brand' : 'bg-white text-ink-soft ring-slate-200 hover:ring-brand md:bg-transparent md:ring-transparent dark:bg-white/5')}>
+                  <IkonFolder /><span className="min-w-0 flex-1 truncate">{x.nama}</span><span className="text-[11.5px] font-medium text-ink-mute">{x.n}</span>
+                </button>
+              ))}
+            </nav>
+            <div className="flex min-h-[220px] flex-col gap-4 p-3 md:p-4">
+              {!berkas.length ? <Empty icon={FolderOpen} title="Folder ini kosong" text={readOnly ? '' : `Klik Unggah atau tarik berkas ke sini — tersimpan ke ${folderLabel}.`} /> : grupBerkas().map(([nama, isi]) => (
+                <section key={nama} className="flex flex-col gap-2" data-grup-berkas>
+                  <h3 className="flex items-baseline gap-2 text-[12px] font-bold uppercase tracking-wide text-ink-mute">{nama}<span className="text-[11.5px] font-medium normal-case tracking-normal">{isi.length} berkas</span></h3>
+                  {isi.map((f) => (
+                    <div key={f.key} data-berkas className={cx('flex items-center gap-2.5 rounded-xl px-3 py-2 ring-1', selected.has(f.key) ? 'bg-brand-soft/60 ring-brand' : 'bg-white ring-slate-200 dark:bg-white/5 dark:ring-white/10')}>
+                      <label className="grid h-11 w-8 shrink-0 cursor-pointer place-items-center md:h-9"><input type="checkbox" checked={selected.has(f.key)} onChange={() => toggle(f.key)} aria-label={`Pilih ${f.name}`} className="h-[18px] w-[18px] rounded" /></label>
+                      <IkonBerkas f={f} />
+                      <span className="flex min-w-0 flex-1 flex-col"><span className="flex min-w-0 items-center gap-1.5 text-[13.5px] font-semibold"><NamaAtauUbah f={f} />{labelSub(f) && <span className="shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-[10.5px] font-semibold text-ink-mute" title={subLabel(f.subId)}>{labelSub(f)}</span>}</span>
+                        <span className="truncate text-[11.5px] text-ink-mute">{[kb(f.size || 0), f.by, f.uploaded_at ? jam(f.uploaded_at) : ''].filter(Boolean).join(' · ')}</span></span>
+                      <button type="button" onClick={() => bukaPratinjau(f)} aria-label={`Pratinjau ${f.name}`} title="Pratinjau" className="grid h-11 w-11 shrink-0 place-items-center rounded-lg text-ink-soft ring-1 ring-slate-200 hover:text-brand md:h-9 md:w-9"><Eye className="h-4 w-4" aria-hidden="true" /></button>
+                      <button type="button" onClick={() => download(f)} aria-label={`Unduh ${f.name}`} title="Unduh" className="grid h-11 w-11 shrink-0 place-items-center rounded-lg text-ink-soft ring-1 ring-slate-200 hover:text-brand md:h-9 md:w-9"><Download className="h-4 w-4" aria-hidden="true" /></button>
+                    </div>
+                  ))}
+                </section>
+              ))}
+            </div>
+          </div>
+        ) : !daftarFolder.length && !berkas.length ? (
           <Empty icon={FolderOpen} title="Folder ini kosong" text={readOnly ? '' : `Klik Unggah atau tarik berkas ke sini — tersimpan ke ${folderLabel}.`} />
         ) : tampil === 'ikon' ? (
           <div className="flex flex-wrap content-start gap-1 p-3" data-tampil-ikon>

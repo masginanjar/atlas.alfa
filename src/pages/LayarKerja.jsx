@@ -6,7 +6,7 @@
 // ============================================================
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ChevronLeft, Search, Check } from 'lucide-react'
+import { ChevronLeft, Search, Check, X } from 'lucide-react'
 import { useApp } from '../lib/store.jsx'
 import { invoiceLabel } from '../config/access.js'
 import { DONE, flowOf, stagesOf, stageIndex, stageLabel } from '../config/workflows.js'
@@ -63,8 +63,10 @@ export default function LayarKerja({ projectId, subId, daftar = [], onClose }) {
   const pos = akt ? (akt.stage === DONE ? st.length : stageIndex(flow, akt.stage)) : 0
 
   return createPortal(
-    <div className="fixed inset-0 z-[200] flex bg-[#F3F4F9] text-[#141B34] dark:bg-[#0f1424] dark:text-slate-100" role="dialog" aria-modal="true" aria-label={`Layar kerja ${invoiceLabel(project.invoice_no)}`} data-layar-kerja>
-      <nav aria-label="Daftar invoice" className="hidden w-[300px] shrink-0 flex-col gap-3 overflow-y-auto border-r border-[#E7E8F0] bg-white px-3 py-4 md:flex dark:border-white/10 dark:bg-[#121729]">
+    <div className="fixed inset-0 z-[200] flex justify-end bg-[#141B34]/40" onClick={onClose} data-layar-kerja>
+     <div onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={`Layar kerja ${invoiceLabel(project.invoice_no)}`} data-lk-panel
+       className="flex h-full w-full flex-col bg-[#F3F4F9] text-[#141B34] shadow-2xl motion-safe:animate-[atlas-slide-in_.18s_ease-out] md:w-[min(1080px,78vw)] dark:bg-[#0f1424] dark:text-slate-100">
+      <nav aria-label="Daftar invoice" className="hidden">
         <button type="button" onClick={onClose} className="inline-flex min-h-11 items-center gap-1.5 self-start px-2 text-[13px] font-bold"><ChevronLeft className="h-4 w-4" aria-hidden="true" />Daftar project</button>
         <label className="flex min-h-11 items-center gap-2 rounded-xl border border-[#D9DBE7] px-3">
           <Search className="h-4 w-4 text-[#5E6380]" aria-hidden="true" /><span className="sr-only">Cari invoice</span>
@@ -86,11 +88,13 @@ export default function LayarKerja({ projectId, subId, daftar = [], onClose }) {
 
       <main className="min-w-0 flex-1 overflow-y-auto px-3 pb-10 pt-5 sm:px-6">
         <div className="mx-auto flex max-w-[1100px] flex-col gap-3.5">
-          <button type="button" onClick={onClose} className="inline-flex min-h-11 items-center gap-1.5 self-start text-[13px] font-bold md:hidden"><ChevronLeft className="h-4 w-4" aria-hidden="true" />Daftar project</button>
           {/* Kepala + data project: bentuknya mengikuti Project Baru (kotak isian yang sama, hanya tampil) */}
-          <div className="flex flex-col gap-0.5 px-1">
-            <span className="truncate text-xs font-semibold text-[#5E6380]">Project · {project.customer?.name || '—'}</span>
-            <h1 className="text-[22px] font-extrabold tracking-tight tabular-nums">{invoiceLabel(project.invoice_no)}</h1>
+          <div className="flex items-center gap-3 px-1">
+            <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+              <span className="truncate text-xs font-semibold text-[#5E6380]">Project · {project.customer?.name || '—'}</span>
+              <h1 className="text-[22px] font-extrabold tracking-tight tabular-nums">{invoiceLabel(project.invoice_no)}</h1>
+            </div>
+            <button type="button" onClick={onClose} aria-label="Tutup layar kerja" data-aksi="tutup-layar-kerja" className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-white text-[#5E6380] ring-1 ring-[#D9DBE7] hover:text-[#141B34] dark:bg-white/5"><X className="h-5 w-5" aria-hidden="true" /></button>
           </div>
           <div className="flex flex-wrap items-start gap-2.5 rounded-2xl bg-white px-4 py-3.5 dark:bg-white/5" data-lk-project>
             <Kotak label="Prioritas" tebal className="max-md:basis-[calc(50%-5px)] max-md:grow" style={{ flex: '1 1 130px' }}>{project.about?.priority || 'Normal'}</Kotak>
@@ -158,6 +162,7 @@ export default function LayarKerja({ projectId, subId, daftar = [], onClose }) {
           </>)}
         </div>
       </main>
+     </div>
     </div>,
     document.body
   )

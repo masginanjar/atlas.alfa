@@ -33,7 +33,7 @@ import BiayaAiKartu from '../components/BiayaAiKartu.jsx'
 import PapanDasbor, { useTataDasbor, TombolTata } from '../components/TataDasbor.jsx'
 import { boleh as bolehIzin } from '../lib/izin.js'
 import { KepalaDasbor, PingStrip, AngkaPeran, PetaKerja, AgendaHariIni } from '../components/DasborBaru.jsx'
-import WorkerBoard from '../components/WorkerActions.jsx'
+import DasborPelaksana from '../components/DasborPelaksana.jsx'
 import { KapasitasSaya } from '../components/Kapasitas.jsx'
 import { TypeBadge, PrintBadge, DemoBadge } from '../components/badges.jsx'
 import { Card, Empty, Input, Sheet, cx } from '../components/ui.jsx'
@@ -152,7 +152,7 @@ export default function Dashboard() {
   } : null
 
   // ---------- isi tab Kerja saya ----------
-  const kerja = worker ? { polos: true, isi: <div data-kerja-saya><WorkerBoard projects={scopeByBranch(user, data.projects, branchFilter)} /></div> } : (
+  const kerja = worker ? { polos: true, isi: <div data-kerja-saya><DasborPelaksana projects={scopeByBranch(user, data.projects, branchFilter)} /></div> } : (
     <div data-kerja-saya>
       <PengingatTodo user={user} />
       {TODO_GROUP_ROLES.includes(user.role) ? <div className="p-3"><RoleTodo s={s} user={user} /></div>
