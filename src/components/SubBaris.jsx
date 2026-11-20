@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from 'react'
+import { Fragment, useLayoutEffect, useRef, useState } from 'react'
 import PilihLembaga from './PilihLembaga.jsx'
 import { PrioritasSub } from './Priority.jsx'
 import { Trash2, Upload, Paperclip, X, IdCard } from 'lucide-react'
@@ -157,11 +157,11 @@ export async function pasangPilihan(sub, files, ke) {
 const inputCls = 'h-9 w-full min-w-0 rounded-[10px] border-0 bg-white px-2.5 text-sm text-ink ring-1 ring-[#D9DBE7] placeholder:text-slate-400 hover:ring-slate-400 focus:outline-none focus:ring-2 focus:ring-brand max-md:h-11 max-md:text-base'
 /** Warna per kategori: `blok` = warna field Kategori (teks putih), `kartu` = latar + garis kartu. */
 const TEMA = {
-  terjemahan: { blok: '!bg-[#2343C9]', kartu: 'bg-[#EAF1FF] ring-[#C9D8FB]' },
-  apostille: { blok: '!bg-[#14275E]', kartu: 'bg-[#FFF8DC] ring-[#EBDD9C]' },
-  legalisasi: { blok: '!bg-[#C62828]', kartu: 'bg-[#FDECEC] ring-[#F3C4C4]' },
-  jasa_lain: { blok: '!bg-[#1E7A3C]', kartu: 'bg-[#E9F7EE] ring-[#BFE3CB]' },
-  terjemahan_nt: { blok: '!bg-[#6D28D9]', kartu: 'bg-[#F3ECFF] ring-[#D9C8F8]' },
+  terjemahan: { blok: '!bg-[#2343C9]', kartu: 'bg-[#EAF1FF] ring-[#C9D8FB]', sel: 'bg-[#EAF1FF] border-[#C9D8FB]' },
+  apostille: { blok: '!bg-[#14275E]', kartu: 'bg-[#FFF8DC] ring-[#EBDD9C]', sel: 'bg-[#FFF8DC] border-[#EBDD9C]' },
+  legalisasi: { blok: '!bg-[#C62828]', kartu: 'bg-[#FDECEC] ring-[#F3C4C4]', sel: 'bg-[#FDECEC] border-[#F3C4C4]' },
+  jasa_lain: { blok: '!bg-[#1E7A3C]', kartu: 'bg-[#E9F7EE] ring-[#BFE3CB]', sel: 'bg-[#E9F7EE] border-[#BFE3CB]' },
+  terjemahan_nt: { blok: '!bg-[#6D28D9]', kartu: 'bg-[#F3ECFF] ring-[#D9C8F8]', sel: 'bg-[#F3ECFF] border-[#D9C8F8]' },
 }
 
 function Kol({ label, wajib, hp = 'full', className, style, children }) {
@@ -197,13 +197,14 @@ function TeksPanjang({ value, onChange, className, ...p }) {
 }
 
 /** Satu dokumen selebar kartu: nama (sekaligus nama file) bisa diganti dan boleh panjang; × = lepas dokumen dari sub. */
-function Berkas({ d, i, onUbah, onLepas, onFile, jenisOps = [], pakaiHal }) {
+function Berkas({ d, i, onUbah, onLepas, onFile, jenisOps = [], pakaiHal, sebagai: Tag = 'li' }) {
   const adaFile = !!d.file
   const belum = !adaFile && !d.existing
   return (
-    <li data-baris-dok className={cx('flex flex-wrap items-center gap-2 rounded-xl px-2.5 py-1.5 ring-1', belum ? 'bg-[#FFFAEF] ring-[#F2D9A6]' : 'bg-white ring-[#E6E8F0]')}>
+    <Tag data-baris-dok className={cx('flex flex-wrap items-center gap-2 rounded-xl px-2.5 py-1.5 ring-1', belum ? 'bg-[#FFFAEF] ring-[#F2D9A6]' : 'bg-white ring-[#E6E8F0]')}>
       <div className="order-1 flex min-w-0 flex-1 items-start gap-2 max-md:basis-[calc(100%-52px)]">
         <Paperclip className={cx('mt-[9px] h-4 w-4 shrink-0 max-md:hidden', adaFile ? 'text-[#17693A]' : 'text-[#8A8FA8]')} />
+        {!adaFile && <span data-no-dok className="mt-[7px] flex-none text-sm font-bold leading-snug text-[#6B7088] max-md:mt-2.5 max-md:text-base">{i + 1}.</span>}
         {d.existing && !adaFile
           ? <span className="min-w-0 flex-1 py-1.5 text-sm font-semibold leading-snug text-ink [overflow-wrap:anywhere] max-md:py-2.5 max-md:text-base">{d.desc}</span>
           : <TeksPanjang value={adaFile ? (d.file_name ?? docFileName(d)) : d.desc} aria-label={`Nama dokumen / file ${i + 1}`} title="Nama dokumen sekaligus nama file — bisa diganti" data-nama-file
@@ -223,11 +224,23 @@ function Berkas({ d, i, onUbah, onLepas, onFile, jenisOps = [], pakaiHal }) {
       {pakaiHal && <input type="number" min="1" inputMode="numeric" value={d.pages} aria-label={`Jumlah halaman dokumen ${i + 1}`} title="Jumlah halaman"
         onChange={(e) => onUbah({ pages: Math.max(0, Number(e.target.value)) })} className={cx(inputCls, 'order-4 !w-[64px] flex-none !px-1 text-center font-semibold')} />}
       <button type="button" onClick={onLepas} aria-label={`Lepas dokumen ${i + 1}`} title="Lepas dokumen" className="order-5 grid h-9 w-9 shrink-0 place-items-center rounded-[10px] text-[#6B7088] hover:bg-rose-50 hover:text-rose-600 max-md:order-2 max-md:h-11 max-md:w-11"><X className="h-4 w-4" /></button>
-    </li>
+    </Tag>
   )
 }
 
-export default function SubBaris({ n, sub, onChange, onRemove, branch, error, onPecah, daftarTr = [], onKeduanya, onApostilleHasil, prioProject = 'Normal' }) {
+/** Item invoice Zoho → baris-baris isinya (untuk disejajarkan dengan baris dokumen). Baris pembuka sebelum daftar bernomor (mis. "IND-ENG") jadi keterangan. Harga tidak dipakai. */
+export function bacaItemInvoice(it) {
+  if (!it) return { ket: '', baris: [] }
+  const semua = String(it.description || '').split(/\r?\n/).map((x) => x.trim()).filter(Boolean)
+  const bernomor = (x) => /^\d{1,3}[.)]\s+/.test(x)
+  const awal = semua.findIndex(bernomor)
+  const kepala = awal > 0 ? semua.slice(0, awal) : []
+  const baris = (awal >= 0 ? semua.slice(awal) : semua).map((x) => x.replace(/^\d{1,3}[.)]\s+/, ''))
+  const jumlah = it.quantity ? `${it.quantity} ${it.unit || ''}`.trim() : ''
+  return { ket: [...kepala, jumlah].filter(Boolean).join(' · '), baris }
+}
+
+export default function SubBaris({ n, sub, onChange, onRemove, branch, error, onPecah, daftarTr = [], onKeduanya, onApostilleHasil, prioProject = 'Normal', duaKolom, zoho, noZoho }) {
   const { data } = useApp()
   const [seret, setSeret] = useState(false)
   const [bacaId, setBacaId] = useState(null)
@@ -314,13 +327,8 @@ export default function SubBaris({ n, sub, onChange, onRemove, branch, error, on
     : tunggu ? 'Dokumen · menunggu hasil terjemahan'
     : `${sub.type === 'legalisasi' ? 'Dokumen yang dilegalisasi' : 'Dokumen yang diapostille'}${docs.length ? ` · ${docs.length} dokumen` : ' · belum ada file'}`
 
-  return (
-    <div data-sub-baris={sub.type} data-n={n}
-      onDragOver={pakaiDok ? (e) => { if ([...(e.dataTransfer?.types || [])].includes('Files')) { e.preventDefault(); e.stopPropagation(); setSeret(true) } } : undefined}
-      onDragLeave={pakaiDok ? () => setSeret(false) : undefined}
-      onDrop={pakaiDok ? (e) => { if (e.dataTransfer?.files?.length) { e.preventDefault(); e.stopPropagation(); setSeret(false); pasang(e.dataTransfer.files) } } : undefined}
-      className={cx('rounded-2xl p-3 ring-1 md:p-3.5', tema.kartu, seret ? '!ring-2 !ring-brand' : error ? '!ring-2 !ring-rose-400' : '')}>
-      {/* Baris atas = pengaturan sub project. Kolom turun baris bila layar sempit; di HP: nomor · Kategori · hapus di baris pertama. */}
+  const dua = !!duaKolom
+  const elAtas = (
       <div className="flex flex-wrap items-end gap-2.5" data-sub-atas>
         <span className="grid h-9 w-9 flex-none place-items-center rounded-[10px] bg-[#141B34] text-sm font-extrabold text-white max-md:order-[-3] max-md:h-11 max-md:w-11" aria-label={`Sub project ${n}`}>{n}</span>
         <Kol label="Kategori" hp="sisa" className="max-md:order-[-2] md:max-w-[300px]" style={{ flex: '1.2 1 190px' }}>
@@ -418,40 +426,29 @@ export default function SubBaris({ n, sub, onChange, onRemove, branch, error, on
 
         {onRemove && <button type="button" onClick={onRemove} aria-label={`Hapus sub project ${n}`} title="Hapus sub project" className="ml-auto grid h-9 w-9 flex-none place-items-center rounded-[10px] text-[#6B7088] hover:bg-white hover:text-rose-600 max-md:order-[-1] max-md:ml-0 max-md:h-11 max-md:w-11"><Trash2 className="h-[18px] w-[18px]" /></button>}
       </div>
-
-      {/* Di bawah pengaturan: dokumen selebar kartu — nama file panjang turun baris, tidak terpotong. */}
-      <div className="mt-3 flex flex-col gap-2 border-t border-[#141B34]/[.12] pt-3" data-sub-dok>
-        {!pakaiDok && (
+  )
+  const elDeskripsi = (
           <Kol label="Nama jasa · pisahkan dengan titik koma (;)" wajib>
             <TeksPanjang value={teks} aria-invalid={errOn('deskripsi')} placeholder="mis. Akta Kelahiran; KK" aria-label="Deskripsi dokumen"
               onChange={(v) => { setTeks(v); const raw = v.split(';').filter((t) => t.trim()); const description = raw.map((t, i) => `${i + 1}. ${t.replace(/^\s+/, '')}`).join('\n'); const jml = points(description).length; set({ description: v.trim() ? description : '', file_count: jml, ...(sub.pages_manual ? {} : { pages: jml }) }) }}
               className={cx(inputCls, '!h-auto min-h-9 py-2 leading-snug max-md:min-h-11 max-md:py-2.5', errOn('deskripsi') && '!ring-2 !ring-rose-500')} />
           </Kol>
-        )}
-
-        {pakaiDok && (
-          <>
+  )
+  const elKepala = (
             <div className="flex items-center gap-2 px-2.5 text-[11px] font-semibold text-[#4F5470]">
               <span className="min-w-0 flex-1 truncate">{judulDok}<span className="text-[#B4233F]"> *</span>{tr && jenisOps.length > 0 && <span className="md:hidden"> · jenis: {jenisOps.map(([, l]) => l).join(' / ')}</span>}</span>
               {tr && docs.length > 0 && jenisOps.length > 0 && <span className="w-[132px] flex-none max-md:hidden">Jenis<span className="text-[#B4233F]"> *</span></span>}
               {tr && docs.length > 0 && <span className="w-[64px] flex-none text-center max-md:hidden">Hlm</span>}
               {docs.length > 0 && <span className="w-9 flex-none max-md:hidden" />}
             </div>
-            {tunggu
-              ? (daftarTr.length
+  )
+  const elSumber = (daftarTr.length
                 ? <select value={sub.sumber_sub ? String(sub.sumber_sub) : ''} onChange={(e) => pilihSumber(e.target.value)} aria-label="Hasil terjemahan dari sub project" aria-invalid={errOn('dokumen')} data-sumber-sub
                     className={cx(inputCls, '!px-2 font-semibold', !sub.sumber_sub && '!ring-[#B4233F]', errOn('dokumen') && '!ring-2')}>
                     <option value="">Pilih hasil terjemahan yang mana…</option>{daftarTr.map((t) => <option key={String(t.ref)} value={String(t.ref)}>Sub {t.n} · {t.nama}</option>)}
                   </select>
                 : <p className="flex min-h-9 items-center rounded-[10px] bg-amber-50 px-2.5 text-xs text-amber-900 ring-1 ring-amber-200 max-md:min-h-11" data-tanpa-tr>Tambahkan dulu sub Terjemahan — hasilnya yang akan diapostille.</p>)
-              : (
-                <>
-                  {docs.length > 0 && (
-                    <ul className="flex flex-col gap-1.5" {...(al ? { 'data-dok-al': '' } : {})}>
-                      {docs.map((d, i) => <Berkas key={i} d={d} i={i} jenisOps={tr ? jenisOps : []} pakaiHal={tr} onUbah={(p) => ubahDok(i, p)} onFile={(f) => pasangSatu(i, f)} onLepas={() => setDocs(docs.filter((_, j) => j !== i))} />)}
-                    </ul>
-                  )}
-                  {massal && (
+  const elMassal = massal && (
                     <div className="rounded-xl bg-white p-3 ring-1 ring-[#C9CCE0]" data-upload-massal role="group" aria-label="Pasangkan file upload massal">
                       <p className="text-sm font-bold text-ink">Upload massal · {massal.files.length} file dipilih</p>
                       <p className="mt-0.5 text-xs leading-relaxed text-[#4F5470]">Tiap file dipasangkan ke isi sub project. Tebakan diambil dari nama file saja (isi file tidak dibaca) — periksa dan ganti bila keliru.</p>
@@ -485,20 +482,16 @@ export default function SubBaris({ n, sub, onChange, onRemove, branch, error, on
                         <button type="button" onClick={pasangMassal} disabled={sibuk || !nPasang} data-massal-pasang className="h-9 rounded-[10px] bg-[#3457D5] px-4 text-[13px] font-bold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 max-md:h-11 max-md:flex-1">{sibuk ? 'Memasang…' : `Pasang ${nPasang} file`}</button>
                       </div>
                     </div>
-                  )}
-                  {!massal && (
+  )
+  const elUnggah = !massal && (
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                       <TombolUnggah data="data-unggah-banyak" salah={errOn('dokumen')} label={labelUnggah} onFiles={pasang} className="md:w-auto md:px-5" />
                       {kosong.length > 0 && <span className="text-xs text-[#4F5470] max-md:basis-full">atau tekan <b>File</b> di tiap baris untuk mengunggah satu per satu</span>}
                       {onApostilleHasil && sub.type === 'terjemahan' && docs.length > 0 && <button type="button" onClick={onApostilleHasil} data-aksi="apostille-hasil" className="inline-flex min-h-9 items-center gap-1 rounded-lg px-1 text-xs font-semibold text-[#17693A] hover:underline max-md:min-h-11">+ Apostille hasil terjemahan ini</button>}
                     </div>
-                  )}
-                </>
-              )}
-          </>
-        )}
-      </div>
-
+  )
+  const elCatatan = (
+    <>
       {(ketId || ketIkut || lembaga?.note || error || catTarik.length > 0) && (
         <div className="mt-2 space-y-1">
           {catTarik.length > 0 && <ul className="space-y-0.5 rounded-lg bg-violet-50 px-2.5 py-1.5 text-[11px] leading-relaxed text-violet-900 ring-1 ring-violet-200" data-catatan-tarik>{sub._tarik.judul && <li className="font-bold">{sub._tarik.sumber === 'drive' ? 'Dari folder Drive' : 'Dari item invoice'}: {sub._tarik.judul}</li>}{catTarik.map((c, k) => <li key={k}>• {c}</li>)}</ul>}
@@ -508,6 +501,94 @@ export default function SubBaris({ n, sub, onChange, onRemove, branch, error, on
           {error && <FieldError>{error}</FieldError>}
         </div>
       )}
+    </>
+  )
+  const berkas = (d, i, sebagai) => <Berkas key={i} sebagai={sebagai} d={d} i={i} jenisOps={tr ? jenisOps : []} pakaiHal={tr} onUbah={(p) => ubahDok(i, p)} onFile={(f) => pasangSatu(i, f)} onLepas={() => setDocs(docs.filter((_, j) => j !== i))} />
+  const seretProps = {
+    onDragOver: pakaiDok ? (e) => { if ([...(e.dataTransfer?.types || [])].includes('Files')) { e.preventDefault(); e.stopPropagation(); setSeret(true) } } : undefined,
+    onDragLeave: pakaiDok ? () => setSeret(false) : undefined,
+    onDrop: pakaiDok ? (e) => { if (e.dataTransfer?.files?.length) { e.preventDefault(); e.stopPropagation(); setSeret(false); pasang(e.dataTransfer.files) } } : undefined,
+  }
+
+  if (dua) {
+    // DUA KOLOM (≥ 1280px): kiri = item invoice Zoho (hanya baca), kanan = isian. Tiap baris isi invoice sejajar dengan baris dokumennya.
+    // Di bawah itu (HP, tablet, laptop kecil) kolom kiri disembunyikan (daftar item invoice tetap ada di atas) dan kolom kanan tersusun seperti kartu biasa.
+    const z = bacaItemInvoice(zoho)
+    const barisBiasa = pakaiDok && !tunggu
+    const nBaris = barisBiasa ? Math.max(z.baris.length, docs.length) : z.baris.length
+    const kiri = 'max-xl:hidden xl:col-start-1 border-x border-emerald-200 bg-white px-3'
+    const kanan = cx('xl:col-start-2 border-x px-3 md:px-3.5', tema.sel)
+    const selZoho = (teks, k) => (
+      <div className="flex h-full min-h-9 items-center gap-2 rounded-[10px] bg-slate-50 px-2.5 py-1 text-[12.5px] leading-snug text-ink-soft" data-zoho-baris>
+        <span className="w-5 flex-none text-right font-bold text-[#8A8FA8]">{k + 1}.</span><span className="min-w-0 cursor-text select-text [overflow-wrap:anywhere]">{teks}</span>
+      </div>
+    )
+    return (
+      <div data-sub-baris={sub.type} data-n={n} data-dua {...seretProps}
+        className={cx('rounded-2xl xl:grid xl:gap-x-3 xl:[grid-template-columns:var(--sub-kiri,42%)_minmax(0,1fr)]', seret ? 'ring-2 ring-brand' : error ? 'ring-2 ring-rose-400' : '')}>
+        <div className={cx(kiri, 'flex flex-col gap-1 rounded-t-2xl border-t pb-2 pt-3 md:pt-3.5')} data-zoho-item={zoho ? '' : 'kosong'}>
+          {zoho ? (
+            <>
+              <div className="flex items-start gap-2">
+                <span className="grid h-7 w-7 flex-none place-items-center rounded-lg bg-emerald-50 text-[13px] font-extrabold text-emerald-800">{noZoho || n}</span>
+                <p className="min-w-0 flex-1 cursor-text select-text pt-1 text-[13px] font-bold leading-snug text-ink [overflow-wrap:anywhere]">{zoho.name || 'Item'}</p>
+              </div>
+              {z.ket && <p className="pl-9 text-[11px] text-[#4F5470] [overflow-wrap:anywhere]">{z.ket}</p>}
+            </>
+          ) : <p className="rounded-[10px] border border-dashed border-slate-300 px-2.5 py-2 text-xs text-[#6B7088]">Sub ini tidak dari item invoice — diisi manual di kanan.</p>}
+        </div>
+        <div className={cx(kanan, 'rounded-t-2xl border-t pb-2 pt-3 md:pt-3.5')}>{elAtas}</div>
+
+        <div className={cx(kiri, 'border-t border-t-slate-100 pb-1 pt-2 text-[11px] font-semibold text-[#4F5470]')}>{zoho ? `Isi invoice · ${z.baris.length} baris` : ''}</div>
+        <div className={cx(kanan, 'pb-1 pt-1')}><div className="border-t border-[#141B34]/[.12] pt-2">{pakaiDok ? elKepala : null}</div></div>
+
+        {!barisBiasa && nBaris === 0 && <div className={cx(kanan, 'py-[3px]')}>{!pakaiDok ? elDeskripsi : elSumber}</div>}
+        {Array.from({ length: nBaris }, (_, k) => (
+          <Fragment key={k}>
+            <div className={cx(kiri, 'py-[3px]')}>{z.baris[k] != null ? selZoho(z.baris[k], k) : null}</div>
+            {barisBiasa && <div className={cx(kanan, 'py-[3px]')} {...(al && k === 0 ? { 'data-dok-al': '' } : {})}>{docs[k] ? berkas(docs[k], k, 'div') : null}</div>}
+            {!barisBiasa && k === 0 && <div className={cx(kanan, 'py-[3px]')} style={{ gridRow: `span ${nBaris}` }}>{!pakaiDok ? elDeskripsi : elSumber}</div>}
+          </Fragment>
+        ))}
+
+        <div className={cx(kiri, 'rounded-b-2xl border-b pb-3')} />
+        <div className={cx(kanan, 'flex flex-col gap-2 rounded-b-2xl border-b pb-3 pt-1.5')}>
+          {barisBiasa && elMassal}
+          {barisBiasa && elUnggah}
+          {elCatatan}
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div data-sub-baris={sub.type} data-n={n} {...seretProps}
+      className={cx('rounded-2xl p-3 ring-1 md:p-3.5', tema.kartu, seret ? '!ring-2 !ring-brand' : error ? '!ring-2 !ring-rose-400' : '')}>
+      {/* Baris atas = pengaturan sub project. Kolom turun baris bila layar sempit; di HP: nomor · Kategori · hapus di baris pertama. */}
+      {elAtas}
+
+      {/* Di bawah pengaturan: dokumen selebar kartu — nama file panjang turun baris, tidak terpotong. */}
+      <div className="mt-3 flex flex-col gap-2 border-t border-[#141B34]/[.12] pt-3" data-sub-dok>
+        {!pakaiDok && elDeskripsi}
+        {pakaiDok && (
+          <>
+            {elKepala}
+            {tunggu ? elSumber : (
+              <>
+                {docs.length > 0 && (
+                  <ul className="flex flex-col gap-1.5" {...(al ? { 'data-dok-al': '' } : {})}>
+                    {docs.map((d, i) => berkas(d, i))}
+                  </ul>
+                )}
+                {elMassal}
+                {elUnggah}
+              </>
+            )}
+          </>
+        )}
+      </div>
+
+      {elCatatan}
     </div>
   )
 }

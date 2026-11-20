@@ -2,7 +2,7 @@ import { autoDeadline } from '../lib/waktu.js'
 import { prioSub, prioTertinggi } from '../config/priority.js'
 import { tarikData } from '../lib/tarikData.js'
 import { tarikDrive } from '../lib/tarikDrive.js'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Search, Plus, Check, Loader2, UserRound, Receipt, Upload, X, FileText, RefreshCw, Headset, Building2, Printer, CalendarPlus, CalendarClock, Flag, ClipboardList, Truck, Layers, CloudUpload, StickyNote, Sparkles, FolderSearch, Pencil, Copy, ChevronDown, ChevronUp, ChevronLeft } from 'lucide-react'
 import { useApp } from '../lib/store.jsx'
 import { go } from '../lib/router.js'
@@ -63,6 +63,11 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
     })
     : [page ? subBaru('terjemahan', data) : newSub('terjemahan')])
   const [busy, setBusy] = useState(false)
+  // Tampilan bagian sub project di layar lebar (data Zoho kiri · isian kanan) — disimpan per perangkat, bukan data project.
+  const [tampil, setTampil] = useState(bacaTampil)
+  const aturTampil = (patch) => setTampil((t) => { const n = { ...t, ...patch }; try { localStorage.setItem(KUNCI_TAMPIL, JSON.stringify(n)) } catch { /* penyimpanan perangkat penuh / diblokir: setelan berlaku sampai halaman ditutup */ } return n })
+  const wadahSub = useRef(null)
+  const geserPembatas = (e) => { const r = wadahSub.current?.getBoundingClientRect(); if (!r?.width) return; aturTampil({ kiri: Math.round(Math.min(62, Math.max(25, ((e.clientX - r.left) / r.width) * 100))) }) }
   const [queue, setQueue] = useState([]) // file yang akan diunggah: {_k, file, name, sub_ref}
   const [progress, setProgress] = useState('')
   /** Pasang pelanggan pemilik invoice (dari nomor invoice yang diketik) — nomor invoicenya tidak diubah. */
@@ -762,19 +767,68 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
             <h2 className="text-xs font-bold uppercase tracking-[0.06em] text-[#5E6380]">3 · Sub project & dokumen</h2>
             <span className="text-xs text-[#5E6380]" data-ringkasan-sub>{subs.length} sub project · {nDokumen} dokumen · {nHalaman} halaman</span>
           </div>
-          {invoiceItems && <InvoiceItemsView inv={invoiceItems} {...propTarik} {...propDrive} />}
+          {(() => {
+            // Layar lebar + ada item invoice: data Zoho di KIRI, isian di KANAN. Sub hasil Tarik Data disejajarkan baris demi baris dengan item asalnya.
+            const itemsInv = invoiceItems?.items || []
+            const zohoSub = (x) => (x._tarik?.item && x._tarik?.sumber !== 'drive' ? itemsInv[x._tarik.item - 1] || null : null)
+            const adaInv = itemsInv.length > 0
+            const sejajar = adaInv && subs.some(zohoSub)
+            const sisaItem = sejajar ? itemsInv.map((it, k) => [it, k]).filter(([, k]) => !subs.some((x) => x._tarik?.item === k + 1 && x._tarik?.sumber !== 'drive')) : []
+            const baris = (dua) => subs.map((s, i) => (
+              <SubBaris prioProject={about.priority || 'Normal'} key={s.id ?? s._k} n={i + 1} sub={s} branch={branch} error={tried ? errs.subs[i] : null} onPecah={pecahJadiSub(i)}
+                daftarTr={daftarTr} onKeduanya={pecahKeduanya(i)} onApostilleHasil={tambahApostilleHasil(i)}
+                duaKolom={dua} zoho={dua ? zohoSub(s) : null} noZoho={dua ? s._tarik?.item : undefined}
+                onChange={(next) => setSubs((arr) => arr.map((x, j) => (j === i ? next : x)))}
+                onRemove={subs.length > 1 ? () => setSubs((a) => a.filter((_, j) => j !== i)) : null} />
+            ))
+            const pembatas = adaInv && (
+              <div role="separator" aria-orientation="vertical" aria-label="Geser untuk mengatur lebar data Zoho (kiri) dan isian (kanan)" aria-valuemin={25} aria-valuemax={62} aria-valuenow={tampil.kiri} tabIndex={0} data-pembatas
+                onPointerDown={(e) => { e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId) }}
+                onPointerMove={(e) => { if (e.currentTarget.hasPointerCapture(e.pointerId)) geserPembatas(e) }}
+                onKeyDown={(e) => { if (e.key === 'ArrowLeft') { e.preventDefault(); aturTampil({ kiri: Math.max(25, tampil.kiri - 2) }) } if (e.key === 'ArrowRight') { e.preventDefault(); aturTampil({ kiri: Math.min(62, tampil.kiri + 2) }) } }}
+                className="group absolute bottom-0 top-0 z-[1] hidden w-3 cursor-col-resize touch-none justify-center focus:outline-none xl:flex" style={{ left: 'var(--sub-kiri)' }}>
+                <span className="w-1 rounded-full bg-[#D9DBE7] group-hover:bg-[#8A8FA8] group-focus-visible:bg-brand" />
+                <span className="absolute top-24 grid h-12 w-3 place-items-center rounded-full bg-[#141B34] text-[8px] leading-[5px] text-white" aria-hidden>⋮</span>
+              </div>
+            )
+            return (
+              <>
+                {adaInv && <AturTampilan t={tampil} atur={aturTampil} />}
+                <div className="flex flex-col gap-1.5" data-sub-wadah={adaInv ? (sejajar ? 'sejajar' : 'berdampingan') : 'biasa'} data-sub-rapat={tampil.rapat ? '' : undefined} data-sub-ukuran={tampil.ukuran || undefined} style={{ '--sub-kiri': `${tampil.kiri}%` }}>
+                  {sejajar && <InvoiceItemsView inv={invoiceItems} {...propTarik} {...propDrive} tanpaHarga daftarHpSaja />}
           {autoFill && (autoFill.ship || autoFill.courier || autoFill.priority) && (
             <div role="status" className="flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-xl bg-amber-50 px-3.5 py-2 text-xs text-amber-900 ring-1 ring-amber-200">
               <Sparkles className="h-4 w-4 shrink-0 text-amber-600" />
               <span><b className="font-semibold">Diisi otomatis dari {invoiceLabel(autoFill.invoice_no)}</b>: {[autoFill.ship && 'alamat kirim', autoFill.courier && `kurir ${autoFill.courier}`, autoFill.priority && `prioritas ${autoFill.priority}`].filter(Boolean).join(' · ')}</span>
             </div>
           )}
-          {subs.map((s, i) => (
-            <SubBaris prioProject={about.priority || 'Normal'} key={s.id ?? s._k} n={i + 1} sub={s} branch={branch} error={tried ? errs.subs[i] : null} onPecah={pecahJadiSub(i)}
-              daftarTr={daftarTr} onKeduanya={pecahKeduanya(i)} onApostilleHasil={tambahApostilleHasil(i)}
-              onChange={(next) => setSubs((arr) => arr.map((x, j) => (j === i ? next : x)))}
-              onRemove={subs.length > 1 ? () => setSubs((a) => a.filter((_, j) => j !== i)) : null} />
-          ))}
+                  {!adaInv && baris(false)}
+                  {sejajar && <div ref={wadahSub} className="relative flex flex-col gap-1.5">
+                  {baris(true)}
+                  {sisaItem.length > 0 && (
+                    <div className="max-xl:hidden xl:grid xl:gap-x-3 xl:[grid-template-columns:var(--sub-kiri,42%)_minmax(0,1fr)]" data-zoho-sisa>
+                      <div className="rounded-2xl border border-emerald-200 bg-white p-3">
+                        <p className="text-[11px] font-semibold text-[#4F5470]">Item invoice lain · belum jadi sub project</p>
+                        <ol className="mt-1.5 space-y-1.5">{sisaItem.map(([it, k]) => (
+                          <li key={k} className="rounded-[10px] bg-slate-50 px-2.5 py-1.5 text-[12.5px] leading-snug text-ink-soft"><b className="font-bold text-ink">{k + 1}. {it.name || 'Item'}</b>{String(it.description || '').trim() && <span className="mt-0.5 block cursor-text select-text whitespace-pre-wrap [overflow-wrap:anywhere]">{it.description.trim()}</span>}</li>
+                        ))}</ol>
+                      </div>
+                      <p className="self-center px-1 text-xs text-[#6B7088]">Biaya, ongkos kirim dan item sejenis tidak dijadikan sub project. Bila ada pekerjaan yang terlewat, tambahkan sub lewat tombol di bawah.</p>
+                    </div>
+                  )}
+                  {pembatas}
+                  </div>}
+                  {adaInv && !sejajar && (
+                    <div ref={wadahSub} className="relative flex flex-col gap-1.5 xl:grid xl:items-start xl:gap-x-3 xl:[grid-template-columns:var(--sub-kiri,42%)_minmax(0,1fr)]">
+                      <div className="xl:sticky xl:top-2 xl:max-h-[calc(100dvh-1rem)] xl:overflow-y-auto xl:rounded-xl"><InvoiceItemsView inv={invoiceItems} {...propTarik} {...propDrive} tanpaHarga /></div>
+                      <div className="flex min-w-0 flex-col gap-1.5">{baris(false)}</div>
+                      {pembatas}
+                    </div>
+                  )}
+                </div>
+              </>
+            )
+          })()}
           <div data-tarik-bawah className={cx('mt-1.5 flex flex-wrap items-center gap-2 rounded-xl border-2 border-dashed px-3 py-2.5', seretBawah ? 'border-brand bg-brand-soft' : 'border-[#B9BEDA] bg-[#F8F9FD]')}
             onDragOver={(e) => { if ([...(e.dataTransfer?.types || [])].includes('Files')) { e.preventDefault(); setSeretBawah(true) } }} onDragLeave={() => setSeretBawah(false)}
             onDrop={(e) => { if (e.dataTransfer?.files?.length) { e.preventDefault(); setSeretBawah(false); tarikKeBawah(e.dataTransfer.files) } }}>
@@ -844,8 +898,23 @@ function KolBaru({ label, wajib, hp = 'full', style, error, children }) {
   )
 }
 
+const KUNCI_TAMPIL = 'atlas_sub_tampilan'
+const bacaTampil = () => { const d = { kiri: 42, rapat: false, ukuran: 0 }; try { const t = JSON.parse(localStorage.getItem(KUNCI_TAMPIL) || '{}'); return { kiri: Math.min(62, Math.max(25, Number(t.kiri) || d.kiri)), rapat: !!t.rapat, ukuran: [-1, 0, 1].includes(t.ukuran) ? t.ukuran : 0 } } catch { return d } }
+/** Pengaturan tampilan dua kolom (hanya layar lebar): jarak baris, lebar kolom, ukuran tulisan. Tersimpan di perangkat ini. */
+function AturTampilan({ t, atur }) {
+  const Tbl = ({ aktif, onClick, children, label }) => <button type="button" onClick={onClick} aria-pressed={aktif} aria-label={label} className={cx('h-8 rounded-lg px-2.5 text-xs font-bold ring-1 transition', aktif ? 'bg-[#141B34] text-white ring-[#141B34]' : 'bg-white text-ink ring-[#D9DBE7] hover:ring-ink')}>{children}</button>
+  const Grup = ({ judul, children }) => <div className="flex items-center gap-1.5" role="group" aria-label={judul}><span className="text-[11px] font-semibold text-[#5E6380]">{judul}</span>{children}</div>
+  return (
+    <div className="flex flex-wrap items-center justify-end gap-x-4 gap-y-1.5 max-xl:hidden" data-atur-tampilan>
+      <Grup judul="Jarak baris"><Tbl aktif={!t.rapat} onClick={() => atur({ rapat: false })}>Lebar</Tbl><Tbl aktif={t.rapat} onClick={() => atur({ rapat: true })}>Rapat</Tbl></Grup>
+      <Grup judul="Lebar kolom"><Tbl aktif={t.kiri >= 52} onClick={() => atur({ kiri: 55 })}>Kiri lebar</Tbl><Tbl aktif={t.kiri > 35 && t.kiri < 52} onClick={() => atur({ kiri: 42 })}>Sama rata</Tbl><Tbl aktif={t.kiri <= 35} onClick={() => atur({ kiri: 30 })}>Kanan lebar</Tbl></Grup>
+      <Grup judul="Ukuran"><Tbl aktif={t.ukuran === -1} onClick={() => atur({ ukuran: -1 })} label="Ukuran kecil">A−</Tbl><Tbl aktif={!t.ukuran} onClick={() => atur({ ukuran: 0 })} label="Ukuran normal">A</Tbl><Tbl aktif={t.ukuran === 1} onClick={() => atur({ ukuran: 1 })} label="Ukuran besar">A+</Tbl></Grup>
+    </div>
+  )
+}
+
 /** Item & deskripsi invoice Zoho — hanya tampilan (tidak mengisi apa pun), untuk dibaca / disalin saat mengisi sub project secara manual. */
-function InvoiceItemsView({ inv, onTarik, onUrung, tarik, onDrive, onUrungDrive, drive }) {
+function InvoiceItemsView({ inv, onTarik, onUrung, tarik, onDrive, onUrungDrive, drive, tanpaHarga, daftarHpSaja }) {
   const { notify } = useApp()
   const [open, setOpen] = useState(true)
   const items = inv.items || []
@@ -863,7 +932,7 @@ function InvoiceItemsView({ inv, onTarik, onUrung, tarik, onDrive, onUrungDrive,
           className="inline-flex min-h-8 items-center gap-1.5 rounded-lg bg-sky-700 px-2.5 py-1 text-[11.5px] font-bold text-white hover:bg-sky-800 disabled:opacity-60 max-md:min-h-11 max-md:px-3 max-md:text-[13px]">
           {drive?.sibuk ? <Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" /> : <FolderSearch className="h-3.5 w-3.5" />}{drive?.sibuk ? 'Membaca Drive…' : 'Tarik dari Drive (transisi)'}</button>}
         {items.length > 0 && <button type="button" onClick={() => copy(items.map((it, i) => `${i + 1}. ${textOf(it)}`).join('\n\n'), 'Semua item')} className="inline-flex items-center gap-1 rounded-lg bg-white px-2 py-1 text-[11px] font-semibold text-emerald-800 ring-1 ring-emerald-300 hover:bg-emerald-100"><Copy className="h-3 w-3" />Salin semua</button>}
-        <button type="button" onClick={() => setOpen((o) => !o)} className="rounded-lg p-1 text-emerald-800 hover:bg-emerald-100" aria-label={open ? 'Sembunyikan item invoice' : 'Tampilkan item invoice'} aria-expanded={open}>{open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</button>
+        <button type="button" onClick={() => setOpen((o) => !o)} className={cx('rounded-lg p-1 text-emerald-800 hover:bg-emerald-100', daftarHpSaja && 'xl:hidden')} aria-label={open ? 'Sembunyikan item invoice' : 'Tampilkan item invoice'} aria-expanded={open}>{open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</button>
       </div>
       {tarik?.galat && <p role="alert" className="border-t border-rose-100 bg-rose-50 px-3.5 py-2 text-xs font-semibold text-rose-800" data-tarik-galat>{tarik.galat}. Sub project tidak diubah — isi manual seperti biasa.</p>}
       {tarik?.ok && (
@@ -884,14 +953,14 @@ function InvoiceItemsView({ inv, onTarik, onUrung, tarik, onDrive, onUrungDrive,
       {open && (items.length === 0
         ? <p className="px-3.5 py-3 text-xs text-ink-mute">Item invoice belum ada di salinan Zoho (disinkron tiap 10 menit) — isi sub project manual dari invoice.</p>
         : (
-          <ol className="divide-y divide-slate-100">
+          <ol className={cx('divide-y divide-slate-100', daftarHpSaja && 'xl:hidden')}>
             {items.map((it, i) => (
               <li key={i} className="flex gap-3 px-3.5 py-2.5">
                 <span className="mt-0.5 w-5 shrink-0 text-right text-xs font-bold text-ink-mute">{i + 1}.</span>
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-baseline gap-x-2">
                     <p className="text-sm font-semibold text-ink">{it.name || 'Item'}</p>
-                    {(it.quantity || it.rate) && <span className="text-[11px] text-ink-mute">{it.quantity ? `${it.quantity} ${it.unit || ''}`.trim() : ''}{it.rate ? ` × ${rupiah(it.rate)}` : ''}</span>}
+                    {(it.quantity || (it.rate && !tanpaHarga)) && <span className="text-[11px] text-ink-mute">{it.quantity ? `${it.quantity} ${it.unit || ''}`.trim() : ''}{it.rate && !tanpaHarga ? ` × ${rupiah(it.rate)}` : ''}</span>}
                   </div>
                   {String(it.description || '').trim() && <pre className="mt-1 cursor-text select-text whitespace-pre-wrap break-words rounded-lg bg-slate-50 px-2.5 py-2 font-sans text-[13px] leading-relaxed text-ink-soft ring-1 ring-slate-100">{it.description.trim()}</pre>}
                 </div>

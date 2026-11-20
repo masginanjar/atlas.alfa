@@ -631,3 +631,17 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]), select, textarea { font-size: max(16px, 1em); }
   html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 }
+
+/* Project Baru — bagian sub project dua kolom (20 Nov 2026). Hanya layar ≥ 1280px; HP & tablet tidak berubah (target sentuh tetap 44px). */
+@media (min-width: 1280px) {
+  [data-sub-ukuran="-1"] [data-sub-baris], [data-sub-ukuran="-1"] [data-zoho-sisa] { zoom: .9; }
+  [data-sub-ukuran="1"] [data-sub-baris], [data-sub-ukuran="1"] [data-zoho-sisa] { zoom: 1.1; }
+  [data-sub-rapat] [data-sub-baris] :is(select, input:not([type=file]), button, [data-unggah-banyak], [data-pilih-file], [data-upload-id], [data-id-pemohon]) { height: 30px; min-height: 0; padding-top: 0; padding-bottom: 0; }
+  [data-sub-rapat] [data-sub-baris] textarea { min-height: 28px; padding-top: 4px; padding-bottom: 4px; }
+  [data-sub-rapat] [data-sub-baris] [data-baris-dok] { padding-top: 2px; padding-bottom: 2px; gap: 6px; }
+  [data-sub-rapat] [data-sub-baris] [data-zoho-baris] { min-height: 34px; padding-top: 2px; padding-bottom: 2px; }
+  [data-sub-rapat] [data-sub-baris][data-dua] > div { padding-top: 2px; padding-bottom: 2px; }
+  [data-sub-rapat] [data-sub-baris]:not([data-dua]) { padding: 8px 10px; }
+  [data-sub-rapat] [data-sub-baris] [data-sub-dok] { margin-top: 6px; padding-top: 6px; gap: 4px; }
+  [data-sub-rapat] [data-sub-baris] [data-sub-atas] { gap: 6px; }
+}
