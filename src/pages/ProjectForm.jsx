@@ -864,7 +864,7 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
                   </div>}
                   {adaInv && !sejajar && (
                     <div ref={wadahSub} className="relative flex flex-col gap-1.5 xl:grid xl:items-start xl:gap-x-3 xl:[grid-template-columns:var(--sub-kiri,42%)_minmax(0,1fr)]">
-                      <div className="xl:sticky xl:top-2 xl:max-h-[calc(100dvh-1rem)] xl:overflow-y-auto xl:rounded-xl"><InvoiceItemsView inv={invoiceItems} {...propTarik} {...propDrive} tanpaHarga /></div>
+                      <div className="xl:sticky xl:top-2 xl:max-h-[calc(100dvh-1rem)] xl:overflow-y-auto xl:rounded-xl"><InvoiceItemsView inv={invoiceItems} {...propTarik} {...propDrive} tanpaHarga sempit /></div>
                       <div className="flex min-w-0 flex-col gap-1.5">{baris(false)}</div>
                       {pembatas}
                     </div>
@@ -960,7 +960,7 @@ function AturTampilan({ t, atur }) {
 }
 
 /** Item & deskripsi invoice Zoho — hanya tampilan (tidak mengisi apa pun), untuk dibaca / disalin saat mengisi sub project secara manual. */
-function InvoiceItemsView({ inv, onTarik, onUrung, tarik, onDrive, onUrungDrive, drive, tanpaHarga, daftarHpSaja }) {
+function InvoiceItemsView({ inv, onTarik, onUrung, tarik, onDrive, onUrungDrive, drive, tanpaHarga, daftarHpSaja, sempit }) {
   const { notify } = useApp()
   const [open, setOpen] = useState(true)
   const items = inv.items || []
@@ -969,8 +969,9 @@ function InvoiceItemsView({ inv, onTarik, onUrung, tarik, onDrive, onUrungDrive,
   return (
     <div className="overflow-hidden rounded-xl bg-white ring-1 ring-emerald-200" data-testid="invoice-items">
       <div className="flex flex-wrap items-center gap-2 bg-emerald-50 px-3.5 py-2">
+        {/* sempit = dipasang di kolom kiri (layar lebar): judul satu baris penuh, tombol turun ke baris berikutnya supaya teks tidak terjepit */}
         <Receipt className="h-4 w-4 shrink-0 text-emerald-700" />
-        <p className="min-w-0 flex-1 text-xs text-emerald-900"><b className="font-semibold">Item invoice {invoiceLabel(inv.invoice_no)}</b> <span className="text-emerald-800/80">· {onTarik ? 'isi sub project manual, atau coba Tarik Data (beta)' : 'hanya tampilan — baca/salin lalu isi sub project di bawah secara manual'}</span></p>
+        <p className={cx('min-w-0 flex-1 text-xs text-emerald-900 max-md:basis-[calc(100%-2rem)]', sempit && 'xl:basis-[calc(100%-2rem)]')}><b className="font-semibold">Item invoice {invoiceLabel(inv.invoice_no)}</b> <span className="text-emerald-800/80">· {onTarik ? 'isi sub project manual, atau coba Tarik Data (beta)' : 'hanya tampilan — baca/salin lalu isi sub project di bawah secara manual'}</span></p>
         {onTarik && items.length > 0 && <button type="button" onClick={onTarik} disabled={!!tarik?.sibuk} data-aksi="tarik-data" title="Susun sub project otomatis dari item invoice ini — hasilnya tetap bisa diubah"
           className="inline-flex min-h-8 items-center gap-1.5 rounded-lg bg-violet-600 px-2.5 py-1 text-[11.5px] font-bold text-white hover:bg-violet-700 disabled:opacity-60 max-md:min-h-11 max-md:px-3 max-md:text-[13px]">
           {tarik?.sibuk ? <Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" /> : <Sparkles className="h-3.5 w-3.5" />}{tarik?.sibuk ? 'Menganalisa…' : 'Tarik Data (beta)'}</button>}
