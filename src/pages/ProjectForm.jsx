@@ -16,6 +16,7 @@ import { Button, Field, FieldError, Input, Select, Sheet, SectionCard, cx, Texta
 import SubProjectEditor, { newSub, validateSub, docFileName, safeName } from '../components/SubProjectEditor.jsx'
 import { SUB_TYPES, points } from '../config/subtypes.js'
 import SubBaris, { subBaru, pasangKeSub, nomoriAntarSub, bagikanId } from '../components/SubBaris.jsx'
+import { teksOrderVendor, TombolWa } from '../components/SalinChatOrder.jsx'
 import { uploadProjectFiles } from '../components/FileManager.jsx'
 import { boleh as bolehIzin } from '../lib/izin.js'
 import { kb } from '../lib/format.js'
@@ -68,6 +69,8 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
   const aturTampil = (patch) => setTampil((t) => { const n = { ...t, ...patch }; try { localStorage.setItem(KUNCI_TAMPIL, JSON.stringify(n)) } catch { /* penyimpanan perangkat penuh / diblokir: setelan berlaku sampai halaman ditutup */ } return n })
   const wadahSub = useRef(null)
   const geserPembatas = (e) => { const r = wadahSub.current?.getBoundingClientRect(); if (!r?.width) return; aturTampil({ kiri: Math.round(Math.min(62, Math.max(25, ((e.clientX - r.left) / r.width) * 100))) }) }
+  // Order vendor langsung dari Project Baru: setelah project TERSIMPAN, tombol WhatsApp Fix Order per vendor tampil di sini (tidak perlu membuka isi project).
+  const [orderVendor, setOrderVendor] = useState(null) // { saved, grup: [{ vendor, subs }], keSK }
   const [queue, setQueue] = useState([]) // file yang akan diunggah: {_k, file, name, sub_ref}
   const [progress, setProgress] = useState('')
   /** Pasang pelanggan pemilik invoice (dari nomor invoice yang diketik) — nomor invoicenya tidak diubah. */
@@ -238,6 +241,7 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
   const E = (k) => (tried ? errs[k] || null : null)
 
   const submit = async () => {
+    if (orderVendor) return // project sudah tersimpan — tinggal order vendor / lanjut
     setTried(true)
     const inv = normInvoice(invoice)
     if (!customer) return notify('Pilih pelanggan dari Zoho', 'err')
@@ -351,12 +355,52 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
       notify(editing ? 'Project diperbarui' : `Project ${inv} dibuat`)
       // Apostille/Legalisasi dengan scan ID pemohon baru → langsung sambung ke pembuatan Surat Kuasa (KTP & nomor ID terbawa).
       const keSK = idUploads.length > 0 && bolehIzin(user, 'surat-kuasa.tambah') && !(data.surat_kuasa || []).some((r) => r.project_id === saved.id)
+      if (page && !editing) {
+        const grup = []
+        for (const sp of saved.sub_projects || []) {
+          const v = ['terjemahan', 'terjemahan_nt'].includes(sp.type) && sp.data?.vendor ? data.people.find((x) => x.id === sp.data.vendor && x.type === 'vendor' && !x.biro) : null
+          if (!v) continue
+          const g = grup.find((x) => x.vendor.id === v.id); if (g) g.subs.push(sp); else grup.push({ vendor: v, subs: [sp] })
+        }
+        if (grup.length) { setOrderVendor({ saved, grup, keSK }); return } // navigasi dilanjutkan dari panel order vendor
+      }
       if (onSaved) onSaved(saved); onClose()
       if (keSK) { notify('Lanjut ke Surat Kuasa — scan ID & nomor ID dari form sudah disambungkan'); go(`surat-kuasa/new/${saved.id}`) }
       else if (!onSaved && !editing) go(`projects/${saved.id}`)
     } catch (e) { notify(e.message, 'err') } finally { setBusy(false); setProgress('') }
   }
 
+  const lanjutSetelahOrder = () => {
+    const o = orderVendor; if (!o) return
+    setOrderVendor(null)
+    if (onSaved) onSaved(o.saved); onClose()
+    if (o.keSK) { notify('Lanjut ke Surat Kuasa — scan ID & nomor ID dari form sudah disambungkan'); go(`surat-kuasa/new/${o.saved.id}`) }
+    else if (!onSaved) go(`projects/${o.saved.id}`)
+  }
+  const adaOrderVendor = page && !editing && subs.some((x) => ['terjemahan', 'terjemahan_nt'].includes(x.type) && x.translator_kind === 'vendor' && data.people.some((v) => v.id === x.translator && v.type === 'vendor' && !v.biro))
+  const labelBuat = editing ? 'Simpan Perubahan' : adaOrderVendor ? 'Buat Project & order vendor' : 'Buat Project'
+  const panelOrderVendor = orderVendor && (
+        <Sheet open onClose={lanjutSetelahOrder} title={`Project ${invoiceLabel(orderVendor.saved.invoice_no)} tersimpan — order ke vendor`}
+          footer={<Button className="flex-1" onClick={lanjutSetelahOrder} data-aksi="lanjut-setelah-order">Lanjut ke project</Button>}>
+          <div className="flex flex-col gap-3" data-order-setelah-simpan>
+            <p className="text-sm text-ink-soft">Project sudah tersimpan dan vendornya sudah tercatat di sub project. Tekan <b>WhatsApp Fix Order</b> untuk membuka WhatsApp dengan pesan order yang sudah terisi — pesan baru terkirim setelah Anda menekan kirim di WhatsApp.</p>
+            {orderVendor.grup.map(({ vendor: v, subs: daftar }) => {
+              const teks = teksOrderVendor(orderVendor.saved, daftar, v.name || 'Penerjemah', { sapaan: v.sapaan, namaCs: orderVendor.saved.about?.cs_name || user.name })
+              return (
+                <div key={v.id} className="rounded-xl bg-white p-3 ring-1 ring-slate-200" data-order-vendor-grup={v.id}>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="min-w-0 flex-1 text-sm font-bold text-ink max-md:basis-full">{v.name}<span className="block text-xs font-normal text-ink-mute">{daftar.map((x) => `${x.lang_from || '?'} → ${x.lang_to || '?'}`).filter((x, k, a) => a.indexOf(x) === k).join(', ')} · {daftar.length} sub project{v.phone ? '' : ' · nomor WhatsApp vendor belum diisi (pilih kontaknya di WhatsApp)'}</span></p>
+                    <TombolWa telp={v.phone} teks={teks} kunci={`baru:${orderVendor.saved.id}:${v.id}`} />
+                    <button type="button" onClick={async () => { const ok = await copyText(teks); notify(ok ? 'Pesan order disalin' : 'Gagal menyalin — salin manual', ok ? 'ok' : 'err') }} className="inline-flex min-h-9 items-center gap-1.5 rounded-xl bg-white px-3 text-xs font-semibold text-ink ring-1 ring-slate-300 hover:bg-slate-50 max-md:min-h-11"><Copy className="h-3.5 w-3.5" />Salin chat</button>
+                  </div>
+                  <pre className="mt-2 max-h-48 overflow-y-auto whitespace-pre-wrap break-words rounded-lg bg-slate-50 px-2.5 py-2 font-sans text-xs leading-relaxed text-ink-soft ring-1 ring-slate-100">{teks}</pre>
+                </div>
+              )
+            })}
+            <p className="text-xs text-ink-mute">Biaya vendor tidak diubah di sini: vendor tagihan dicatat di tahap “Order ke Vendor”, vendor bayar langsung tetap lewat pengajuan &amp; persetujuan Direktur di project.</p>
+          </div>
+        </Sheet>
+      )
   const judul = editing ? `Edit ${invoiceLabel(project.invoice_no)}` : 'Project Baru'
   const kaki = (
     <>
@@ -670,7 +714,7 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
     }
     // Satu sub apostille per dokumen terjemahan (satu sub = satu dokumen) — dokumen yang tidak perlu tinggal dihapus.
     const tambahApostilleHasil = (i) => () => { const jml = daftarTr.filter((d) => d.sub === i).length; setSubs((arr) => { const asal = [...arr].reverse().find((y) => y.type === 'apostille'); return [...arr.slice(0, i + 1), ...Array.from({ length: jml }, (_, di) => apostilleHasil(i, asal, di)), ...arr.slice(i + 1)] }); if (jml > 1) notify(`${jml} sub apostille dibuat — satu per dokumen terjemahan. Hapus yang tidak perlu.`) }
-    const tombolSimpan = progress || 'Buat Project'
+    const tombolSimpan = progress || labelBuat
     return (
       <div className="space-y-3.5 pb-2" data-project-baru>
         <div className="flex flex-wrap items-center gap-3">
@@ -844,6 +888,7 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
           </details>
         </div>
 
+        {panelOrderVendor}
         {kurang.length > 0 && (
           <div role="alert" className="rounded-xl bg-rose-50 px-3.5 py-2.5 text-xs text-rose-800 ring-1 ring-rose-200" data-kurang>
             <p className="font-bold">Belum bisa disimpan — lengkapi dulu:</p>
@@ -868,15 +913,16 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
         {preset?.invoice_no && <span className="text-sm text-ink-mute">dari faktur {invoiceLabel(preset.invoice_no)}</span>}
         <div className="ml-auto hidden gap-2 md:flex">
           <Button variant="outline" onClick={onClose} className="px-5">Batal</Button>
-          <Button loading={busy} onClick={submit} className="px-6" data-aksi="buat-project-atas">{progress || (editing ? 'Simpan Perubahan' : 'Buat Project')}</Button>
+          <Button loading={busy} onClick={submit} className="px-6" data-aksi="buat-project-atas">{progress || labelBuat}</Button>
         </div>
       </div>
       <div className="form-rapat rounded-xl bg-white p-4 ring-1 ring-slate-200 sm:px-6 sm:py-5">{isi}</div>
       {/* Tombol seukuran wajar & rata kiri — seperti bilah aksi Zoho */}
       <div className="sticky bottom-0 z-20 -mx-1 flex flex-wrap gap-2 border-t border-slate-200 bg-white/95 px-1 py-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] backdrop-blur md:hidden">
-        <Button loading={busy} onClick={submit} className="flex-1 px-6">{progress || (editing ? 'Simpan Perubahan' : 'Buat Project')}</Button>
+        <Button loading={busy} onClick={submit} className="flex-1 px-6">{progress || labelBuat}</Button>
         <Button variant="outline" onClick={onClose} className="px-5">Batal</Button>
       </div>
+      {panelOrderVendor}
     </div>
   )
 
