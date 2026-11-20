@@ -58,6 +58,13 @@ export function projectRow(p, namaUser = (x) => x, subMilik = null) {
     return id ? namaUser(id) : ''
   }))
 
+  // Rincian dokumen yang dikerjakan (untuk pelaksana: langsung terbaca di baris, tanpa membuka isi project)
+  const dokAll = subs.flatMap((s) => {
+    const rinci = (s.docs || []).filter((d) => String(d?.desc || '').trim())
+    if (rinci.length) return rinci.map((d) => `${String(d.desc).trim()}${Number(d.pages) ? ` · ${Number(d.pages)} hlm` : ''}`)
+    const t = String(s.title || '').replace(/^terjemahan tersumpah:\s*/i, '')
+    return t ? [`${t}${Number(s.pages) ? ` · ${Number(s.pages)} hlm` : ''}`] : []
+  })
   // Jumlah dokumen: pakai rincian docs bila ada, kalau tidak pakai file_count.
   const jmlDok = subs.reduce((n, s) => n + (s.docs?.length || s.file_count || 0), 0)
   const jmlHal = subs.reduce((n, s) => n + (s.docs?.length
@@ -81,7 +88,7 @@ export function projectRow(p, namaUser = (x) => x, subMilik = null) {
     cs: (p.about?.cs_name || '').replace(/\s*\(.*\)\s*$/, ''),
     arah: ringkas(arahAll), arahAll,
     orang: ringkas(orangAll), orangAll,
-    jmlDok, jmlHal,
+    jmlDok, jmlHal, dokAll,
     layanan: ringkas(layananAll), layananAll,
     // penanda visual (lihat ProjectSpreadsheet)
     prioMendesak: (p.about?.priority || 'Normal') !== 'Normal',
@@ -104,6 +111,8 @@ export const TABLE_COLS = [
   { key: 'print', label: 'Print', w: '104px', sort: (r) => r.print.toLowerCase() },
   { key: 'cs', label: 'CS', w: '112px', sort: (r) => r.cs.toLowerCase() },
   { key: 'arah', label: 'Arah Bahasa', w: '164px', sort: (r) => (r.arahAll[0] || '').toLowerCase() },
+  // khusus: hanya tampil bila diminta (daftar project pelaksana) — rincian dokumen langsung di baris
+  { key: 'dokumen', label: 'Dokumen', w: '300px', khusus: true, sort: (r) => (r.dokAll[0] || '').toLowerCase() },
   { key: 'orang', label: 'Penerjemah/Vendor', w: '156px', sort: (r) => (r.orangAll[0] || '').toLowerCase() },
   { key: 'jmlDok', label: 'Dok', w: '72px', num: true, sort: (r) => r.jmlDok },
   { key: 'jmlHal', label: 'Hal', w: '72px', num: true, sort: (r) => r.jmlHal },
