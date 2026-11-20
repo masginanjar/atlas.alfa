@@ -166,7 +166,8 @@ export default function Dashboard() {
   ].filter(Boolean)
 
   // Pelaksana (penerjemah / proofreader / otorisator): satu susunan dashboard sendiri
-  if (worker) return <DasborPelaksana projects={scopeByBranch(user, data.projects, branchFilter)} angka={{ aktif: s.myTasks.length, hariIni: today, telat: late, selesai: selesaiBulanIni }} perbaikan={s.myTasks.filter((t) => t.data?.perbaikan_note)} />
+  if (worker) return <DasborPelaksana projects={scopeByBranch(user, data.projects, branchFilter)} angka={{ aktif: s.myTasks.length, hariIni: today, telat: late, selesai: selesaiBulanIni }} perbaikan={s.myTasks.filter((t) => t.data?.perbaikan_note)}
+    atas={<>{hasPersonalTasks(user) && <PerformanceCard narrow />}{user.role === 'penerjemah' ? <TranslatorStats narrow /> : user.role === 'proofreader' ? <ProofreaderStats narrow /> : user.role === 'otorisator' ? <AuthStats narrow /> : null}</>} />
 
   return (
     <div className="space-y-3">

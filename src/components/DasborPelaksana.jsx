@@ -15,7 +15,7 @@ import { infoDeadline } from './BarisCanvas.jsx'
 const kunciHari = (dl) => (String(dl).length > 10 ? new Date(new Date(dl).getTime() + 8 * 3600e3).toISOString().slice(0, 10) : String(dl).slice(0, 10))
 const HARI = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab']
 
-export default function DasborPelaksana({ projects = [], angka = {}, perbaikan = [] }) {
+export default function DasborPelaksana({ projects = [], angka = {}, perbaikan = [], atas = null }) {
   const { user } = useApp()
   const [berkas, setBerkas] = useState(null)
   const [saring, setSaring] = useState('aktif')
@@ -60,6 +60,8 @@ export default function DasborPelaksana({ projects = [], angka = {}, perbaikan =
         <Angka label="Terlambat" nilai={angka.telat ?? 0} ket={angka.telat ? 'sudah lewat deadline' : 'tidak ada yang lewat'} nada={angka.telat ? 'bahaya' : 'aman'} />
         <Angka label="Selesai bulan ini" nilai={angka.selesai ?? selesai.length} ket="dokumen" />
       </div>
+      {/* Performa & jumlah pekerjaan saya — di bagian atas dashboard */}
+      {atas && <div className="grid gap-3 lg:grid-cols-2 lg:items-start [&>*]:min-w-0" data-performa-atas>{atas}</div>}
       <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
       <div className="flex min-w-0 flex-col gap-3">
       {utama && (
