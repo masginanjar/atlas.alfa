@@ -352,7 +352,7 @@ export function AppProvider({ children }) {
     if (t === 'projects' && saved?.id) {
       const tugas = penugasanBaru(prev, saved, user?.id)
       if (tugas.length) kirimNotifTugas(saved, tugas, data.users || []).then((r) => {
-        if (r?.terkirim > 0) notify(r.demo ? `Demo: ${r.terkirim} email notifikasi tugas akan terkirim ke penerjemah (di demo tidak benar-benar dikirim)` : `Email notifikasi tugas terkirim ke ${r.terkirim} penerjemah`)
+        if (r?.terkirim > 0) notify(r.demo ? `Demo: ${r.terkirim} email notifikasi tugas akan terkirim ke penerjemah/proofreader (di demo tidak benar-benar dikirim)` : `Email notifikasi tugas terkirim ke ${r.terkirim} orang`)
         else if (r && r.ok === false && r.alasan) notify(`Email notifikasi tugas belum terkirim: ${r.alasan}`, 'err')
       }).catch(() => null)
     }

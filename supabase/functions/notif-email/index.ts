@@ -10,6 +10,7 @@
 //  • Satu email per penerjemah per project per panggilan. Pasangan project–sub–penerjemah yang sudah pernah
 //    dikirimi tidak dikirimi lagi (notif_email_log) → aman dari kirim ganda.
 //  • Log hanya metadata (project, sub, penerjemah, hasil) — tanpa isi email & tanpa alamat.
+//  • PROOFREADER (21 Nov): sub di tahap Pemeriksaan dengan proofreader yang sudah ditunjuk → email "Tugas periksa baru" ke proofreader itu, syarat akun sama.
 //  aksi: "tugas"  { project_id, sub_ids: [] }
 //        "contoh" { user_id } — email CONTOH data buatan ke alamat notifikasi akun itu; izin pengaturan.pengguna.ubah
 // ============================================================
@@ -39,14 +40,16 @@ const judulSub = (sb: Baris) => {
 };
 const jmlDok = (sb: Baris) => (Array.isArray(sb.docs) && sb.docs.length) || Number(sb.file_count) || 0;
 const jmlHal = (sb: Baris) => (Array.isArray(sb.docs) && sb.docs.length ? sb.docs.reduce((a: number, d: Baris) => a + (Number(d?.pages) || 0), 0) : Number(sb.pages) || 0);
-const pemegang = (s: Baris) => (s?.stage === "penerjemahan" && (s?.translator_kind || "translator") === "translator" ? String(s?.translator || s?.data?.translator || "") : "");
+const pemegang = (s: Baris) => (s?.stage === "penerjemahan" && (s?.translator_kind || "translator") === "translator" ? String(s?.translator || s?.data?.translator || "")
+  : s?.stage === "proofread" ? String(s?.data?.proofreader || "") : ""); // proofreader yang ditunjuk (tahap Pemeriksaan)
 
-function susun(nama: string, no: string, deadline: string, baris: { judul: string; rinci: string }[], contoh: boolean) {
-  const subjek = `${contoh ? "[CONTOH] " : ""}Tugas baru ${no} · DL ${deadline}`;
-  const teks = [`Halo ${nama}, ada tugas baru:`, `${no} · DL ${deadline}`, ...baris.map((b, i) => `${i + 1}. ${b.judul}${b.rinci ? ` — ${b.rinci}` : ""}`), `Buka di ATLAS: ${TAUTAN}`,
+function susun(nama: string, no: string, deadline: string, baris: { judul: string; rinci: string }[], contoh: boolean, periksa = false) {
+  const tugas = periksa ? "tugas periksa baru" : "tugas baru";
+  const subjek = `${contoh ? "[CONTOH] " : ""}${periksa ? "Tugas periksa baru" : "Tugas baru"} ${no} · DL ${deadline}`;
+  const teks = [`Halo ${nama}, ada ${tugas}:`, `${no} · DL ${deadline}`, ...baris.map((b, i) => `${i + 1}. ${b.judul}${b.rinci ? ` — ${b.rinci}` : ""}`), `Buka di ATLAS: ${TAUTAN}`,
     ...(contoh ? ["(Email contoh, bukan tugas sungguhan.)"] : [])].join("\n");
   const html = `<!doctype html><html lang="id"><body style="margin:0;padding:16px;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#141b34;font-size:15px;line-height:1.5">
-<p style="margin:0 0 6px">Halo ${esc(nama)}, ada tugas baru:</p>
+<p style="margin:0 0 6px">Halo ${esc(nama)}, ada ${tugas}:</p>
 <p style="margin:0 0 6px;font-weight:600">${esc(no)} · DL ${esc(deadline)}</p>
 ${baris.map((b, i) => `<p style="margin:0 0 2px">${i + 1}. ${esc(b.judul)}${b.rinci ? ` <span style="color:#4b5563">— ${esc(b.rinci)}</span>` : ""}</p>`).join("")}
 <p style="margin:14px 0 0"><a href="${TAUTAN}" style="display:inline-block;background:#141b34;color:#ffffff;text-decoration:none;font-weight:600;padding:12px 20px;border-radius:10px">Buka di ATLAS</a></p>
@@ -149,7 +152,7 @@ Deno.serve(async (req: Request) => {
     const baris = subs.map((s) => ({ judul: judulSub(s), rinci: [jmlDok(s) && `${jmlDok(s)} dok`, jmlHal(s) && `${jmlHal(s)} hal`, s.lang_from && s.lang_to && `${s.lang_from} → ${s.lang_to}`, String(s.priority || p.about?.priority || "Normal")].filter(Boolean).join(" · ") }));
     const catat = (hasil: string) => admin.from("notif_email_log").insert(subs.map((s) => ({ jenis: "tugas", oleh: saya.id, penerima: id, project_id, sub_id: String(s.id), hasil })));
     try {
-      await kirimResend(kunci, ke, susun(String(t.doc?.nickname || t.doc?.name || "Penerjemah"), no, deadline, baris, false), `tugas-${project_id}-${id}-${subs.map((s) => s.id).join(".")}`.slice(0, 250));
+      await kirimResend(kunci, ke, susun(String(t.doc?.nickname || t.doc?.name || "Rekan"), no, deadline, baris, false, subs.every((x) => x.stage === "proofread")), `tugas-${project_id}-${id}-${subs.map((s) => s.id).join(".")}`.slice(0, 250));
       await catat("ok"); terkirim += 1;
     } catch (e) { await catat("gagal"); gagal = pesanGalat(e); }
   }

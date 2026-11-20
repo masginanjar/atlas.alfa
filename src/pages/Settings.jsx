@@ -1094,7 +1094,7 @@ function Users() {
               {!bolehIzin(user, 'pengaturan.pengguna.ubah') && <p className="mt-1 text-[11px] text-amber-700">Hanya admin dengan izin mengubah pengguna yang dapat mengganti pengaturan ini.</p>}
             </div>
           )}
-          {(e.role === 'penerjemah' || (e.extra_roles || []).includes('penerjemah')) && <NotifEmailPenerjemah e={e} set={set} bisaUbah={bolehIzin(user, 'pengaturan.pengguna.ubah')} />}
+          {['penerjemah', 'proofreader'].some((r) => e.role === r || (e.extra_roles || []).includes(r)) && <NotifEmailPenerjemah e={e} set={set} bisaUbah={bolehIzin(user, 'pengaturan.pengguna.ubah')} />}
           {user.role === 'superadmin' && (e.role === 'penerjemah' || (e.extra_roles || []).includes('penerjemah')) && (
             <Field label="Proofreader tetap" hint="Hanya Super Admin yang mengatur. Bila diisi, hasil penerjemah ini selalu dikirim ke proofreader tersebut — penerjemah tidak bisa memilih.">
               <Select value={e.proofreader_tetap || ''} onChange={(x) => set({ ...e, proofreader_tetap: x.target.value || '' })} data-proofreader-tetap-atur className="max-md:min-h-11 max-md:text-base">

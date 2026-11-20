@@ -7,6 +7,7 @@
 //    data project, menentukan penerima, menyusun isi, dan mengirim lewat Resend. Kunci Resend tidak pernah ada di browser.
 //  • Isi email: No Invoice, judul dokumen, jumlah dokumen & halaman, arah bahasa, prioritas, deadline, tombol buka ATLAS.
 //    TANPA lampiran dan TANPA data pribadi pelanggan (nama pelanggan tidak ditulis).
+//  • Sama untuk PROOFREADER: saat sub project masuk tahap Pemeriksaan dan proofreader-nya sudah ditunjuk, ia mendapat email "Tugas periksa baru".
 //  • DEMO: tidak ada email yang benar-benar dikirim — hanya pratinjau.
 // ============================================================
 import { db, MODE } from './db.js'
@@ -18,8 +19,10 @@ export const PENGIRIM_NOTIF = 'ATLAS 247 <notifikasi@247translator.id>'
 export const EMAIL_SAH = /^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/i
 export const notifEmailAktif = (u) => u?.notif_email_aktif === true && EMAIL_SAH.test(String(u?.notif_email || '').trim())
 
-/** Penerjemah internal yang SEDANG memegang sub project ini (tahap Penerjemahan). Di tahap lain = belum / sudah bukan tugasnya. */
-const pemegang = (s) => (s?.stage === 'penerjemahan' && (s?.translator_kind || 'translator') === 'translator' ? String(s?.translator || s?.data?.translator || '') : '')
+/** Pelaksana yang SEDANG memegang sub project ini: penerjemah internal (tahap Penerjemahan) atau proofreader yang ditunjuk (tahap Pemeriksaan). Di tahap lain = bukan tugasnya. */
+const pemegang = (s) => (s?.stage === 'penerjemahan' && (s?.translator_kind || 'translator') === 'translator' ? String(s?.translator || s?.data?.translator || '')
+  // Proofreader yang ditunjuk untuk sub ini (tahap Pemeriksaan Proofreader). Bila belum ada yang ditunjuk → tidak ada penerima.
+  : s?.stage === 'proofread' ? String(s?.data?.proofreader || '') : '')
 
 /**
  * Sub project yang baru masuk ke tangan seorang penerjemah internal pada simpanan ini → [{ sub_id, translator }].

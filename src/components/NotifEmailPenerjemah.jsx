@@ -85,13 +85,13 @@ export default function NotifEmailPenerjemah({ e, set, bisaUbah }) {
   return (
     <div className="rounded-xl bg-slate-50 p-3 ring-1 ring-slate-200" data-notif-email>
       <div className="flex items-center gap-3">
-        <div className="min-w-0 flex-1"><p className="flex items-center gap-1.5 text-sm font-semibold"><Mail className="h-4 w-4 shrink-0" />Email notifikasi tugas</p><p className="text-[11px] text-ink-mute">Saat ada project baru ditugaskan ke penerjemah ini, ia mendapat email singkat: No Invoice, dokumen, deadline. Tanpa lampiran.</p></div>
+        <div className="min-w-0 flex-1"><p className="flex items-center gap-1.5 text-sm font-semibold"><Mail className="h-4 w-4 shrink-0" />Email notifikasi tugas</p><p className="text-[11px] text-ink-mute">Saat ada project ditugaskan ke akun ini (sebagai penerjemah atau proofreader), ia mendapat email singkat: No Invoice, dokumen, deadline. Tanpa lampiran.</p></div>
         <button type="button" role="switch" aria-checked={nyala} aria-label="Email notifikasi tugas" disabled={!bisaUbah}
           onClick={() => set({ ...e, notif_email_aktif: !nyala })}
           className={cx("relative h-7 w-12 shrink-0 rounded-full transition disabled:opacity-50 max-md:h-8 max-md:w-14 max-md:before:absolute max-md:before:-inset-x-1 max-md:before:-inset-y-1.5 max-md:before:content-['']", nyala ? 'bg-brand' : 'bg-slate-300')}><span className={cx('absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition max-md:h-7 max-md:w-7', nyala ? 'left-[1.375rem] max-md:left-[1.625rem]' : 'left-0.5')} /></button>
       </div>
       <div className="mt-3">
-        <Field label="Email notifikasi" hint="Alamat email yang benar-benar dibuka penerjemah (boleh email pribadi). Berbeda dari email untuk masuk ATLAS.">
+        <Field label="Email notifikasi" hint="Alamat email yang benar-benar dibuka orangnya (boleh email pribadi). Berbeda dari email untuk masuk ATLAS.">
           <Input type="email" inputMode="email" autoComplete="off" placeholder="nama@email.com" value={e.notif_email || ''} disabled={!bisaUbah}
             onChange={(x) => set({ ...e, notif_email: x.target.value })} className="max-md:text-base" />
         </Field>
