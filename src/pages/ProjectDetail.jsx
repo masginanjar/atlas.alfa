@@ -1,3 +1,5 @@
+import KoreksiTypo from '../components/KoreksiTypo.jsx'
+import { typoAktif } from '../lib/typo.js'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { prioSub, prioSubBeda } from '../config/priority.js'
 import SalinChatOrder from '../components/SalinChatOrder.jsx'
@@ -821,7 +823,7 @@ function StagePanelIsi({ project, sub, stage, ringkas }) {
           }
           if (f.type === 'file') return (
             <Field key={f.key} label={f.label} required={f.required} hint="Bisa lebih dari satu file · otomatis masuk File Project (tanpa ganda)">
-              <StageFiles project={project} sub={sub} list={fieldFiles(vals, f.key)} accept={f.accept}
+              <StageFiles project={project} sub={sub} list={fieldFiles(vals, f.key)} accept={f.accept} fieldKey={f.key}
                 onChange={(list) => setVals((o) => ({ ...o, [f.key]: list[0] || '', [`${f.key}_list`]: list }))} onBusy={(b) => setUploading(b ? f.key : null)} />
             </Field>
           )
@@ -999,9 +1001,17 @@ function ChecklistProses({ f, nilai, setNilai, project, sub, user }) {
 }
 
 /** File di tahap alur kerja: banyak file, upload baru atau ambil dari File Project (tidak diunggah ulang). */
-function StageFiles({ project, sub, list, onChange, onBusy, accept }) {
+function StageFiles({ project, sub, list, onChange, onBusy, accept, fieldKey }) {
   const { user, notify } = useApp()
   const [busy, setBusy] = useState(null)
+  // Koreksi Typo Otomatis: hanya field Hasil Terjemahan & hanya bila akun pengunggah dinyalakan admin.
+  const cekTypo = fieldKey === 'hasil_terjemahan' && typoAktif(user)
+  const [baruTypo, setBaruTypo] = useState({})
+  const gantiTypo = async (i, fileBaru, meta) => {
+    const up = await uploadProjectFiles([{ file: fileBaru, name: fileBaru.name, sub_id: sub.id }], { branch: project.branch, invoice: project.invoice_no, by: user.name, subs: project.sub_projects })
+    const { versi_asli: _v, typo: _t, ...asli } = list[i] // eslint-disable-line no-unused-vars
+    onChange(list.map((x, j) => (j === i ? { ...up[0], typo: { status: 'dipakai', n: meta.n, cek_id: meta.cek_id }, versi_asli: list[i].versi_asli || asli } : x)))
+  }
   const [pick, setPick] = useState(null) // Set id terpilih dari File Project
   const ids = new Set(list.map(fileIdentity))
   const allFiles = collectFiles(project)
@@ -1014,6 +1024,7 @@ function StageFiles({ project, sub, list, onChange, onBusy, accept }) {
     try {
       const up = await uploadProjectFiles(arr.map(({ file, name }) => ({ file, name, sub_id: sub.id })), { branch: project.branch, invoice: project.invoice_no, by: user.name, subs: project.sub_projects }, (i, n) => setBusy(`Mengunggah ${i}/${n}…`))
       onChange([...list, ...up]); notify(`${up.length} file ditambahkan`)
+      if (cekTypo) setBaruTypo((m) => ({ ...m, ...Object.fromEntries(up.map((u, i) => [u.id, arr[i].file])) }))
     } catch (e) { notify(e.message, 'err') } finally { setBusy(null); onBusy(false) }
   }
   return (
@@ -1021,9 +1032,13 @@ function StageFiles({ project, sub, list, onChange, onBusy, accept }) {
       {list.length > 0 && (
         <ul className="divide-y divide-slate-100 rounded-xl bg-slate-50 ring-1 ring-slate-200">
           {list.map((x, i) => (
-            <li key={fileIdentity(x) || i} className="flex items-center gap-2 px-3 py-2">
-              <div className="min-w-0 flex-1"><FileChip file={x} /></div>
-              <button type="button" className="text-xs font-semibold text-rose-500" onClick={() => onChange(list.filter((_, j) => j !== i))} aria-label={`Lepas ${x.name}`}>Lepas</button>
+            <li key={fileIdentity(x) || i}>
+              <div className="flex items-center gap-2 px-3 py-2">
+                <div className="min-w-0 flex-1"><FileChip file={x} /></div>
+                <button type="button" className="text-xs font-semibold text-rose-500" onClick={() => onChange(list.filter((_, j) => j !== i))} aria-label={`Lepas ${x.name}`}>Lepas</button>
+              </div>
+              {fieldKey === 'hasil_terjemahan' && (cekTypo || x.typo?.status === 'dipakai') && <KoreksiTypo project={project} sub={sub} file={x} blob={baruTypo[x.id]} otomatis={cekTypo && !x.typo && !!baruTypo[x.id]}
+                onGanti={(fb, meta) => gantiTypo(i, fb, meta)} onTanda={(ty) => onChange(list.map((y, j) => (j === i ? { ...y, typo: ty } : y)))} />}
             </li>
           ))}
         </ul>

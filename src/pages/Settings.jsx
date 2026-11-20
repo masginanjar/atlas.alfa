@@ -42,6 +42,7 @@ function Pindah({ ke, judul, teks, tombol }) {
 import { KeAtas, TombolTambah } from '../components/SlotAtas.jsx'
 import { AksesApostilleSettings } from '../components/CentangApostille.jsx'
 const AiSettings = lazy(() => import('../components/AiSettings.jsx'))
+const LaporanTypo = lazy(() => import('../components/LaporanTypo.jsx'))
 const AksesSmartTranslator = lazy(() => import('../components/AksesSmartTranslator.jsx'))
 
 export default function Settings() {
@@ -93,7 +94,7 @@ export default function Settings() {
       {tab === 'people' && <People />}
       {tab === 'kurir' && <div className="space-y-4"><AlamatKirim /><Couriers /></div>}
       {tab === 'vendor' && <Pindah ke="#/vendor" judul="Data Vendor sekarang ada di Penjualan" teks="Daftar vendor, bahasa/layanan, termin, dan rekening dikelola di Penjualan → Vendor." tombol="Buka Penjualan → Vendor" />}
-      {tab === 'users' && <Users />}
+      {tab === 'users' && <><Users /><Suspense fallback={null}><LaporanTypo /></Suspense></>}
       {tab === 'akses' && <Suspense fallback={null}><AksesRole /></Suspense>}
       {tab === 'file' && <><FileRules />{can.manageUsers(user) && <PortalSettings />}</>}
       {tab === 'integrasi' && <Integrations />}
@@ -1079,6 +1080,17 @@ function Users() {
             </Field>
           )}
           <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={e.active !== false} onChange={(x) => set({ ...e, active: x.target.checked })} />Aktif</label>
+          {(e.role === 'penerjemah' || (e.extra_roles || []).includes('penerjemah')) && (
+            <div className="rounded-xl bg-slate-50 p-3 ring-1 ring-slate-200" data-toggle-typo>
+              <div className="flex items-center gap-3">
+                <div className="min-w-0 flex-1"><p className="text-sm font-semibold">Koreksi Typo Otomatis</p><p className="text-[11px] text-ink-mute">Saat penerjemah ini mengunggah hasil terjemahan, AI hemat memeriksa salah ketik. Mati = upload seperti biasa, tanpa biaya AI.</p></div>
+                <button type="button" role="switch" aria-checked={e.koreksi_typo === true} aria-label="Koreksi Typo Otomatis" disabled={!bolehIzin(user, 'pengaturan.pengguna.ubah')}
+                  onClick={() => set({ ...e, koreksi_typo: e.koreksi_typo !== true })}
+                  className={cx("relative h-7 w-12 shrink-0 rounded-full transition disabled:opacity-50 max-md:h-8 max-md:w-14 max-md:before:absolute max-md:before:-inset-x-1 max-md:before:-inset-y-1.5 max-md:before:content-['']", e.koreksi_typo === true ? 'bg-brand' : 'bg-slate-300')}><span className={cx('absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition max-md:h-7 max-md:w-7', e.koreksi_typo === true ? 'left-[1.375rem] max-md:left-[1.625rem]' : 'left-0.5')} /></button>
+              </div>
+              {!bolehIzin(user, 'pengaturan.pengguna.ubah') && <p className="mt-1 text-[11px] text-amber-700">Hanya admin dengan izin mengubah pengguna yang dapat mengganti pengaturan ini.</p>}
+            </div>
+          )}
           {user.role === 'superadmin' && (
             <Field label="Jabatan tersembunyi — boleh bertindak sebagai" hint="Hanya Superadmin yang melihat pengaturan ini. Saat dipilih lewat 'Ganti peran', semua riwayat, ping, dan klaim tercatat atas nama akun persona itu — tim tidak melihat siapa yang sebenarnya login. Perpindahannya tercatat di log audit (Superadmin saja).">
               <div className="flex flex-wrap gap-1.5">

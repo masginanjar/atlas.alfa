@@ -18,6 +18,8 @@ import { StagePanel } from '../pages/ProjectDetail.jsx'
 import { saveBlob, dataUrlToBlob } from '../lib/download.js'
 import { boleh } from '../lib/izin.js'
 import { Button, Card, Empty, Sheet, cx } from './ui.jsx'
+import KoreksiTypo from './KoreksiTypo.jsx'
+import { typoAktif } from '../lib/typo.js'
 
 // Tahap yang dikerjakan tiap role pelaksana — tombolnya tampil langsung di My Project
 export const WORK_STAGES = { penerjemah: ['penerjemahan'], proofreader: ['proofread'], otorisator: ['otorisasi'] }
@@ -94,7 +96,22 @@ function useTask(project, sub, onDone) {
       const added = await uploadProjectFiles(picked.map(({ file, name }) => ({ file, name, sub_id: sub.id })), { branch: project.branch, invoice: project.invoice_no, by: user.name, subs: project.sub_projects })
       const all = [...files, ...added]
       await processStage(project, sub.id, { [fileKey]: all[0], [`${fileKey}_list`]: all }, false)
+      if (cekTypo) setBaruTypo((m) => ({ ...m, ...Object.fromEntries(added.map((a, i) => [a.id, picked[i].file])) })) // file asli sudah tersimpan → periksa typo di latar
     }, 'Hasil terunggah')
+  }
+  // Koreksi Typo Otomatis: hanya untuk hasil terjemahan & hanya bila akun pengunggah dinyalakan admin.
+  const cekTypo = fileKey === 'hasil_terjemahan' && typoAktif(user)
+  const [baruTypo, setBaruTypo] = useState({})
+  /** Simpan hasil koreksi sebagai VERSI BARU di posisi yang sama; file asli disimpan di `versi_asli` (tetap bisa diunduh). */
+  const gantiTypo = async (index, fileBaru, meta) => {
+    const added = await uploadProjectFiles([{ file: fileBaru, name: fileBaru.name, sub_id: sub.id }], { branch: project.branch, invoice: project.invoice_no, by: user.name, subs: project.sub_projects })
+    const { versi_asli: _v, typo: _t, ...asli } = files[index] // eslint-disable-line no-unused-vars
+    const all = files.map((f, i) => (i === index ? { ...added[0], typo: { status: 'dipakai', n: meta.n, cek_id: meta.cek_id }, versi_asli: files[index].versi_asli || asli } : f))
+    await processStage(project, sub.id, { [fileKey]: all[0], [`${fileKey}_list`]: all }, false)
+  }
+  const tandaTypo = async (index, typo) => {
+    const all = files.map((f, i) => (i === index ? { ...f, typo } : f))
+    try { await processStage(project, sub.id, { [fileKey]: all[0], [`${fileKey}_list`]: all }, false) } catch { /* penanda saja — tidak mengganggu pekerjaan */ }
   }
   /** Ganti satu file hasil (salah upload) — file lama diganti di posisi yang sama. */
   const replace = async (index, fileList) => {
@@ -121,7 +138,7 @@ function useTask(project, sub, onDone) {
   }
   const blocked = stage.fields.some((f) => f.required && f.type === 'file' && !files.length) ? 'Upload hasil dulu'
     : pick?.required && !(teamPick ? people?.length : who) ? (teamPick ? 'Belum ada proofreader aktif — hubungi Direktur' : `Pilih ${pick.label} dulu`) : ''
-  return { stage, started, claim, files, sources, pick, teamPick, people, who, setWho, noteField, note, setNote, busy, start, upload, replace, remove, next, blocked, namerDialog }
+  return { stage, started, claim, files, sources, pick, teamPick, people, who, setWho, noteField, note, setNote, busy, start, upload, replace, remove, next, blocked, namerDialog, cekTypo, baruTypo, gantiTypo, tandaTypo, fileKey }
 }
 
 /** Kotak deadline di atas lembar kerja: batas (H-1 untuk pelaksana) + sisa waktu. */
@@ -333,9 +350,11 @@ function WorkSheetBerkas({ project, sub, t, onClose }) {
           <p className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-ink-mute">2. Hasil pekerjaan Anda</p>
           {t.files.length > 0 && (
             <ul className="mb-2 divide-y divide-emerald-100 rounded-xl bg-emerald-50/60 ring-1 ring-emerald-200">
-              {t.files.map((f, i) => <li key={i} className="flex items-center gap-2 px-3 py-1.5 text-sm text-emerald-900"><CheckCircle2 className="h-4 w-4 shrink-0" /><span className="min-w-0 flex-1 truncate">{f.name}</span><button type="button" onClick={() => setPreview(f)} className="rounded p-1 text-emerald-700 hover:bg-emerald-100" aria-label={`Baca ${f.name}`}><Eye className="h-4 w-4" /></button>
+              {t.files.map((f, i) => <li key={i} data-file-hasil><div className="flex items-center gap-2 px-3 py-1.5 text-sm text-emerald-900"><CheckCircle2 className="h-4 w-4 shrink-0" /><span className="min-w-0 flex-1 truncate">{f.name}</span><button type="button" onClick={() => setPreview(f)} className="rounded p-1 text-emerald-700 hover:bg-emerald-100" aria-label={`Baca ${f.name}`}><Eye className="h-4 w-4" /></button>
                 <label className="cursor-pointer rounded-lg px-2 py-1 text-[11px] font-semibold text-emerald-800 ring-1 ring-emerald-300 hover:bg-emerald-100" title="Salah upload? Ganti dengan file lain" data-aksi="ganti-file">Ganti<input type="file" className="hidden" aria-label={`Ganti ${f.name}`} onChange={(e) => { const fl = [...e.target.files]; e.target.value = ''; if (fl.length) t.replace(i, fl) }} /></label>
-                <button type="button" onClick={() => t.remove(i)} className="rounded-lg px-2 py-1 text-[11px] font-semibold text-rose-700 ring-1 ring-rose-200 hover:bg-rose-50" aria-label={`Hapus ${f.name}`} data-aksi="hapus-file">Hapus</button></li>)}
+                <button type="button" onClick={() => t.remove(i)} className="rounded-lg px-2 py-1 text-[11px] font-semibold text-rose-700 ring-1 ring-rose-200 hover:bg-rose-50" aria-label={`Hapus ${f.name}`} data-aksi="hapus-file">Hapus</button></div>
+                {t.fileKey === 'hasil_terjemahan' && (t.cekTypo || f.typo?.status === 'dipakai') && <KoreksiTypo project={project} sub={sub} file={f} blob={t.baruTypo[f.id]} otomatis={t.cekTypo && !f.typo && (!!t.baruTypo[f.id] || f.by === user.name)} onGanti={(fb, meta) => t.gantiTypo(i, fb, meta)} onTanda={(ty) => t.tandaTypo(i, ty)} />}
+              </li>)}
             </ul>
           )}
           <UploadBtn t={t} big label="Pilih file hasil (bisa beberapa)" />

@@ -1,4 +1,4 @@
-// ATLAS — pengaturan AI untuk fitur yang punya fungsi server sendiri (spesimen-ai, tarik-data-ai).
+// ATLAS — pengaturan AI untuk fitur yang punya fungsi server sendiri (spesimen-ai, tarik-data-ai, typo-ai).
 //  • Hanya MENGATUR (model + batas biaya per bulan); tidak pernah memanggil Gemini dan tidak menyentuh kunci.
 //  • Disimpan di ai_setelan.doc.fitur.<id> (tempat kedua fungsi itu membaca) DAN salinannya di doc.fitur_lain.<id>:
 //    fungsi gemini-ai menulis ulang doc.fitur saat pengaturannya disimpan, jadi salinan dipakai untuk memulihkan.
@@ -12,6 +12,7 @@ const bulanIni = () => new Date().toLocaleString("sv-SE", { timeZone: "Asia/Maka
 const FITUR: Record<string, { model: string; batas_rp: number }> = {
   spesimen: { model: "gemini-3.1-pro-preview", batas_rp: 300000 },
   tarik_data: { model: "gemini-3-flash-preview", batas_rp: 100000 },
+  typo: { model: "gemini-3.5-flash-lite", batas_rp: 100000 },
 };
 const MODEL = ["gemini-3.1-flash-lite", "gemini-3.5-flash-lite", "gemini-3-flash-preview", "gemini-3.8-flash", "gemini-3.1-pro-preview"]; // yang harganya dikenal kedua fungsi
 

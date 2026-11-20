@@ -69,7 +69,7 @@ export function useUploadNamer({ existing = [], invoice } = {}) {
   }
 
   const dialog = (
-    <Sheet open={!!rows} onClose={() => close(null)} title={`Nama file sebelum upload (${rows?.length || 0})`}
+    <Sheet open={!!rows} atas={typeof document !== 'undefined' && !!document.querySelector('[data-layar-kerja]')} onClose={() => close(null)} title={`Nama file sebelum upload (${rows?.length || 0})`}
       footer={<>
         <Button variant="outline" className="flex-1" onClick={() => close(null)}>Batal</Button>
         <Button className="flex-[2]" disabled={errs.some(Boolean)} onClick={() => close(rows.map((r) => ({ file: r.file, name: `${clean(r.base)}${r.ext}` })))}><Upload className="h-4 w-4" />Upload {rows?.length} file</Button>

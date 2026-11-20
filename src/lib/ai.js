@@ -23,9 +23,10 @@ export const FITUR_AI = [
   // Dua fitur di bawah punya fungsi server sendiri (spesimen-ai, tarik-data-ai) → diatur lewat fungsi ai-setelan-lain. Tidak punya cara "tanpa AI".
   { id: 'spesimen', lain: true, label: 'Pemisah Spesimen', di: 'Alat → Pemisah Spesimen', ket: 'Membaca nama & jabatan pejabat serta letak tanda tangan, paraf, dan stempel di tiap halaman. Dipakai juga oleh tombol “Cari alamat” instansi (lewat pencarian Google).' },
   { id: 'tarik_data', lain: true, label: 'Tarik Data (beta)', di: 'Buat Project → Tarik Data', ket: 'Menyusun usulan sub project dari item invoice Zoho. Yang dikirim hanya teks item — alamat, telepon, dan email dibuang lebih dulu.' },
+  { id: 'typo', lain: true, label: 'Koreksi Typo Otomatis', di: 'Upload hasil terjemahan (akun penerjemah yang dinyalakan)', ket: 'Menunjuk salah ketik di hasil terjemahan. Yang dikirim hanya teks paragraf; AI tidak menulis ulang dokumen. Hanya berjalan untuk akun yang dinyalakan di Pengaturan → Pengguna.' },
 ]
 const FITUR_LAIN = FITUR_AI.filter((f) => f.lain).map((f) => f.id)
-const BAWAAN_LAIN = { spesimen: { model: 'gemini-3.1-pro-preview', batas_rp: 300000 }, tarik_data: { model: 'gemini-3-flash-preview', batas_rp: 100000 } }
+const BAWAAN_LAIN = { spesimen: { model: 'gemini-3.1-pro-preview', batas_rp: 300000 }, tarik_data: { model: 'gemini-3-flash-preview', batas_rp: 100000 }, typo: { model: 'gemini-3.5-flash-lite', batas_rp: 100000 } }
 const BAWAAN = () => ({ kurs: 17000, fitur: { penerjemah: { model: 'gemini-3-flash-preview', batas_rp: 100000 }, surat_kuasa: { model: 'gemini-3.5-flash-lite', batas_rp: 50000 }, bukti: { model: 'gemini-3.5-flash-lite', batas_rp: 50000, otomatis: true }, ...structuredClone(BAWAAN_LAIN) } })
 const KUNCI_DEMO = 'atlas_ai_demo'
 const demoBaca = () => { try { const s = JSON.parse(localStorage.getItem(KUNCI_DEMO) || 'null'); const b = BAWAAN(); return s ? { kurs: s.kurs || b.kurs, fitur: Object.fromEntries(Object.keys(b.fitur).map((k) => [k, { ...b.fitur[k], ...(s.fitur?.[k] || {}) }])) } : b } catch { return BAWAAN() } }

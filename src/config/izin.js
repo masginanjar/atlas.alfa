@@ -192,6 +192,9 @@ export const MODUL = [
     f('pengaturan.integrasi', 'Integrasi', ['lihat', 'atur'], { semua: dari(can.manageUsers) }),
     // 15 Nov 2026: pengaturan AI (Gemini) — fitur baru, bawaan hanya Superadmin.
     f('pengaturan.ai', 'AI (Gemini) — model & batas biaya', ['lihat', 'atur']),
+    // 20 Nov 2026: Koreksi Typo Otomatis — laporan seberapa sering tiap penerjemah typo. Fitur baru, bawaan hanya Superadmin.
+    //  (Toggle per akun memakai izin yang sudah ada: pengaturan.pengguna.ubah — dijaga juga oleh trigger users_kunci_jaga.)
+    f('koreksi-typo', 'Koreksi Typo Otomatis — laporan typo per penerjemah', ['laporan']),
     f('pengaturan.role', 'Role & Hak Akses', ['lihat', 'kelola', 'riwayat'], { semua: ['superadmin'] }, { inti: true }),
     f('pengguna.role', 'Menetapkan role pengguna', ['kelola'], { semua: ['superadmin'] }, { inti: true }),
   ], field: [
