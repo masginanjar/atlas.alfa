@@ -592,7 +592,7 @@ function StatusTugas({ t, sub }) {
   return <p className={cx('truncate text-xs font-semibold', tone)} data-status-tugas>{t.stage.label}<span className={cx('font-medium', tone === 'text-brand' ? 'text-brand/80' : 'text-ink-mute')}> · {teks}</span></p>
 }
 
-function AksiTugas({ t, project, sub, setOpen, className, hp }) {
+function AksiTugas({ t, project, sub, setOpen, className, hp, pendek }) {
   // Hanya dua tombol: Mulai/Lanjutkan (membuka jendela kerja: unduh dokumen → upload hasil → kirim) dan Tolak.
   const size = hp ? undefined : 'sm'
   const kelas = hp ? '!h-11 flex-1 justify-center' : ''
@@ -604,7 +604,27 @@ function AksiTugas({ t, project, sub, setOpen, className, hp }) {
         : <Button size={size} className={kelas} variant={t.files.length || hp ? 'dark' : undefined} title="Buka jendela kerja: dokumen, upload hasil, kirim" data-aksi="lanjutkan-tugas" onClick={() => setOpen(true)}>
             {t.files.length ? <CheckCircle2 className="h-4 w-4" /> : <FolderOpen className="h-4 w-4" />}{hp ? (t.stage.key === 'registrasi' ? 'Isi nomor registrasi' : t.files.length ? `Buka lembar kerja · ${t.files.length} file` : 'Buka lembar kerja') : t.files.length ? `Lanjutkan · ${t.files.length} file` : 'Lanjutkan'}
           </Button>}
-      <TolakTugasBtn project={project} sub={sub} className={hp ? '!h-11' : '!h-8'} />
+      <TolakTugasBtn project={project} sub={sub} pendek={pendek} className={cx(hp ? '!h-11' : '!h-8', pendek && 'whitespace-nowrap')} />
+    </div>
+  )
+}
+
+/** Aksi tugas untuk SEL TABEL daftar project pelaksana: Mulai / Lanjutkan / Tolak per sub yang menjadi tugasnya (tanpa teks judul). */
+export function AksiTugasBaris({ project, hp }) {
+  const { user } = useApp()
+  const subs = myWorkSubs(user, project)
+  if (!subs.length) return null
+  return <div className={cx('flex min-w-0 flex-col gap-1', hp ? 'w-full' : 'items-end')} data-aksi-baris>{subs.map((s) => <AksiSatu key={s.id} project={project} sub={s} banyak={subs.length > 1} hp={hp} />)}</div>
+}
+function AksiSatu({ project, sub, banyak, hp }) {
+  const [open, setOpen] = useState(false)
+  const t = useTask(project, sub, () => setOpen(false))
+  return (
+    <div className={cx('flex min-w-0 items-center gap-1.5', hp && 'w-full')}>
+      {banyak && <span className="min-w-0 max-w-[9rem] truncate text-[11px] font-semibold text-ink-mute" title={sub.title}>{sub.lang_to || sub.title}</span>}
+      <AksiTugas t={t} project={project} sub={sub} setOpen={setOpen} hp={hp} pendek={!hp} className={hp ? 'w-full flex-nowrap' : 'flex-nowrap'} />
+      {t.namerDialog}
+      {open && <WorkSheet project={project} sub={sub} t={t} onClose={() => setOpen(false)} />}
     </div>
   )
 }

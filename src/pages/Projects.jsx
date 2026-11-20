@@ -7,7 +7,7 @@ import { go } from '../lib/router.js'
 import { Plus, Minus, Search, FolderOpen, Banknote, CalendarClock, Layers, LayoutGrid, List, ChevronRight, ChevronDown, Sparkles, StickyNote, Printer, AlertTriangle, Eye, X, Save, Rows2, Rows3, Rows4, Maximize2, Minimize2, Table2, MoreHorizontal, Columns3, Bookmark } from 'lucide-react'
 import FileManager, { fieldFiles, collect as collectFiles } from '../components/FileManager.jsx'
 import ProjectDetail, { SubProject, AksiBaris } from './ProjectDetail.jsx'
-import WorkerBoard, { WorkerActions, isWorkRole } from '../components/WorkerActions.jsx'
+import { WorkerActions, isWorkRole, AksiTugasBaris, myWorkSubs } from '../components/WorkerActions.jsx'
 import { useApp } from '../lib/store.jsx'
 import { scopeByBranch, can, branchesOf, invoiceLabel, BRANCHES, diKoordinasi, vendorKoordinator, foreignLang } from '../config/access.js'
 import ProjectSpreadsheet from '../components/ProjectSpreadsheet.jsx'
@@ -113,7 +113,7 @@ export default function Projects({ tabAwal }) {
   const SEMBUNYI_TABEL = ['cabang', 'print', 'cs', 'status', 'orang', 'layanan', 'jmlDok', 'jmlHal', 'prioritas'] // Detail Layanan, jumlah dokumen & halaman: sudah terbaca dari kolom Dokumen di baris (nama dokumen · n hlm)
   const SEMBUNYI_LIST = ['cabang'] // pelaksana tidak perlu kolom "Tahap → berikutnya"
   const colsAktif = worker ? cols.filter((k) => !SEMBUNYI_LIST.includes(k)) : cols
-  const [fullView, setFullView] = useState(true) // tampilan lengkap selalu terbuka (masih bisa disembunyikan)
+  const fullView = true // pelaksana: satu tabel, selalu tampil
   // Tanpa izin project.sub-lain.lihat (bawaan: penerjemah, proofreader, otorisator): di daftar hanya tampil sub project yang menjadi tugasnya
   // (bahasa lain / sub lain di invoice yang sama tidak muncul). Kolom Tahap punya izin sendiri (project.tahap-sub.lihat).
   const subLain = bolehIzin(user, 'project.sub-lain.lihat')
@@ -126,7 +126,8 @@ export default function Projects({ tabAwal }) {
     const s = q.trim().toLowerCase()
     return scoped
       .filter((p) => tab === 'all' || (tab === 'vendor' ? adaVendor(p) : tab === 'koordinator' ? (p.sub_projects || []).some((x) => diKoordinasi(user, x)) : tab === 'mandarin' ? adaMandarin(p) : (p.sub_projects || []).some((x) => (x.type || 'jasa_lain') === tab)))
-      .filter((p) => cepat === 'belumbayar' || status === 'semua' || (status === 'aktif' ? !isDone(p) : isDone(p))) // "Belum catat bayar" melihat yang sudah selesai juga
+      // Pelaksana: Aktif = masih ada tugas untuknya di project itu; Selesai = bagiannya sudah beres (walau project-nya belum selesai)
+      .filter((p) => cepat === 'belumbayar' || status === 'semua' || (isWorkRole(user) ? (status === 'aktif') === (myWorkSubs(user, p).length > 0) : status === 'aktif' ? !isDone(p) : isDone(p))) // "Belum catat bayar" melihat yang sudah selesai juga
       .filter((p) => !s || [p.invoice_no, p.customer?.name, p.about?.description, ...(p.sub_projects || []).map((x) => x.title)].join(' ').toLowerCase().includes(s))
       .filter((p) => !dlFilter || (p.about?.deadline && String(p.about.deadline).slice(0, 10) >= dlFilter.from && String(p.about.deadline).slice(0, 10) <= dlFilter.to))
       .filter((p) => (!bpFilter.branch || p.branch === bpFilter.branch) && (!bpFilter.print || (p.about?.print_location || p.branch) === bpFilter.print))
@@ -378,13 +379,16 @@ export default function Projects({ tabAwal }) {
         )
       })()}
 
+      {/* Pelaksana: SATU tabel saja (kartu "Tugas Saya" dihapus) — saring Semua / Aktif / Selesai; aksi Mulai / Lanjutkan / Tolak ada di barisnya */}
       {worker && (
-        <>
-          <WorkerBoard projects={scoped} />
-          <button type="button" onClick={() => setFullView((v) => !v)} className="text-xs font-semibold text-brand hover:underline">
-            {fullView ? 'Sembunyikan tampilan lengkap' : 'Lihat semua project saya (tampilan lengkap)'}
-          </button>
-        </>
+        <div className="flex gap-1.5 overflow-x-auto [scrollbar-width:none]" role="tablist" aria-label="Saring project" data-saring-pelaksana>
+          {[['semua', 'Semua', scoped.length], ['aktif', 'Aktif', scoped.filter((p) => myWorkSubs(user, p).length > 0).length], ['selesai', 'Selesai', scoped.filter((p) => myWorkSubs(user, p).length === 0).length]].map(([k, l, n]) => (
+            <button key={k} type="button" role="tab" aria-selected={status === k} onClick={() => setStatus(k)} data-saring={k}
+              className={cx('flex h-9 shrink-0 items-center gap-1.5 rounded-xl px-3 text-xs font-semibold ring-1 transition max-md:h-11 max-md:px-4 max-md:text-sm', status === k ? 'bg-ink text-white ring-ink' : 'bg-white text-ink-soft ring-slate-200 hover:bg-slate-50')}>
+              {l}<span className={cx('tabular-nums', status === k ? 'text-white/70' : 'text-ink-mute')}>{n}</span>
+            </button>
+          ))}
+        </div>
       )}
 
       {worker && !fullView ? null : (
@@ -398,7 +402,7 @@ export default function Projects({ tabAwal }) {
           {list.length === 0 && !(view === 'list' && (dlFilter || bpFilter.branch || bpFilter.print || q || tab !== 'all')) ? (
             <Card><Empty icon={FolderOpen} title={worker ? 'Belum ada project untuk Anda' : 'Belum ada project'} text={worker ? 'Project akan muncul di sini begitu ada yang ditugaskan kepada Anda.' : 'Buat project baru dari invoice Zoho.'} action={worker || !can.editProject(user) ? null : <Button onClick={() => go('projects/new')}><Plus className="h-4 w-4" />Project Baru</Button>} /></Card>
           ) : view === 'list' ? <ProjectList status={status} setStatus={setStatus} statusOpsi={[['aktif', `Aktif ${scoped.filter((p) => !isDone(p)).length}`], ['selesai', 'Selesai'], ['semua', 'Semua']].map(([key, label]) => ({ key, label }))} pref={{ ...pref, grup: pref.grup && sort === 'deadline' }} list={rest.slice(0, shownN)} nLate={late.length} dlFilter={dlFilter} setDlFilter={setDlFilter} prFilter={prFilter} setPrFilter={setPrFilter} cols={colsAktif} detailFor={detailFor} setDetailFor={setDetailFor} filesFor={filesFor} setFilesFor={setFilesFor} onLangkah={bukaLangkah} bpFilter={bpFilter} setBpFilter={setBpFilter} options={{ branches: [...new Set(scoped.map((p) => p.branch))].sort(), prints: [...new Set(scoped.map((p) => p.about?.print_location || p.branch))].sort() }} /> : (
-            <ProjectSpreadsheet pref={pref} list={list} detailFor={detailFor} state={tableState} setState={setTableState} hideCols={worker ? SEMBUNYI_TABEL : []} kolomKhusus={worker ? ['dokumen'] : []} tanpaIsi={worker} subMilik={subMilik} tanpaTahap={!bolehIzin(user, 'project.tahap-sub.lihat')} tanpaCari renderIsi={worker ? undefined : (p) => <ProjectExpand p={p} onLangkah={bukaLangkah} />}
+            <ProjectSpreadsheet pref={pref} list={list} detailFor={detailFor} state={tableState} setState={setTableState} hideCols={worker ? SEMBUNYI_TABEL : []} selesaiUntuk={worker ? (p) => myWorkSubs(user, p).length === 0 : null} kolomKhusus={worker ? ['dokumen'] : []} tanpaIsi={worker} lebarAksi={worker ? 'var(--lebar-aksi-pelaksana)' : ''} renderBawahHp={worker ? (p) => (myWorkSubs(user, p).length ? <AksiTugasBaris project={p} hp /> : null) : null} subMilik={subMilik} tanpaTahap={!bolehIzin(user, 'project.tahap-sub.lihat')} tanpaCari renderIsi={worker ? undefined : (p) => <ProjectExpand p={p} onLangkah={bukaLangkah} />}
               kepalaAksi={worker ? 'Aksi' : <span className="inline-flex items-center gap-2">Aksi<select value={status} onChange={(e) => setStatus(e.target.value)} aria-label="Status project" data-status-tabel className="h-7 rounded-lg border-0 bg-[#141B34] py-0 pl-2 pr-7 text-xs font-bold text-white focus:ring-2 focus:ring-[#4169E1]">{[['aktif', `Aktif ${scoped.filter((p) => !isDone(p)).length}`], ['selesai', 'Selesai'], ['semua', 'Semua']].map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></span>}
               onDetail={(p) => { setFilesFor(null); setDetailFor(p) }}
               onFiles={(p) => setFilesFor(p)}
@@ -406,6 +410,7 @@ export default function Projects({ tabAwal }) {
               renderAksi={(p) => { const ctx = { users: data.users, people: data.people, user, worker }; const langkah = langkahBerikutnya(p, user, ctx); return (
                 <span className={cx('flex items-center gap-1', worker && 'justify-end')} onClick={(e) => e.stopPropagation()}>
                   {!worker && <TombolLangkah p={p} langkah={langkah} onBuka={bukaLangkah} />}
+                  {worker && <span className="max-md:hidden"><AksiTugasBaris project={p} /></span>}
                   {/* Pelaksana: cukup tombol folder (detail sudah ada di isi baris) */}
                   {!worker && <button type="button" onClick={() => { setFilesFor(null); setDetailFor(p) }} aria-label={`Lihat detail project ${invoiceLabel(p.invoice_no)}`} title="Lihat detail project (panel samping)" data-aksi="detail" className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white text-ink-mute ring-1 ring-slate-200 hover:text-brand"><Eye className="h-4 w-4" /></button>}
                   <button type="button" onClick={() => setFilesFor(p)} aria-label={`File ${invoiceLabel(p.invoice_no)}`} title="Folder file project" data-aksi="file" className="grid h-8 w-8 shrink-0 max-md:h-11 max-md:w-11 place-items-center rounded-lg bg-white text-ink-mute ring-1 ring-slate-200 hover:text-brand"><FolderOpen className="h-4 w-4" /></button>

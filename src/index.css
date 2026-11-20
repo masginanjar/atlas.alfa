@@ -631,3 +631,7 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]), select, textarea { font-size: max(16px, 1em); }
   html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 }
+
+/* Daftar project pelaksana: kolom Aksi — HP hanya folder (aksi tugas di baris bawah), tablet/desktop memuat Mulai/Lanjutkan + Tolak + folder */
+:root { --lebar-aksi-pelaksana: 64px; }
+@media (min-width: 768px) { :root { --lebar-aksi-pelaksana: 212px; } }

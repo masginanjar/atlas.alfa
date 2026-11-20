@@ -96,7 +96,7 @@ export function GantiPenerjemahBtn({ project, sub, size = 'sm', className }) {
 }
 
 /** Tombol + form "Tolak Tugas" untuk penerjemah yang memegang dokumen. */
-export function TolakTugasBtn({ project, sub, onDone, size = 'sm', className, blok }) {
+export function TolakTugasBtn({ project, sub, onDone, size = 'sm', className, blok, pendek }) {
   const { user, tolakTugas, notify } = useApp()
   const [buka, setBuka] = useState(false)
   const [alasan, setAlasan] = useState('')
@@ -116,7 +116,7 @@ export function TolakTugasBtn({ project, sub, onDone, size = 'sm', className, bl
     <Button size={size} variant="outline" onClick={() => setBuka(true)} data-aksi="tolak-tugas"
       className={cx('!text-rose-700 !ring-rose-300 hover:!bg-rose-50', blok && 'w-full', className)}
       title="Tolak tugas ini — wajib isi alasan, dokumen kembali ke Direktur">
-      <Undo2 className="h-3.5 w-3.5" />Tolak Project
+      <Undo2 className="h-3.5 w-3.5" />{pendek ? 'Tolak' : 'Tolak Project'}
     </Button>
   )
   return (
