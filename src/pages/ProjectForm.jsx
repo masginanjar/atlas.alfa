@@ -839,7 +839,7 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
               <>
                 {adaInv && <AturTampilan t={tampil} atur={aturTampil} />}
                 <div className="flex flex-col gap-1.5" data-sub-wadah={adaInv ? (sejajar ? 'sejajar' : 'berdampingan') : 'biasa'} data-sub-rapat={tampil.rapat ? '' : undefined} data-sub-ukuran={tampil.ukuran || undefined} style={{ '--sub-kiri': `${tampil.kiri}%` }}>
-                  {sejajar && <InvoiceItemsView inv={invoiceItems} {...propTarik} {...propDrive} tanpaHarga daftarHpSaja />}
+                  {sejajar && <InvoiceItemsView inv={invoiceItems} {...propTarik} {...propDrive} tanpaHarga tanpaSalinSemua daftarHpSaja />}
           {autoFill && (autoFill.ship || autoFill.courier || autoFill.priority) && (
             <div role="status" className="flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-xl bg-amber-50 px-3.5 py-2 text-xs text-amber-900 ring-1 ring-amber-200">
               <Sparkles className="h-4 w-4 shrink-0 text-amber-600" />
@@ -864,7 +864,7 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
                   </div>}
                   {adaInv && !sejajar && (
                     <div ref={wadahSub} className="relative flex flex-col gap-1.5 xl:grid xl:items-start xl:gap-x-3 xl:[grid-template-columns:var(--sub-kiri,42%)_minmax(0,1fr)]">
-                      <div className="xl:sticky xl:top-2 xl:max-h-[calc(100dvh-1rem)] xl:overflow-y-auto xl:rounded-xl"><InvoiceItemsView inv={invoiceItems} {...propTarik} {...propDrive} tanpaHarga sempit /></div>
+                      <div className="xl:sticky xl:top-2 xl:max-h-[calc(100dvh-1rem)] xl:overflow-y-auto xl:rounded-xl"><InvoiceItemsView inv={invoiceItems} {...propTarik} {...propDrive} tanpaHarga tanpaSalinSemua sempit /></div>
                       <div className="flex min-w-0 flex-col gap-1.5">{baris(false)}</div>
                       {pembatas}
                     </div>
@@ -960,7 +960,7 @@ function AturTampilan({ t, atur }) {
 }
 
 /** Item & deskripsi invoice Zoho — hanya tampilan (tidak mengisi apa pun), untuk dibaca / disalin saat mengisi sub project secara manual. */
-function InvoiceItemsView({ inv, onTarik, onUrung, tarik, onDrive, onUrungDrive, drive, tanpaHarga, daftarHpSaja, sempit }) {
+function InvoiceItemsView({ inv, onTarik, onUrung, tarik, onDrive, onUrungDrive, drive, tanpaHarga, daftarHpSaja, sempit, tanpaSalinSemua }) {
   const { notify } = useApp()
   const [open, setOpen] = useState(true)
   const items = inv.items || []
@@ -978,7 +978,7 @@ function InvoiceItemsView({ inv, onTarik, onUrung, tarik, onDrive, onUrungDrive,
         {onDrive && <button type="button" onClick={onDrive} disabled={!!drive?.sibuk} data-aksi="tarik-drive" title="Masa transisi: susun sub project dari nama file di folder Drive bernomor invoice ini — hasilnya tetap bisa diubah"
           className="inline-flex min-h-8 items-center gap-1.5 rounded-lg bg-sky-700 px-2.5 py-1 text-[11.5px] font-bold text-white hover:bg-sky-800 disabled:opacity-60 max-md:min-h-11 max-md:px-3 max-md:text-[13px]">
           {drive?.sibuk ? <Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" /> : <FolderSearch className="h-3.5 w-3.5" />}{drive?.sibuk ? 'Membaca Drive…' : 'Tarik dari Drive (transisi)'}</button>}
-        {items.length > 0 && <button type="button" onClick={() => copy(items.map((it, i) => `${i + 1}. ${textOf(it)}`).join('\n\n'), 'Semua item')} className="inline-flex items-center gap-1 rounded-lg bg-white px-2 py-1 text-[11px] font-semibold text-emerald-800 ring-1 ring-emerald-300 hover:bg-emerald-100"><Copy className="h-3 w-3" />Salin semua</button>}
+        {items.length > 0 && !tanpaSalinSemua && <button type="button" onClick={() => copy(items.map((it, i) => `${i + 1}. ${textOf(it)}`).join('\n\n'), 'Semua item')} className="inline-flex items-center gap-1 rounded-lg bg-white px-2 py-1 text-[11px] font-semibold text-emerald-800 ring-1 ring-emerald-300 hover:bg-emerald-100"><Copy className="h-3 w-3" />Salin semua</button>}
         <button type="button" onClick={() => setOpen((o) => !o)} className={cx('rounded-lg p-1 text-emerald-800 hover:bg-emerald-100', daftarHpSaja && 'xl:hidden')} aria-label={open ? 'Sembunyikan item invoice' : 'Tampilkan item invoice'} aria-expanded={open}>{open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</button>
       </div>
       {tarik?.galat && <p role="alert" className="border-t border-rose-100 bg-rose-50 px-3.5 py-2 text-xs font-semibold text-rose-800" data-tarik-galat>{tarik.galat}. Sub project tidak diubah — isi manual seperti biasa.</p>}
