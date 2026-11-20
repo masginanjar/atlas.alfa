@@ -361,7 +361,7 @@ export default function ProjectSpreadsheet({ list, detailFor, onDetail, onFiles,
             <thead>
               <tr>
                 {KOLOM.map((c) => (
-                  <th key={c.key} scope="col" style={tanpaIsi && !lebar[c.key] ? (c.key === 'dokumen' ? { width: '32%', minWidth: '220px' } : undefined) : { width: lebar[c.key] || c.w, minWidth: lebar[c.key] || c.w }}
+                  <th key={c.key} scope="col" style={tanpaIsi && !lebar[c.key] ? (c.key === 'dokumen' ? { width: '34%', minWidth: '210px' } : undefined) : { width: lebar[c.key] || c.w, minWidth: lebar[c.key] || c.w }}
                     className={cx('relative sticky top-0 z-10 whitespace-nowrap border-b border-slate-200 bg-slate-50 px-3 py-2 text-left text-xs font-bold text-ink-soft',
                       c.sticky && 'left-0 z-20 shadow-[6px_0_8px_-6px_rgba(15,23,42,.25)] md:shadow-none')}>
                     <span onPointerDown={(e) => mulaiTarik(e, c.key, c.w)} onDoubleClick={() => simpanLebar({ ...lebar, [c.key]: undefined })} title="Tarik untuk mengubah lebar · klik dua kali untuk kembali"
