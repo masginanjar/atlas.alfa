@@ -243,3 +243,11 @@ export const biayaVendorTersembunyi = (u, sub, vendor) => {
 /** Project yang otorisatornya sudah membalas lewat email (balasan "OK" atau berlampiran) dan masih menunggu nomor register.
  *  Dipakai untuk tanda "ACC" di samping nomor invoice dan untuk menaruh project itu di paling atas daftar sampai nomor register terbit. */
 export const accEmail = (p) => !!(p?.email_oto_balasan || []).length && !p.cancelled && (p.sub_projects || []).some((s) => !s.cancelled && (s.stage === 'otorisasi' || s.stage === 'registrasi'))
+
+/**
+ * Vendor EKSEKUTOR (20 Nov 2026): vendor pengurusan apostille / legalisasi / jasa lain (mis. ARM) — ditandai `eksekutor` di Pengaturan → Vendor.
+ * Hanya mereka yang muncul di pilihan Eksekutor (kelompok "Eksternal"), dan mereka TIDAK muncul di pilihan penerjemah.
+ * Cadangan bila belum ada satu pun yang ditandai (data lama / demo): vendor tanpa bahasa yang layanannya menyebut apostille / legalisasi.
+ */
+const layananUrus = (p) => !(p?.languages || []).length && (Array.isArray(p?.services) ? p.services : []).some((x) => /apostille|legalisasi/i.test(String(x?.name || x?.nama || x?.label || x || '')))
+export const vendorEksekutor = (p, semua) => (p?.type === 'vendor' && ((semua || []).some((x) => x?.type === 'vendor' && x.eksekutor) ? !!p.eksekutor : layananUrus(p)))

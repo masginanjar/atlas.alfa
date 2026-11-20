@@ -10,7 +10,7 @@ import { X, MessageCircle } from 'lucide-react'
 import { cx } from './ui.jsx'
 import { useApp } from '../lib/store.jsx'
 import { flowOf } from '../config/workflows.js'
-import { invoiceLabel, perluVendor, BAHASA_INTERNAL, can } from '../config/access.js'
+import { invoiceLabel, perluVendor, BAHASA_INTERNAL, can, vendorEksekutor } from '../config/access.js'
 import { stagesOf, stageIndex } from '../config/workflows.js'
 import { teksOrderVendor, tautanWa } from './SalinChatOrder.jsx'
 import { kapasitasHarian, halamanBulanan, HARI_BULAN } from './Kapasitas.jsx'
@@ -69,7 +69,7 @@ export default function TugaskanPenerjemah({ p, sub, onClose = () => {}, onLainn
   const keVendor = perluVendor(sub)
   const bahasaAsing = [sub.lang_from, sub.lang_to].find((l) => l && !BAHASA_INTERNAL.includes(l)) || ''
   const cocokBahasa = (v) => (v.languages || []).some((l) => String(l).toLowerCase() === bahasaAsing.toLowerCase())
-  const vendors = keVendor ? (data.people || []).filter((v) => v.type === 'vendor' && !v.biro && v.active !== false && (v.branch === p.branch || v.branch === 'Semua' || !v.branch))
+  const vendors = keVendor ? (data.people || []).filter((v) => v.type === 'vendor' && !v.biro && !vendorEksekutor(v, data.people) && v.active !== false && (v.branch === p.branch || v.branch === 'Semua' || !v.branch))
     .sort((x, y) => (cocokBahasa(y) ? 1 : 0) - (cocokBahasa(x) ? 1 : 0) || String(x.name).localeCompare(String(y.name))) : []
   const [vendorId, setVendorId] = useState('')
   const vendorPilih = vendors.find((v) => v.id === vendorId)

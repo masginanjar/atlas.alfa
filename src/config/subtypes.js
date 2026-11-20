@@ -8,7 +8,7 @@ export const SUB_TYPES = {
   terjemahan_nt: { label: 'Terjemahan Non Tersumpah', short: 'Non Tersumpah', extra: ['translator_nt', 'lang'] },
   apostille: { label: 'Apostille', extra: ['country', 'objek', 'executor'] },
   legalisasi: { label: 'Legalisasi', extra: ['institution', 'executor'] },
-  jasa_lain: { label: 'Jasa Lain', extra: [] },
+  jasa_lain: { label: 'Jasa Lain', extra: ['executor_opt'] }, // executor_opt: eksekutor boleh dikosongkan (mis. pengurusan SKCK)
 }
 
 /** Daftar negara tujuan apostille/legalisasi — lengkap, bisa dicari di formulir. */

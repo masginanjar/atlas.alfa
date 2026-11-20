@@ -875,6 +875,10 @@ export function Vendors({ keAtas } = {}) {
                 <input type="checkbox" className="mt-0.5 h-5 w-5 shrink-0" checked={!!e.biro} onChange={(x) => set({ ...e, biro: x.target.checked, ...(x.target.checked && termOf(e) === 'immediate' ? { payment_term: Object.keys(PAYMENT_TERMS).find((k) => k !== 'immediate') } : {}) })} />
                 <span><b className="font-semibold">Biro rekanan</b> (mis. Indotrans)<span className="block text-xs text-ink-mute">Order dilakukan di luar ATLAS (grup). CS mengunggah hasilnya, lalu dokumen langsung ke Admin Pusat untuk nomor register — tanpa proofreader & otorisasi. Biaya masuk Tagihan Vendor.</span></span>
               </label>
+              <label className="flex items-start gap-2.5 rounded-xl bg-amber-50 px-3 py-2.5 text-sm ring-1 ring-amber-200 max-md:min-h-11" data-vendor-eksekutor>
+                <input type="checkbox" className="mt-0.5 h-5 w-5 shrink-0" checked={!!e.eksekutor} onChange={(x) => set({ ...e, eksekutor: x.target.checked })} />
+                <span><b className="font-semibold">Eksekutor apostille / legalisasi / jasa lain</b> (mis. ARM)<span className="block text-xs text-ink-mute">Muncul di pilihan Eksekutor (kelompok Eksternal) dan tidak muncul di pilihan penerjemah.</span></span>
+              </label>
               <>
               <Field label="Sapaan di portal & pesan order" hint="Dipakai di portal vendor dan teks Fix Order: “Halo Bapak …” / “Halo Ibu …”.">
                 <Select value={e.sapaan || ''} onChange={(x) => set({ ...e, sapaan: x.target.value })} data-sapaan><option value="">Bapak/Ibu</option><option value="Bapak">Bapak</option><option value="Ibu">Ibu</option></Select>

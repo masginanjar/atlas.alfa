@@ -7,7 +7,7 @@ const TYPE_ICON = { terjemahan: Languages, terjemahan_nt: Languages, apostille: 
 import { useApp } from '../lib/store.jsx'
 import { SUB_TYPES, COUNTRIES, OBJEK_APOSTILLE, points, renumber } from '../config/subtypes.js'
 import { Field, FieldError, Input, Select, cx } from './ui.jsx'
-import { placeOf } from '../config/access.js'
+import { placeOf, vendorEksekutor } from '../config/access.js'
 import { DONE, VENDOR_PAID_STAGES } from '../config/workflows.js'
 import { boleh } from '../lib/izin.js'
 import PilihCari from './PilihCari.jsx'
@@ -303,7 +303,7 @@ export default function SubProjectEditor({ n, sub, onChange, onRemove, branch, l
                   options={[
                     { value: '', label: 'Ditentukan Direktur', note: 'Biarkan kosong' },
                     ...data.users.filter((u) => u.role === 'penerjemah' && u.active !== false).map((u) => ({ value: `translator:${u.id}`, label: u.name, note: `Penerjemah internal · ${placeOf(u)}` })),
-                    ...of('vendor').map((p) => ({ value: `vendor:${p.id}`, label: p.name, note: 'Vendor eksternal' })),
+                    ...of('vendor').filter((p) => !vendorEksekutor(p, data.people) || (sub.translator_kind === 'vendor' && sub.translator === p.id)).map((p) => ({ value: `vendor:${p.id}`, label: p.name, note: 'Vendor eksternal' })),
                   ]}
                   kosong="Penerjemah / vendor tidak ditemukan" />
                 <BukaKunci />
@@ -345,7 +345,7 @@ export default function SubProjectEditor({ n, sub, onChange, onRemove, branch, l
             </div>
           </Field>
         )}
-        {(extra.includes('country') || extra.includes('institution') || extra.includes('executor')) && (
+        {(extra.includes('country') || extra.includes('institution') || extra.includes('executor') || extra.includes('executor_opt')) && (
           <div className="grid gap-4 sm:grid-cols-2">
             {extra.includes('country') && (
               <Field label="Tujuan Negara" icon={Globe2} required>
@@ -376,13 +376,13 @@ export default function SubProjectEditor({ n, sub, onChange, onRemove, branch, l
                 </div>
               </Field>
             )}
-            {extra.includes('executor') && (
-              <Field label="Eksekutor" icon={UserCog} required hint={locked ? 'Terkunci — alur sudah berjalan' : 'Staf Apostille (internal) atau vendor luar'}>
+            {(extra.includes('executor') || extra.includes('executor_opt')) && (
+              <Field label="Eksekutor" icon={UserCog} required={extra.includes('executor')} hint={locked ? 'Terkunci — alur sudah berjalan' : extra.includes('executor') ? 'Internal atau eksternal' : 'Tidak wajib — internal atau eksternal'}>
                 <Select value={sub.executor_id ? `${sub.executor_kind}:${sub.executor_id}` : ''} disabled={locked} aria-invalid={errOn('eksekutor')}
                   onChange={(e) => { const [kind, id] = e.target.value.split(':'); set({ executor_kind: kind || '', executor_id: id || '' }) }}>
-                  <option value="">Pilih eksekutor…</option>
-                  <optgroup label="Staf Apostille (internal)">{data.users.filter((u) => u.role === 'staf_apostille' && u.active !== false).map((u) => <option key={u.id} value={`staff:${u.id}`}>{u.name} · {placeOf(u)}</option>)}</optgroup>
-                  <optgroup label="Vendor (luar)">{of('vendor').map((p) => <option key={p.id} value={`vendor:${p.id}`}>{p.name}</option>)}</optgroup>
+                  <option value="">{extra.includes('executor') ? 'Pilih eksekutor…' : 'Belum ditentukan'}</option>
+                  <optgroup label="Internal">{data.users.filter((u) => u.role === 'staf_apostille' && u.active !== false).map((u) => <option key={u.id} value={`staff:${u.id}`}>{u.name} · {placeOf(u)}</option>)}</optgroup>
+                  <optgroup label="Eksternal">{of('vendor').filter((p) => vendorEksekutor(p, data.people) || (sub.executor_kind === 'vendor' && sub.executor_id === p.id)).map((p) => <option key={p.id} value={`vendor:${p.id}`}>{p.name}</option>)}</optgroup>
                 </Select>
               </Field>
             )}

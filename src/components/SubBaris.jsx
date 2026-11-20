@@ -5,7 +5,7 @@ import { Trash2, Upload, Paperclip, X, IdCard } from 'lucide-react'
 import { useApp } from '../lib/store.jsx'
 import { SUB_TYPES, COUNTRIES, OBJEK_APOSTILLE, points } from '../config/subtypes.js'
 import { FieldError, cx } from './ui.jsx'
-import { placeOf, perluVendor } from '../config/access.js'
+import { placeOf, perluVendor, vendorEksekutor } from '../config/access.js'
 import PilihCari from './PilihCari.jsx'
 import { newSub, usesDocs, isTerjemahan, docsOf, fromDocs, docFileName, safeName, MAKS_DOK, hitungHalaman } from './SubProjectEditor.jsx'
 import { LANGS } from '../config/bahasa.js'
@@ -383,7 +383,7 @@ export default function SubBaris({ n, sub, onChange, onRemove, branch, error, on
               options={[
                 { value: '', label: 'Ditentukan Direktur', note: 'Biarkan kosong' },
                 ...(perluVendor(sub) ? [] : data.users.filter((u) => u.role === 'penerjemah' && u.active !== false)).map((u) => ({ value: `translator:${u.id}`, label: u.name, note: `Penerjemah internal · ${placeOf(u)}` })),
-                ...of('vendor').filter((p) => (perluVendor(sub) ? !p.biro : !!p.biro)).map((p) => ({ value: `vendor:${p.id}`, label: p.name, note: p.biro ? 'Biro rekanan' : 'Vendor eksternal' })),
+                ...of('vendor').filter((p) => !vendorEksekutor(p, data.people) && (perluVendor(sub) ? !p.biro : !!p.biro)).map((p) => ({ value: `vendor:${p.id}`, label: p.name, note: p.biro ? 'Biro rekanan' : 'Vendor eksternal' })),
               ]} kosong="Penerjemah / vendor tidak ditemukan" />
           </Kol>
         )}
@@ -393,13 +393,13 @@ export default function SubBaris({ n, sub, onChange, onRemove, branch, error, on
               options={data.users.filter((u) => u.role === 'penerjemah' && u.active !== false).map((u) => ({ value: u.id, label: u.name, note: placeOf(u) }))} kosong="Penerjemah tidak ditemukan" />
           </Kol>
         )}
-        {extra.includes('executor') && (
-          <Kol label="Eksekutor" wajib style={{ flex: '1.3 1 170px' }}>
+        {(extra.includes('executor') || extra.includes('executor_opt')) && (
+          <Kol label={extra.includes('executor') ? 'Eksekutor' : 'Eksekutor · tidak wajib'} wajib={extra.includes('executor')} style={{ flex: '1.3 1 170px' }}>
             <select value={sub.executor_id ? `${sub.executor_kind}:${sub.executor_id}` : ''} aria-label="Eksekutor" aria-invalid={errOn('eksekutor')} data-eksekutor
               onChange={(e) => { const [kind, id] = e.target.value.split(':'); set({ executor_kind: kind || '', executor_id: id || '' }) }} className={cx(inputCls, '!px-2', errOn('eksekutor') && '!ring-2 !ring-rose-500')}>
-              <option value="">Pilih eksekutor…</option>
-              <optgroup label="Staf Apostille / Legalisasi (internal)">{data.users.filter((u) => u.role === 'staf_apostille' && u.active !== false).map((u) => <option key={u.id} value={`staff:${u.id}`}>{u.name} · Staf Apostille / Legalisasi</option>)}</optgroup>
-              <optgroup label="Vendor (luar)">{of('vendor').map((p) => <option key={p.id} value={`vendor:${p.id}`}>{p.name}</option>)}</optgroup>
+              <option value="">{extra.includes('executor') ? 'Pilih eksekutor…' : 'Belum ditentukan'}</option>
+              <optgroup label="Internal">{data.users.filter((u) => u.role === 'staf_apostille' && u.active !== false).map((u) => <option key={u.id} value={`staff:${u.id}`}>{u.name}</option>)}</optgroup>
+              <optgroup label="Eksternal">{of('vendor').filter((p) => vendorEksekutor(p, data.people) || (sub.executor_kind === 'vendor' && sub.executor_id === p.id)).map((p) => <option key={p.id} value={`vendor:${p.id}`}>{p.name}</option>)}</optgroup>
             </select>
           </Kol>
         )}
