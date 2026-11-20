@@ -394,7 +394,7 @@ function CatatBayarSusulan({ project, sub }) {
 /** Bahasa selain Indonesia · Inggris · Belanda: order ke vendor — tampil untuk siapa pun yang berizin `vendor-order.tambah` (termasuk CS). */
 export const bisaOrderVendor = (user, sub) => perluVendor(sub) && sub.stage === 'pilih_penerjemah' && boleh(user, 'vendor-order.tambah')
 
-export function SubProject({ n, project, sub, compact, tanpaTahap, ringkas }) {
+export function SubProject({ n, project, sub, compact, tanpaTahap, ringkas, tanpaKepala }) {
   const { user, data } = useApp()
   const [pakaiForm, setPakaiForm] = useState(false)
   const flow = flowOf(sub, project)
@@ -422,14 +422,15 @@ export function SubProject({ n, project, sub, compact, tanpaTahap, ringkas }) {
   )
   return (
     <Card className="overflow-hidden" data-sub-card={sub.id}>
-      <div className="flex items-start justify-between gap-2 p-4 pb-2">
+      {/* tanpaKepala (Layar Kerja, 20 Nov 2026): judul, kategori, bahasa & status sudah tampil di baris atas kartu — di sini cukup daftar dokumennya */}
+      {tanpaKepala ? <div className="p-3 pb-2 md:p-3.5 md:pb-2"><SubMeta sub={sub} kartu /></div> : <div className="flex items-start justify-between gap-2 p-4 pb-2">
         <div className="min-w-0">
           <p className="flex items-center gap-1.5 text-[11px] font-semibold text-ink-mute">SUB {n}{prioSubBeda(project) && <PriorityBadge p={prioSub(project, sub)} />}</p>
           <p className="font-bold">{sub.title}</p>
           <SubMeta sub={sub} />
         </div>
         {done ? <Pill className="bg-emerald-50 text-emerald-700"><Check className="h-3 w-3" />Selesai</Pill> : <Pill className="bg-brand-soft text-brand">{stages[idx]?.short || stages[idx]?.label}</Pill>}
-      </div>
+      </div>}
 
       {/* Alur tahap: titik-titik dengan label hanya pada tahap aktif (K11); di panel samping tetap daftar menurun */}
       {tanpaTahap ? null : compact ? (
@@ -514,7 +515,7 @@ function SambungSuratKuasa({ project, sub, ringkas }) {
   )
 }
 
-function SubMeta({ sub }) {
+function SubMeta({ sub, kartu }) {
   const { nameOf } = useApp()
   const name = nameOf
   const type = SUB_TYPES[sub.type] ?? SUB_TYPES.jasa_lain
@@ -529,12 +530,18 @@ function SubMeta({ sub }) {
     sub.type === 'terjemahan' && (sub.translator_kind === 'vendor' ? `Vendor: ${name(sub.translator) ?? '—'}` : `Penerjemah: ${name(sub.data?.translator || sub.translator) ?? 'ditentukan Direktur'}`),
     sub.type === 'terjemahan_nt' && `Penerjemah: ${name(sub.data?.translator || sub.translator) ?? '—'}`,
   ].filter(Boolean)
+  // kartu: tampilan baris seperti Project Baru (nomor · nama dokumen), tanpa baris ringkasan yang sudah ada di kepala kartu
+  const olCls = kartu ? 'flex flex-col gap-1.5 text-[13px] font-semibold text-ink' : 'mt-1.5 list-decimal space-y-0.5 pl-4 text-xs text-ink-soft'
+  const liCls = kartu ? 'flex flex-wrap items-center gap-x-2 rounded-xl bg-white px-2.5 py-2 ring-1 ring-[#E6E8F0] [overflow-wrap:anywhere]' : undefined
+  const no = (i) => (kartu ? <span className="font-bold text-[#6B7088]">{i + 1}.</span> : null)
   return (
-    <div className="mt-1">
-      <p className="text-xs text-ink-mute"><span className="font-semibold text-ink-soft">{type.label}</span> · {info.join(' · ')}</p>
+    <div className={kartu ? 'flex flex-col gap-1.5' : 'mt-1'} data-sub-meta={kartu ? 'kartu' : undefined}>
+      {kartu
+        ? <p className="px-1 text-[11px] font-semibold text-[#4F5470]">Dokumen{sub.applicant_id ? ` · ID pemohon ${sub.applicant_id}` : ''}</p>
+        : <p className="text-xs text-ink-mute"><span className="font-semibold text-ink-soft">{type.label}</span> · {info.join(' · ')}</p>}
       {sub.type === 'terjemahan' && sub.docs?.length
-        ? <ol className="mt-1.5 list-decimal space-y-0.5 pl-4 text-xs text-ink-soft">{sub.docs.filter((d) => d.desc.trim()).map((d, i) => <li key={i}>{d.desc} <span className="text-ink-mute">· {d.pages} hlm</span>{d.kind === 'non_reguler' && <span className="ml-1 rounded bg-violet-50 px-1 text-[10px] font-semibold text-violet-700">Non Reguler</span>}{sub.data?.reg_numbers?.[i] && <CentangOfficial className="ml-1.5" />}<NoReg n={sub.data?.reg_numbers?.[i]} /></li>)}</ol>
-        : pts.length > 1 ? <ol className="mt-1.5 list-decimal space-y-0.5 pl-4 text-xs text-ink-soft">{pts.map((p, i) => <li key={i}>{p}{sub.data?.reg_numbers?.[i] && <CentangOfficial className="ml-1.5" />}<NoReg n={sub.data?.reg_numbers?.[i]} /></li>)}</ol>
+        ? <ol className={olCls}>{sub.docs.filter((d) => d.desc.trim()).map((d, i) => <li key={i} className={liCls}>{no(i)}{d.desc} <span className="text-ink-mute">· {d.pages} hlm</span>{d.kind === 'non_reguler' && <span className="ml-1 rounded bg-violet-50 px-1 text-[10px] font-semibold text-violet-700">Non Reguler</span>}{sub.data?.reg_numbers?.[i] && <CentangOfficial className="ml-1.5" />}<NoReg n={sub.data?.reg_numbers?.[i]} /></li>)}</ol>
+        : (kartu ? pts.length > 0 : pts.length > 1) ? <ol className={olCls}>{pts.map((p, i) => <li key={i} className={liCls}>{no(i)}{p}{sub.data?.reg_numbers?.[i] && <CentangOfficial className="ml-1.5" />}<NoReg n={sub.data?.reg_numbers?.[i]} /></li>)}</ol>
         : sub.data?.reg_numbers?.[0] ? <div className="mt-1.5 flex flex-wrap items-center gap-2"><NoReg n={sub.data.reg_numbers[0]} className="!mt-0" /><CentangOfficial /></div> : null}
       {sub.data?.dokumen_id && <p className="mt-1.5 flex items-center gap-1.5 text-xs text-ink-soft"><span className="font-semibold text-ink-mute">ID / dokumen pemohon:</span><FileChip file={sub.data.dokumen_id} /></p>}
     </div>
