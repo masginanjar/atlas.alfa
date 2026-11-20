@@ -1,3 +1,4 @@
+import { boleh } from '../lib/izin.js'
 import { useMemo, useRef, useState } from 'react'
 import { Upload, Download, Trash2, Pencil, Check, X, Archive, Loader2, FolderOpen, Eye, Printer, ChevronRight } from 'lucide-react'
 import MiniPratinjau from './MiniPratinjau.jsx'
@@ -10,7 +11,7 @@ import { stagesOf, flowOf } from '../config/workflows.js'
 import { Card, Empty, cx } from './ui.jsx'
 import { jam, kb } from '../lib/format.js'
 import { useUploadNamer, nameTaken } from './UploadNamer.jsx'
-import { invoiceLabel } from '../config/access.js'
+import { invoiceLabel, subMilikUntuk } from '../config/access.js'
 import { folderUnggah, fileAL, bolehAL, subAL, FOLDER_AL, LABEL_AL } from '../lib/dokumenAL.js'
 
 const SUB_AL = '__apostille_legalisasi'
@@ -43,6 +44,8 @@ export const fieldFiles = (data, key) => {
 }
 
 /** Semua file project: file manajemen project + file yang diunggah di tahap alur kerja (tanpa ganda). */
+/** Jenis file tahap yang boleh dilihat pelaksana: dokumen sumber & hasil terjemahan (termasuk hasil proofread / otorisasi / vendor). */
+const FILE_PELAKSANA = ['dokumen_sumber', 'hasil_terjemahan', 'hasil_proofread', 'file_final', 'hasil_vendor']
 export function collect(project, { termasukTrash = false, user = null } = {}) {
   const list = (project.files || []).map((f) => ({ ...f, key: `p:${f.id}`, kind: 'project', subId: f.sub_id, source: 'Manajemen file' }))
   const seen = new Map(list.map((f) => [fileIdentity(f), f]))
@@ -51,7 +54,7 @@ export function collect(project, { termasukTrash = false, user = null } = {}) {
       for (const fl of st.fields.filter((x) => x.type === 'file')) {
         fieldFiles(s.data, fl.key).forEach((v, i) => {
           const id = fileIdentity(v)
-          if (seen.has(id)) { const e = seen.get(id); if (!e.usedIn?.includes(fl.label)) e.usedIn = [...(e.usedIn || []), fl.label]; return }
+          if (seen.has(id)) { const e = seen.get(id); if (!e.usedIn?.includes(fl.label)) e.usedIn = [...(e.usedIn || []), fl.label]; e.usedKeys = [...(e.usedKeys || []), fl.key]; e.usedSubs = [...(e.usedSubs || []), s.id]; return }
           const e = { ...v, key: `s:${s.id}:${fl.key}:${i}`, kind: 'stage', subId: s.id, fieldKey: fl.key, index: i, source: fl.label }
           seen.set(id, e); list.push(e)
         })
@@ -59,7 +62,15 @@ export function collect(project, { termasukTrash = false, user = null } = {}) {
     }
   }
   // Dokumen Apostille & Legalisasi disembunyikan dari yang tidak berizin (server juga menolak unduhannya)
-  const tampak = user && !bolehAL(user) ? list.filter((f) => !fileAL(project, f)) : list
+  let tampak = user && !bolehAL(user) ? list.filter((f) => !fileAL(project, f)) : list
+  // Pelaksana (tanpa izin project.file-lain.lihat — bawaan: penerjemah, proofreader, otorisator) hanya perlu DOKUMEN SUMBER & HASIL TERJEMAHAN
+  // dari sub project yang menjadi tugasnya (+ file yang ia unggah sendiri). Hasil scan, bukti transfer, tagihan, dan file lain tidak ditampilkan.
+  if (user && !boleh(user, 'project.file-lain.lihat')) {
+    const milik = subMilikUntuk(user); const subs = project.sub_projects || []
+    const subKu = (id) => { const x = subs.find((y) => y.id === id); return !!x && milik(x) }
+    tampak = tampak.filter((f) => f.by === user.name
+      || ([f.fieldKey, ...(f.usedKeys || [])].some((k) => FILE_PELAKSANA.includes(k)) && [f.kind === 'stage' ? f.subId : null, ...(f.usedSubs || [])].some((id) => id && subKu(id))))
+  }
   const hasil = termasukTrash ? tampak : tampak.filter((f) => !f.trashed_at)
   return hasil.sort((a, b) => new Date(b.uploaded_at || 0) - new Date(a.uploaded_at || 0))
 }
@@ -103,6 +114,7 @@ export default function FileManager({ project, readOnly }) {
   // Folder hanya: "Hasil Scan" (otomatis untuk scan hasil; bisa juga diisi manual), folder buatan sendiri,
   // dan folder Apostille & Legalisasi (tertutup, seperti sebelumnya). Letak file = f.fdr (nama folder).
   const SCAN = 'Hasil Scan'
+  const fileLain = boleh(user, 'project.file-lain.lihat')
   const folderBuatan = (project.file_folders || []).filter((x) => x && x !== SCAN)
   const idFolder = (nama) => `c:${nama}`
   const namaDariId = (id) => (String(id).startsWith('c:') ? String(id).slice(2) : '')
@@ -198,7 +210,7 @@ export default function FileManager({ project, readOnly }) {
     { id: idFolder(SCAN), nama: SCAN, tetap: true },
     ...folderBuatan.map((nama) => ({ id: idFolder(nama), nama })),
     ...(bolehAL(user) && (subs.some(subAL) || all.some(isAL)) ? [{ id: SUB_AL, nama: LABEL_AL, tetap: true }] : []),
-  ].map((x) => ({ ...x, n: isiFolder(x.id).length })).filter((x) => !x.tetap || x.n > 0 || x.id === idFolder(SCAN)) : []
+  ].map((x) => ({ ...x, n: isiFolder(x.id).length })).filter((x) => (!x.tetap || x.n > 0 || x.id === idFolder(SCAN)) && (fileLain || (x.id !== idFolder(SCAN) && x.n > 0))) : [] // pelaksana: folder Hasil Scan & folder kosong tidak ditampilkan
   const berkas = shown
   // ---- folder buatan sendiri ----
   const [folderBaru, setFolderBaru] = useState(null)

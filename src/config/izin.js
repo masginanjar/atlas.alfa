@@ -100,6 +100,8 @@ export const MODUL = [
     // 20 Nov 2026: di daftar project, pelaksana (penerjemah, proofreader, otorisator) hanya melihat sub project yang menjadi tugasnya —
     //  sub lain di invoice yang sama (bahasa lain, vendor, apostille) tidak tampil. Menggantikan aturan lama (semua melihat semuanya).
     f('project.sub-lain', 'Project — melihat sub project milik pelaksana lain', ['lihat'], { semua: SEMUA.filter((r) => !PELAKSANA.includes(r)) }),
+    // File Project: pelaksana hanya melihat dokumen sumber & hasil terjemahan dari tugasnya; folder Hasil Scan, bukti, tagihan & file lain disembunyikan.
+    f('project.file-lain', 'Project — melihat semua file project (hasil scan, bukti, file lain)', ['lihat'], { semua: SEMUA.filter((r) => !PELAKSANA.includes(r)) }),
     // Kolom Tahap pada rincian sub project: penerjemah tidak perlu tahu tahapnya.
     f('project.tahap-sub', 'Project — melihat kolom Tahap sub project', ['lihat'], { semua: SEMUA.filter((r) => r !== 'penerjemah') }),
     f('project', 'Project', ['menu', 'lihat', 'detail', 'tambah', 'ubah', 'hapus', 'tugaskan', 'status', 'lampiran_lihat', 'lampiran_kelola', 'ekspor', 'cetak', 'bagikan', 'riwayat', 'massal'],

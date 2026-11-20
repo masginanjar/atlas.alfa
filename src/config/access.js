@@ -102,6 +102,16 @@ export const labelRoleUntuk = (viewer, u) => (!seeOtoTeam(viewer) && u?.role ===
 /** Nama otorisator yang boleh ditampilkan ke `viewer` (klaim "sedang diproses …", dsb.). */
 export const namaOtoUntuk = (viewer, nama) => (seeOtoTeam(viewer) ? nama : PROOFREADER_TEAM.lead)
 /**
+ * Sub project yang menjadi TUGAS pelaksana ini (penerjemah / proofreader / otorisator) — dipakai untuk menyaring daftar project & File Project
+ * bagi yang tidak berizin melihat sub / file milik orang lain. Antrean bersama yang belum diambil siapa pun tetap dihitung.
+ */
+export const subMilikUntuk = (user) => {
+  const peran = rolesOf(user)
+  return (s) => [s?.data?.translator, s?.translator, s?.data?.proofreader, s?.data?.authorized_by, s?.data?.claim?.by].includes(user?.id)
+    || (s?.stage === 'otorisasi' && peran.includes('otorisator') && !s?.data?.claim?.by)
+    || (s?.stage === 'proofread' && peran.includes('proofreader') && !s?.data?.proofreader)
+}
+/**
  * PROOFREADER TETAP PER PENERJEMAH (20 Nov 2026): Super Admin menetapkan di Pengaturan → Pengguna (akun penerjemah, isian `proofreader_tetap`).
  * Bila diisi, hasil penerjemah itu SELALU dikirim ke proofreader tersebut — penerjemah tidak memilih.
  * Dikembalikan null bila belum diatur atau proofreader-nya sudah nonaktif (kembali ke cara biasa).

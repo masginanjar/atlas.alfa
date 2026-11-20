@@ -36,7 +36,7 @@ import CentangApostille from '../components/CentangApostille.jsx'
 import { WaktuDibuat, PrioPill, DeadlinePill, CabangPrint, eksekutorOf, dibuatBaru, warnaKategori, infoDeadline, BG_SELESAI } from '../components/BarisCanvas.jsx'
 import LayarKerja from './LayarKerja.jsx'
 import TugaskanPenerjemah from '../components/TugaskanPenerjemah.jsx'
-import { coordinatorFor, bolehPajakApostille, accEmail, rolesOf } from '../config/access.js'
+import { coordinatorFor, bolehPajakApostille, accEmail, subMilikUntuk } from '../config/access.js'
 import { PingButton } from '../components/Ping.jsx'
 import SalinInvoice from '../components/SalinInvoice.jsx'
 import { KeAtas, TombolTambah } from '../components/SlotAtas.jsx'
@@ -117,13 +117,7 @@ export default function Projects({ tabAwal }) {
   // Tanpa izin project.sub-lain.lihat (bawaan: penerjemah, proofreader, otorisator): di daftar hanya tampil sub project yang menjadi tugasnya
   // (bahasa lain / sub lain di invoice yang sama tidak muncul). Kolom Tahap punya izin sendiri (project.tahap-sub.lihat).
   const subLain = bolehIzin(user, 'project.sub-lain.lihat')
-  const subMilik = useMemo(() => {
-    if (subLain) return null
-    const peran = rolesOf(user)
-    return (s) => [s.data?.translator, s.translator, s.data?.proofreader, s.data?.authorized_by, s.data?.claim?.by].includes(user.id)
-      || (s.stage === 'otorisasi' && peran.includes('otorisator') && !s.data?.claim?.by) // antrean otorisasi yang belum diambil siapa pun
-      || (s.stage === 'proofread' && peran.includes('proofreader') && !s.data?.proofreader) // antrean tim proofreader
-  }, [subLain, user])
+  const subMilik = useMemo(() => (subLain ? null : subMilikUntuk(user)), [subLain, user])
   const [shownN, setShownN] = useState(36)
   const [pref, setPrefRaw] = useState(muatPref)
   const setPref = (p) => { setPrefRaw(p); simpanPref(p) }
