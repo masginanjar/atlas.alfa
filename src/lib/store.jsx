@@ -11,6 +11,7 @@ import { CHAT_ENABLED } from './flags.js'
 import { DONE, stagesOf, flowOf, isBilled, regComplete, stageLabel, namaLangkah, totalPengajuan, recommendFund } from '../config/workflows.js'
 import { docListOf } from '../config/workflows.js'
 import { setKonfigIzin, boleh, wajibLoginHarian } from './izin.js'
+import { penugasanBaru, kirimNotifTugas } from './notifEmail.js'
 import { barisRegistrasi, ambilNomor, kodeArah, jumlahDok, namaDefault } from './registrasi.js'
 import { cariStok, cariPeringatan, kunciPeringatan, teksPeringatan, sudahTercatat, arahLabel, canKelolaAffidavit, AMBANG_RENDAH } from './affidavit.js'
 
@@ -346,7 +347,16 @@ export function AppProvider({ children }) {
       catatMonitor({ jenis: 'error', sumber: 'simpan', tabel: t, op: id ? 'ubah' : 'tambah', kelas: jenisError(e), pesan: String(e?.message || e).slice(0, 200), by: user?.name, by_id: user?.id }); throw e
     }
     if (saved?.id && saved.updated_at) versiSendiri.current.set(`${t}:${saved.id}`, saved.updated_at)
-    upsertLocal(t, saved); log(t, prev, saved, id ? 'update' : 'insert'); return saved
+    upsertLocal(t, saved); log(t, prev, saved, id ? 'update' : 'insert')
+    // Email notifikasi tugas: penerjemah internal yang baru ditetapkan / diganti. Tidak pernah menggagalkan simpanan.
+    if (t === 'projects' && saved?.id) {
+      const tugas = penugasanBaru(prev, saved, user?.id)
+      if (tugas.length) kirimNotifTugas(saved, tugas, data.users || []).then((r) => {
+        if (r?.terkirim > 0) notify(r.demo ? `Demo: ${r.terkirim} email notifikasi tugas akan terkirim ke penerjemah (di demo tidak benar-benar dikirim)` : `Email notifikasi tugas terkirim ke ${r.terkirim} penerjemah`)
+        else if (r && r.ok === false && r.alasan) notify(`Email notifikasi tugas belum terkirim: ${r.alasan}`, 'err')
+      }).catch(() => null)
+    }
+    return saved
   }
   const remove = async (t, id) => {
     tolakHantu()

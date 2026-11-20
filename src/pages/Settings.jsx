@@ -23,6 +23,7 @@ import { ACCESS_DAYS } from '../lib/portalCust.js'
 import { COURIER_ICONS, COURIER_TYPES, CourierLogo } from '../components/Courier.jsx'
 import AvatarEditor from '../components/AvatarEditor.jsx'
 import DataPribadi from '../components/DataPribadi.jsx'
+import NotifEmailPenerjemah from '../components/NotifEmailPenerjemah.jsx'
 import Avatar from '../components/Avatar.jsx'
 import { useTabel, Th, CariTabel } from '../components/TabelSortir.jsx'
 import LoginSettings from '../components/LoginSettings.jsx'
@@ -1093,6 +1094,7 @@ function Users() {
               {!bolehIzin(user, 'pengaturan.pengguna.ubah') && <p className="mt-1 text-[11px] text-amber-700">Hanya admin dengan izin mengubah pengguna yang dapat mengganti pengaturan ini.</p>}
             </div>
           )}
+          {(e.role === 'penerjemah' || (e.extra_roles || []).includes('penerjemah')) && <NotifEmailPenerjemah e={e} set={set} bisaUbah={bolehIzin(user, 'pengaturan.pengguna.ubah')} />}
           {user.role === 'superadmin' && (e.role === 'penerjemah' || (e.extra_roles || []).includes('penerjemah')) && (
             <Field label="Proofreader tetap" hint="Hanya Super Admin yang mengatur. Bila diisi, hasil penerjemah ini selalu dikirim ke proofreader tersebut — penerjemah tidak bisa memilih.">
               <Select value={e.proofreader_tetap || ''} onChange={(x) => set({ ...e, proofreader_tetap: x.target.value || '' })} data-proofreader-tetap-atur className="max-md:min-h-11 max-md:text-base">
