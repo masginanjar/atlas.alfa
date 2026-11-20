@@ -406,7 +406,8 @@ export default function Projects({ tabAwal }) {
               renderAksi={(p) => { const ctx = { users: data.users, people: data.people, user, worker }; const langkah = langkahBerikutnya(p, user, ctx); return (
                 <span className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                   {!worker && <TombolLangkah p={p} langkah={langkah} onBuka={bukaLangkah} />}
-                  <button type="button" onClick={() => { setFilesFor(null); setDetailFor(p) }} aria-label={`Lihat detail project ${invoiceLabel(p.invoice_no)}`} title="Lihat detail project (panel samping)" data-aksi="detail" className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white text-ink-mute ring-1 ring-slate-200 hover:text-brand"><Eye className="h-4 w-4" /></button>
+                  {/* Pelaksana: cukup tombol folder (detail sudah ada di isi baris) */}
+                  {!worker && <button type="button" onClick={() => { setFilesFor(null); setDetailFor(p) }} aria-label={`Lihat detail project ${invoiceLabel(p.invoice_no)}`} title="Lihat detail project (panel samping)" data-aksi="detail" className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white text-ink-mute ring-1 ring-slate-200 hover:text-brand"><Eye className="h-4 w-4" /></button>}
                   <button type="button" onClick={() => setFilesFor(p)} aria-label={`File ${invoiceLabel(p.invoice_no)}`} title="Folder file project" data-aksi="file" className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white text-ink-mute ring-1 ring-slate-200 hover:text-brand"><FolderOpen className="h-4 w-4" /></button>
                 </span>) }} />
           )}
