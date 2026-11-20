@@ -36,7 +36,7 @@ import CentangApostille from '../components/CentangApostille.jsx'
 import { WaktuDibuat, PrioPill, DeadlinePill, CabangPrint, eksekutorOf, dibuatBaru, warnaKategori, infoDeadline, BG_SELESAI } from '../components/BarisCanvas.jsx'
 import LayarKerja from './LayarKerja.jsx'
 import TugaskanPenerjemah from '../components/TugaskanPenerjemah.jsx'
-import { coordinatorFor, bolehPajakApostille, accEmail } from '../config/access.js'
+import { coordinatorFor, bolehPajakApostille, accEmail, rolesOf } from '../config/access.js'
 import { PingButton } from '../components/Ping.jsx'
 import SalinInvoice from '../components/SalinInvoice.jsx'
 import { KeAtas, TombolTambah } from '../components/SlotAtas.jsx'
@@ -111,7 +111,17 @@ export default function Projects({ tabAwal }) {
   const SEMBUNYI_TABEL = ['cabang', 'print', 'cs', 'status', 'orang']
   const SEMBUNYI_LIST = ['cabang'] // pelaksana tidak perlu kolom "Tahap → berikutnya"
   const colsAktif = worker ? cols.filter((k) => !SEMBUNYI_LIST.includes(k)) : cols
-  const [fullView, setFullView] = useState(false)
+  const [fullView, setFullView] = useState(true) // tampilan lengkap selalu terbuka (masih bisa disembunyikan)
+  // Tanpa izin project.sub-lain.lihat (bawaan: penerjemah, proofreader, otorisator): di daftar hanya tampil sub project yang menjadi tugasnya
+  // (bahasa lain / sub lain di invoice yang sama tidak muncul). Kolom Tahap punya izin sendiri (project.tahap-sub.lihat).
+  const subLain = bolehIzin(user, 'project.sub-lain.lihat')
+  const subMilik = useMemo(() => {
+    if (subLain) return null
+    const peran = rolesOf(user)
+    return (s) => [s.data?.translator, s.translator, s.data?.proofreader, s.data?.authorized_by, s.data?.claim?.by].includes(user.id)
+      || (s.stage === 'otorisasi' && peran.includes('otorisator') && !s.data?.claim?.by) // antrean otorisasi yang belum diambil siapa pun
+      || (s.stage === 'proofread' && peran.includes('proofreader') && !s.data?.proofreader) // antrean tim proofreader
+  }, [subLain, user])
   const [shownN, setShownN] = useState(36)
   const [pref, setPrefRaw] = useState(muatPref)
   const setPref = (p) => { setPrefRaw(p); simpanPref(p) }
@@ -392,7 +402,7 @@ export default function Projects({ tabAwal }) {
           {list.length === 0 && !(view === 'list' && (dlFilter || bpFilter.branch || bpFilter.print || q || tab !== 'all')) ? (
             <Card><Empty icon={FolderOpen} title={worker ? 'Belum ada project untuk Anda' : 'Belum ada project'} text={worker ? 'Project akan muncul di sini begitu ada yang ditugaskan kepada Anda.' : 'Buat project baru dari invoice Zoho.'} action={worker || !can.editProject(user) ? null : <Button onClick={() => go('projects/new')}><Plus className="h-4 w-4" />Project Baru</Button>} /></Card>
           ) : view === 'list' ? <ProjectList status={status} setStatus={setStatus} statusOpsi={[['aktif', `Aktif ${scoped.filter((p) => !isDone(p)).length}`], ['selesai', 'Selesai'], ['semua', 'Semua']].map(([key, label]) => ({ key, label }))} pref={{ ...pref, grup: pref.grup && sort === 'deadline' }} list={rest.slice(0, shownN)} nLate={late.length} dlFilter={dlFilter} setDlFilter={setDlFilter} prFilter={prFilter} setPrFilter={setPrFilter} cols={colsAktif} detailFor={detailFor} setDetailFor={setDetailFor} filesFor={filesFor} setFilesFor={setFilesFor} onLangkah={bukaLangkah} bpFilter={bpFilter} setBpFilter={setBpFilter} options={{ branches: [...new Set(scoped.map((p) => p.branch))].sort(), prints: [...new Set(scoped.map((p) => p.about?.print_location || p.branch))].sort() }} /> : (
-            <ProjectSpreadsheet pref={pref} list={list} detailFor={detailFor} state={tableState} setState={setTableState} hideCols={worker ? SEMBUNYI_TABEL : []} tanpaCari renderIsi={worker ? undefined : (p) => <ProjectExpand p={p} onLangkah={bukaLangkah} />}
+            <ProjectSpreadsheet pref={pref} list={list} detailFor={detailFor} state={tableState} setState={setTableState} hideCols={worker ? SEMBUNYI_TABEL : []} selaluBuka={worker} subMilik={subMilik} tanpaTahap={!bolehIzin(user, 'project.tahap-sub.lihat')} tanpaCari renderIsi={worker ? undefined : (p) => <ProjectExpand p={p} onLangkah={bukaLangkah} />}
               kepalaAksi={worker ? 'Aksi' : <span className="inline-flex items-center gap-2">Aksi<select value={status} onChange={(e) => setStatus(e.target.value)} aria-label="Status project" data-status-tabel className="h-7 rounded-lg border-0 bg-[#141B34] py-0 pl-2 pr-7 text-xs font-bold text-white focus:ring-2 focus:ring-[#4169E1]">{[['aktif', `Aktif ${scoped.filter((p) => !isDone(p)).length}`], ['selesai', 'Selesai'], ['semua', 'Semua']].map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></span>}
               onDetail={(p) => { setFilesFor(null); setDetailFor(p) }}
               onFiles={(p) => setFilesFor(p)}

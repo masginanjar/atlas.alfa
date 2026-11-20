@@ -45,8 +45,9 @@ export function statusOf(p) {
 const hariKey = (v) => { const t = v ? new Date(v) : null; return t && !Number.isNaN(t.getTime()) ? `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}` : '' }
 const geser = (n) => { const t = new Date(); t.setDate(t.getDate() + n); return hariKey(t) }
 
-export function projectRow(p, namaUser = (x) => x) {
-  const subs = p.sub_projects || []
+export function projectRow(p, namaUser = (x) => x, subMilik = null) {
+  // subMilik: saringan sub project yang boleh dilihat pengguna ini (mis. penerjemah hanya sub yang ditugaskan kepadanya)
+  const subs = subMilik ? (p.sub_projects || []).filter(subMilik) : (p.sub_projects || [])
   const hariIni = hariKey(new Date())
   const besok = geser(1)
 

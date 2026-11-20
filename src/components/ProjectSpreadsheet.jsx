@@ -18,6 +18,10 @@ import CentangApostille from './CentangApostille.jsx'
 
 const PAGE = 36
 
+/** Judul sub tanpa awalan "Terjemahan Tersumpah:" (jenis yang paling umum). Jenis lain (Apostille, Legalisasi, …) tetap memakai awalannya
+ *  karena kolom Kategori sudah dihapus — supaya jenis layanannya tetap terbaca. */
+const judulTanpaKategori = (x) => { const t = String(x.title || ''); return x.type === 'terjemahan' ? t.replace(/^terjemahan tersumpah:\s*/i, '') || t : t }
+
 /** Lingkaran penanda: hitam = prioritas mendesak, hijau = diinput hari ini,
  *  merah = deadline hari ini, oranye = deadline besok. */
 function Lingkar({ warna, judul, children }) {
@@ -81,14 +85,14 @@ function MenuAksi({ row, onFiles, onPrint }) {
 }
 
 /** Rincian sub project — tabel sederhana yang muncul di bawah baris induk. */
-function BarisSub({ subs, kolom }) {
+function BarisSub({ subs, kolom, tanpaTahap }) {
   if (!subs.length) return <p className="px-3 py-3 text-xs text-ink-mute">Belum ada sub project.</p>
   return (
     <div className="min-w-0 max-w-full overflow-x-auto px-3 py-2">
       <table className="w-full border-collapse text-left text-xs">
         <thead>
           <tr className="text-ink-mute">
-            {['#', 'Kategori', 'Judul', 'Arah Bahasa', 'Penerjemah/Vendor', 'Dok.', 'Hlm.', 'Tahap'].map((h) => (
+            {['#', 'Judul', 'Arah Bahasa', 'Penerjemah/Vendor', 'Dok.', 'Hlm.', 'Tahap'].filter((h) => !(tanpaTahap && h === 'Tahap')).map((h) => (
               <th key={h} scope="col" className="whitespace-nowrap px-2 py-1.5 font-bold">{h}</th>
             ))}
           </tr>
@@ -97,13 +101,12 @@ function BarisSub({ subs, kolom }) {
           {subs.map((x, i) => (
             <tr key={x.id || i} className="border-t border-slate-100">
               <td className="whitespace-nowrap px-2 py-1.5 tabular-nums text-ink-mute">{i + 1}</td>
-              <td className="whitespace-nowrap px-2 py-1.5 text-ink-soft">{x.kategori || '—'}</td>
-              <td className="max-w-[220px] truncate px-2 py-1.5 font-semibold" title={x.judul}>{x.judul || '—'}</td>
+              <td className="max-w-[320px] truncate px-2 py-1.5 font-semibold" title={x.judul}>{x.judul || '—'}</td>
               <td className="whitespace-nowrap px-2 py-1.5">{x.arah || '—'}</td>
               <td className="max-w-[160px] truncate px-2 py-1.5" title={x.orang}>{x.orang || '—'}</td>
               <td className="px-2 py-1.5 text-right tabular-nums">{x.dok}</td>
               <td className="px-2 py-1.5 text-right tabular-nums">{x.hal}</td>
-              <td className="px-2 py-1.5 text-brand">{x.raw ? <CentangApostille p={x.p} sb={x.raw} label={x.tahap || '—'} /> : (x.tahap || '—')}{x.raw && <StatusVendor sb={x.raw} />}</td>
+              {!tanpaTahap && <td className="px-2 py-1.5 text-brand">{x.raw ? <CentangApostille p={x.p} sb={x.raw} label={x.tahap || '—'} /> : (x.tahap || '—')}{x.raw && <StatusVendor sb={x.raw} />}</td>}
             </tr>
           ))}
         </tbody>
@@ -112,7 +115,7 @@ function BarisSub({ subs, kolom }) {
   )
 }
 
-export default function ProjectSpreadsheet({ list, detailFor, onDetail, onFiles, onPrint, state, setState, hideCols = [], renderAksi, pref = {}, tanpaCari, kepalaAksi, renderIsi }) {
+export default function ProjectSpreadsheet({ list, detailFor, onDetail, onFiles, onPrint, state, setState, hideCols = [], renderAksi, pref = {}, tanpaCari, kepalaAksi, renderIsi, subMilik = null, tanpaTahap = false, selaluBuka = false }) {
   // lebar area tabel yang terlihat → isi baris (sub project) selalu pas kiri-kanan, tidak melebar ke kanan
   const gulirRef = useRef(null)
   const [lebarTampak, setLebarTampak] = useState(0)
@@ -150,6 +153,8 @@ export default function ProjectSpreadsheet({ list, detailFor, onDetail, onFiles,
   const { q = '', sortKey = 'timestamp', sortDir = 'desc', filters = {}, shownN = PAGE } = state
   const set = (patch) => setState((s) => ({ ...s, ...patch }))
   const [buka, setBuka] = useState(() => new Set())
+  // selaluBuka: isi baris (rincian sub) terbuka sejak awal; klik baris untuk menutup — `buka` lalu berarti daftar yang DITUTUP
+  const terbuka = (id) => (selaluBuka ? !buka.has(id) : buka.has(id))
   const toggleBaris = (id) => setBuka((v) => { const n = new Set(v); n.has(id) ? n.delete(id) : n.add(id); return n })
   const [filterOpen, setFilterOpen] = useState(false)
   const filterRef = useRef(null)
@@ -160,7 +165,7 @@ export default function ProjectSpreadsheet({ list, detailFor, onDetail, onFiles,
     return () => document.removeEventListener('pointerdown', tutup)
   }, [filterOpen])
 
-  const semuaRow = useMemo(() => list.map((p) => projectRow(p, namaUser)), [list, namaUser])
+  const semuaRow = useMemo(() => list.map((p) => projectRow(p, namaUser, subMilik)), [list, namaUser, subMilik])
   const opsi = useMemo(() => filterOptions(semuaRow), [semuaRow])
   // ---------- Filter di SETIAP judul kolom ----------
   const setF = (patch) => set({ filters: { ...filters, ...patch }, shownN: PAGE })
@@ -370,17 +375,17 @@ export default function ProjectSpreadsheet({ list, detailFor, onDetail, onFiles,
             <tbody>
               {hasil.length === 0 && <tr><td colSpan={KOLOM.length + 1} className="px-4 py-10 text-sm text-ink-mute" data-kosong-filter>Tidak ada project yang cocok dengan filter ini — ubah pilihan di judul kolom atau tekan Reset.</td></tr>}
               {tampil.map((r, i) => (
-                <tr key={r.id} onClick={() => toggleBaris(r.id)} {...bisaDitekan(() => toggleBaris(r.id))} aria-expanded={buka.has(r.id)} data-grup={grupOf(r.p)}
+                <tr key={r.id} onClick={() => toggleBaris(r.id)} {...bisaDitekan(() => toggleBaris(r.id))} aria-expanded={terbuka(r.id)} data-grup={grupOf(r.p)}
                   title="Klik untuk melihat sub project"
                   className={cx('cursor-pointer border-b border-slate-100 align-top last:border-0 md:hover:bg-brand-soft/40',
-                    detailFor?.id === r.id ? 'bg-brand-soft/60' : buka.has(r.id) ? 'bg-brand-soft/40' : isDone(r.p) ? 'bg-[#DDF5E4] dark:bg-[#143524]' : i % 2 === 1 ? 'bg-slate-100 md:bg-slate-50/60' : 'bg-white')} data-selesai={isDone(r.p) ? '' : undefined}>
+                    detailFor?.id === r.id ? 'bg-brand-soft/60' : terbuka(r.id) ? 'bg-brand-soft/40' : isDone(r.p) ? 'bg-[#DDF5E4] dark:bg-[#143524]' : i % 2 === 1 ? 'bg-slate-100 md:bg-slate-50/60' : 'bg-white')} data-selesai={isDone(r.p) ? '' : undefined}>
                   {KOLOM.map((c) => (
                     <td key={c.key} data-label={c.label}
-                      className={cx('min-w-0 max-w-full whitespace-nowrap px-3 py-2.5 md:whitespace-normal', c.sticky && cx('sticky left-0 z-[1] shadow-[6px_0_8px_-6px_rgba(15,23,42,.25)] md:shadow-none', detailFor?.id === r.id || buka.has(r.id) ? 'bg-[#eef4fb]' : isDone(r.p) ? 'bg-[#DDF5E4] dark:bg-[#143524]' : i % 2 === 1 ? 'bg-slate-100 md:bg-slate-50' : 'bg-white'), c.sticky && pref.urgensi && cx('border-l-[3px]', garisUrgensi(r.p)))}>
+                      className={cx('min-w-0 max-w-full whitespace-nowrap px-3 py-2.5 md:whitespace-normal', c.sticky && cx('sticky left-0 z-[1] shadow-[6px_0_8px_-6px_rgba(15,23,42,.25)] md:shadow-none', detailFor?.id === r.id || terbuka(r.id) ? 'bg-[#eef4fb]' : isDone(r.p) ? 'bg-[#DDF5E4] dark:bg-[#143524]' : i % 2 === 1 ? 'bg-slate-100 md:bg-slate-50' : 'bg-white'), c.sticky && pref.urgensi && cx('border-l-[3px]', garisUrgensi(r.p)))}>
                       {nilai(r, c.key)}
                     </td>
                   ))}
-                  <td data-label="Aksi" className={cx('px-3 py-2.5 md:sticky md:right-0 md:z-10 md:shadow-[-8px_0_10px_-8px_rgba(15,23,42,.18)]', isDone(r.p) && !(detailFor?.id === r.id || buka.has(r.id)) ? 'md:bg-[#DDF5E4] dark:md:bg-[#143524]' : 'md:bg-white')}>
+                  <td data-label="Aksi" className={cx('px-3 py-2.5 md:sticky md:right-0 md:z-10 md:shadow-[-8px_0_10px_-8px_rgba(15,23,42,.18)]', isDone(r.p) && !(detailFor?.id === r.id || terbuka(r.id)) ? 'md:bg-[#DDF5E4] dark:md:bg-[#143524]' : 'md:bg-white')}>
                     {renderAksi ? renderAksi(r.p) : <span className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
                       <button type="button" onClick={() => onDetail(r.p)} title="Lihat detail project"
                         aria-label={`Lihat detail project ${invoiceLabel(r.invoice)}`}
@@ -409,13 +414,13 @@ export default function ProjectSpreadsheet({ list, detailFor, onDetail, onFiles,
                     </tr>)
                   if (lipat.has(g)) return out
                 }
-                if (!buka.has(r.id)) return [...out, tr]
+                if (!terbuka(r.id)) return [...out, tr]
                 return [...out, tr, (
                   <tr key={`${r.id}-sub`} className="border-b border-slate-100 bg-slate-50/70">
                     <td colSpan={KOLOM.length + 1} className="p-0">
                       <div className="sticky left-0 min-w-0 overflow-hidden" style={lebarTampak ? { width: lebarTampak } : undefined} data-isi-baris-tabel>
-                      {renderIsi ? renderIsi(r.p) : <BarisSub kolom={KOLOM} subs={(r.subs || []).map((x) => ({
-                        id: x.id, raw: x, p: r.p, judul: x.title, kategori: (SUB_TYPES[x.type] || SUB_TYPES.jasa_lain).label,
+                      {renderIsi ? renderIsi(r.p) : <BarisSub kolom={KOLOM} tanpaTahap={tanpaTahap} subs={(r.subs || []).map((x) => ({
+                        id: x.id, raw: x, p: r.p, judul: judulTanpaKategori(x), kategori: (SUB_TYPES[x.type] || SUB_TYPES.jasa_lain).label,
                         arah: x.lang_from && x.lang_to ? `${x.lang_from} → ${x.lang_to}` : '',
                         orang: namaUser(x.data?.translator || x.translator || x.data?.vendor || ''),
                         dok: x.docs?.length || x.file_count || 0,
