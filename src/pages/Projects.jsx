@@ -423,7 +423,7 @@ export default function Projects({ tabAwal }) {
       )}
 
       {filesFor && (
-        <Sheet open side={worker} xwide={!worker} onClose={() => setFilesFor(null)} title="File Project" subtitle={`${invoiceLabel(filesFor.invoice_no)} · ${filesFor.customer?.name || ''}`}
+        <Sheet open xwide onClose={() => setFilesFor(null)} title="File Project" subtitle={`${invoiceLabel(filesFor.invoice_no)} · ${filesFor.customer?.name || ''}`}
           footer={<><Button variant="outline" className="flex-1 sm:flex-none sm:px-6" onClick={() => setFilesFor(null)}>Tutup</Button><span className="flex-1" />
             </>}>
           <FileManager kelompok project={projectOf(filesFor.id) || filesFor} />

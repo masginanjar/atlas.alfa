@@ -127,7 +127,7 @@ export default function DasborPelaksana({ projects = [], angka = {}, perbaikan =
       </aside>
       </div>
       {berkas && (
-        <Sheet open side onClose={() => setBerkas(null)} title="File Project" subtitle={`${invoiceLabel(berkas.invoice_no)} · ${berkas.customer?.name || ''}`}
+        <Sheet open xwide onClose={() => setBerkas(null)} title="File Project" subtitle={`${invoiceLabel(berkas.invoice_no)} · ${berkas.customer?.name || ''}`}
           footer={<Button variant="outline" className="flex-1 sm:flex-none sm:px-6" onClick={() => setBerkas(null)}>Tutup</Button>}>
           <FileManager kelompok project={projects.find((x) => x.id === berkas.id) || berkas} />
         </Sheet>
