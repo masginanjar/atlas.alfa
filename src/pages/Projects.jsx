@@ -1160,6 +1160,9 @@ function ProjectExpand({ p: p0, onLangkah, awal }) {
         const hlm = sb.docs?.length ? sb.docs.reduce((a, d) => a + (Number(d.pages) || 0), 0) : (Number(sb.pages) || 0)
         const arah = sb.lang_from && sb.lang_to ? `${sb.lang_from} → ${sb.lang_to}` : '—'
         const flow = flowOf(sb, p); const st = stagesOf(flow); const idx = st.findIndex((x) => x.key === sb.stage)
+        const kat = (SUB_TYPES[sb.type] || SUB_TYPES.jasa_lain).label
+        // Judul lama ditulis "Kategori: detail" — awalan kategorinya dibuang karena sudah punya kolom sendiri
+        const detail = (() => { const t = String(sb.title || ''); const awal = t.toLowerCase().startsWith(`${kat.toLowerCase()}:`) ? kat.length + 1 : /^terjemahan tersumpah:/i.test(t) ? 21 : 0; return t.slice(awal).trim() || t })()
         const selesai = sb.stage === DONE
         const tahap = selesai ? 'Selesai' : stageLabel(flow, sb.stage)
         const berikut = selesai ? '' : (st[idx + 1]?.label || 'Selesai')
@@ -1168,8 +1171,10 @@ function ProjectExpand({ p: p0, onLangkah, awal }) {
         return (
           <div key={sb.id || i} className="border-t border-[rgba(20,27,52,0.08)]">
           <div role="button" tabIndex={0} aria-expanded={aktif === sb.id} onClick={() => setAktif((a) => (a === sb.id ? '' : sb.id))} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setAktif((a) => (a === sb.id ? '' : sb.id)) } }}
-            title="Klik untuk mengerjakan di sini" className={cx('grid cursor-pointer grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 px-4 py-2.5 hover:bg-white/40 lg:grid-cols-[minmax(120px,2fr)_48px_48px_minmax(100px,1fr)_minmax(70px,0.8fr)_minmax(130px,1.5fr)_auto]', aktif === sb.id && 'bg-white/50')} data-sub-baris>
-            <span className="col-span-2 min-w-0 truncate text-[13px] font-bold lg:col-span-1" title={sb.title}>{prioSubBeda(p) && <PriorityBadge p={prioSub(p, sb)} iconOnly className="mr-1.5 align-middle" />}{sb.title || '—'}<span className="block truncate text-[12.5px] font-normal text-[#5E6380] lg:hidden">{[`${dok} Dok`, `${hlm} Hal`, arah !== '—' && arah, who].filter(Boolean).join(' · ')}</span></span>
+            title="Klik untuk mengerjakan di sini" className={cx('grid cursor-pointer grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 px-4 py-2.5 hover:bg-white/40 lg:grid-cols-[minmax(120px,2fr)_48px_48px_minmax(100px,1fr)_minmax(70px,0.8fr)_minmax(130px,1.5fr)_auto] xl:grid-cols-[168px_minmax(120px,2fr)_48px_48px_minmax(100px,1fr)_minmax(70px,0.8fr)_minmax(130px,1.5fr)_auto]', aktif === sb.id && 'bg-white/50')} data-sub-baris>
+            {/* Kategori dan detail dipisah supaya mudah dibaca (kolom sendiri di desktop, label kecil di atas detail pada HP) */}
+            <span className="hidden min-w-0 truncate text-[13px] font-bold xl:block" title={kat} data-sub-kategori>{kat}</span>
+            <span className="col-span-2 min-w-0 truncate text-[13px] font-bold lg:col-span-1" title={sb.title}><span className="block truncate text-[11px] font-bold uppercase tracking-wide text-[#5E6380] xl:hidden">{kat}</span>{prioSubBeda(p) && <PriorityBadge p={prioSub(p, sb)} iconOnly className="mr-1.5 align-middle" />}<span className="xl:font-semibold" data-sub-detail>{detail || '—'}</span><span className="block truncate text-[12.5px] font-normal text-[#5E6380] lg:hidden">{[`${dok} Dok`, `${hlm} Hal`, arah !== '—' && arah, who].filter(Boolean).join(' · ')}</span></span>
             <span className="hidden whitespace-nowrap text-sm tabular-nums lg:block">{dok} Dok</span>
             <span className="hidden whitespace-nowrap text-sm tabular-nums lg:block">{hlm} Hal</span>
             <span className="hidden truncate whitespace-nowrap text-sm lg:block">{arah}</span>
