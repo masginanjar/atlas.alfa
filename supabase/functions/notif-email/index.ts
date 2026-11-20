@@ -56,15 +56,34 @@ ${contoh ? `<p style="margin:10px 0 0;font-size:12px;color:#b45309">Email contoh
 }
 
 async function kirimResend(kunci: string, ke: string, isi: { subjek: string; teks: string; html: string }, idem: string) {
-  const r = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${kunci}`, "Content-Type": "application/json", "Idempotency-Key": idem },
-    body: JSON.stringify({ from: PENGIRIM, to: [ke], subject: isi.subjek, text: isi.teks, html: isi.html }),
-    signal: AbortSignal.timeout(20000),
-  });
-  if (!r.ok) throw new Error(`resend ${r.status}`);
+  // Kunci yang sah hanya berisi huruf/angka/_ — bila tidak, fetch akan menolak header-nya. Dicatat TANPA menulis kuncinya.
+  if (!/^re_[A-Za-z0-9_]{10,}$/.test(kunci)) { console.error("notif-email: bentuk RESEND_API_KEY tidak seperti kunci Resend", { panjang: kunci.length, awalan_re: kunci.startsWith("re_") }); throw new Error("resend kunci-bentuk"); }
+  let r: Response;
+  try {
+    r = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${kunci}`, "Content-Type": "application/json", "Idempotency-Key": idem.replace(/[^A-Za-z0-9._-]/g, "_") },
+      body: JSON.stringify({ from: PENGIRIM, to: [ke], subject: isi.subjek, text: isi.teks, html: isi.html }),
+      signal: AbortSignal.timeout(20000),
+    });
+  } catch (e) { console.error("notif-email: tidak bisa menghubungi Resend", String((e as Error)?.name), String((e as Error)?.message).slice(0, 200)); throw new Error("resend jaringan"); }
+  if (!r.ok) {
+    // Badan galat Resend hanya berisi nama & pesan galat (bukan kunci, bukan isi email).
+    const badan = (await r.text().catch(() => "")).slice(0, 300);
+    console.error("notif-email: Resend menolak", r.status, badan);
+    throw new Error(`resend ${r.status}`);
+  }
 }
-const pesanGalat = (e: unknown) => { const m = String((e as Error)?.message ?? ""); return /resend 40[13]/.test(m) ? "Resend menolak kunci — kunci salah / dicabut / domain belum terverifikasi" : /resend 429/.test(m) ? "Batas kirim harian Resend tercapai" : /resend 422/.test(m) ? "Alamat email ditolak" : "Email gagal dikirim — coba lagi"; };
+const pesanGalat = (e: unknown) => {
+  const m = String((e as Error)?.message ?? "");
+  return /kunci-bentuk/.test(m) ? "Kunci Resend di server tidak valid (bukan kunci lengkap berawalan re_) — buat kunci baru dan simpan ulang"
+    : /resend 401/.test(m) ? "Resend menolak kunci (401) — kunci salah / tidak lengkap / sudah dihapus"
+    : /resend 403/.test(m) ? "Resend menolak (403) — kunci tidak berhak mengirim dari domain ini"
+    : /resend 429/.test(m) ? "Batas kirim Resend tercapai (429)"
+    : /resend 422/.test(m) ? "Resend menolak isi / alamat email (422)"
+    : /jaringan/.test(m) ? "Server tidak bisa menghubungi Resend — coba lagi"
+    : `Email gagal dikirim (${m.replace(/^resend /, "kode ") || "tidak diketahui"})`;
+};
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
