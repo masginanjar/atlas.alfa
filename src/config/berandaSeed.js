@@ -63,7 +63,7 @@ export const FAKTA = [
   { kat: 'Dunia', teks: 'Jam di seluruh Indonesia terbagi tiga zona: WIB, WITA, dan WIT — selisihnya masing-masing satu jam.' },
   { kat: 'Bahasa', teks: 'Bahasa Arab menulis angka dari kiri ke kanan, meski hurufnya ditulis dari kanan ke kiri.' },
   { kat: 'Bahasa', teks: 'Bahasa Jepang punya tiga sistem tulisan sekaligus yang dipakai bersamaan dalam satu kalimat: hiragana, katakana, dan kanji.' },
-  { kat: 'Sejarah', teks: 'Kertas pertama kali dibuat di Tiongkok sekitar 2.000 tahun lalu dari serat kulit kayu dan kain bekas.' },
+  { kat: 'Sejarah', teks: 'Kertas pertama kali dibuat di China sekitar 2.000 tahun lalu dari serat kulit kayu dan kain bekas.' },
   { kat: 'Sains', teks: 'Petir bisa memanaskan udara di sekitarnya hingga sekitar 30.000 °C — lima kali lebih panas dari permukaan matahari.' },
   { kat: 'Dunia', teks: 'Bali punya kalender sendiri (Pawukon) yang satu tahunnya hanya 210 hari.' },
   { kat: 'Alam', teks: 'Bunga Rafflesia arnoldii dari Sumatra adalah bunga tunggal terbesar di dunia, diameternya bisa hampir satu meter.' },

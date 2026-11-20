@@ -17,7 +17,7 @@ export const COUNTRIES = [
   'Antigua dan Barbuda', 'Arab Saudi', 'Argentina', 'Armenia', 'Australia', 'Austria', 'Azerbaijan', 'Bahama',
   'Bahrain', 'Bangladesh', 'Barbados', 'Belanda', 'Belarus', 'Belgia', 'Belize', 'Benin', 'Bhutan', 'Bolivia',
   'Bosnia dan Herzegovina', 'Botswana', 'Brasil', 'Brunei Darussalam', 'Bulgaria', 'Burkina Faso', 'Burundi',
-  'Ceko', 'Chad', 'Chili', 'Denmark', 'Djibouti', 'Dominika', 'Ekuador', 'El Salvador', 'Eritrea', 'Estonia',
+  'Ceko', 'Chad', 'Chili', 'China', 'Denmark', 'Djibouti', 'Dominika', 'Ekuador', 'El Salvador', 'Eritrea', 'Estonia',
   'Eswatini', 'Ethiopia', 'Fiji', 'Filipina', 'Finlandia', 'Gabon', 'Gambia', 'Georgia', 'Ghana', 'Grenada',
   'Guatemala', 'Guinea', 'Guinea Khatulistiwa', 'Guinea-Bissau', 'Guyana', 'Haiti', 'Honduras', 'Hong Kong',
   'Hongaria', 'India', 'Indonesia', 'Inggris (Britania Raya)', 'Irak', 'Iran', 'Irlandia', 'Islandia',
@@ -34,7 +34,7 @@ export const COUNTRIES = [
   'Sao Tome dan Principe', 'Selandia Baru', 'Senegal', 'Serbia', 'Seychelles', 'Sierra Leone', 'Singapura',
   'Siprus', 'Slovakia', 'Slovenia', 'Somalia', 'Spanyol', 'Sri Lanka', 'Sudan', 'Sudan Selatan', 'Suriah',
   'Suriname', 'Swedia', 'Swiss', 'Taiwan', 'Tajikistan', 'Tanjung Verde', 'Tanzania', 'Thailand',
-  'Timor Leste', 'Tiongkok', 'Togo', 'Tonga', 'Trinidad dan Tobago', 'Tunisia', 'Turki', 'Turkmenistan',
+  'Timor Leste', 'Togo', 'Tonga', 'Trinidad dan Tobago', 'Tunisia', 'Turki', 'Turkmenistan',
   'Tuvalu', 'Uganda', 'Ukraina', 'Uni Emirat Arab', 'Uruguay', 'Uzbekistan', 'Vanuatu', 'Vatikan', 'Venezuela',
   'Vietnam', 'Yaman', 'Yordania', 'Yunani', 'Zambia', 'Zimbabwe'
 ]

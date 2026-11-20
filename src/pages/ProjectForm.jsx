@@ -66,7 +66,7 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
   const [busy, setBusy] = useState(false)
   // Tampilan bagian sub project di layar lebar (data Zoho kiri · isian kanan) — disimpan per perangkat, bukan data project.
   const [tampil, setTampil] = useState(bacaTampil)
-  const aturTampil = (patch) => setTampil((t) => { const n = { ...t, ...patch }; try { localStorage.setItem(KUNCI_TAMPIL, JSON.stringify(n)) } catch { /* penyimpanan perangkat penuh / diblokir: setelan berlaku sampai halaman ditutup */ } return n })
+  const aturTampil = (patch) => setTampil((t) => { const n = { ...t, ...patch }; try { localStorage.setItem(KUNCI_TAMPIL, JSON.stringify({ kiri: n.kiri })) } catch { /* penyimpanan perangkat penuh / diblokir: setelan berlaku sampai halaman ditutup */ } return n })
   const wadahSub = useRef(null)
   const geserPembatas = (e) => { const r = wadahSub.current?.getBoundingClientRect(); if (!r?.width) return; aturTampil({ kiri: Math.round(Math.min(62, Math.max(25, ((e.clientX - r.left) / r.width) * 100))) }) }
   // Order vendor langsung dari Project Baru: setelah project TERSIMPAN, tombol WhatsApp Fix Order per vendor tampil di sini (tidak perlu membuka isi project).
@@ -130,6 +130,16 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
   useEffect(() => { if (!page || editing) return; const rapi = bagikanId(nomoriAntarSub(subs)); if (rapi !== subs) setSubs(rapi) }, [subs, page, editing])
   const pakaiDraf = () => { const v = drafTersedia; setCustomer(v.customer || null); setInvoice(v.invoice || ''); if (v.branch) setBranch(v.branch); if (v.about) setAbout((a) => ({ ...a, ...v.about })); if (v.subs?.length) setSubs(v.subs); setDrafTersedia(null) }
   const buangDraf = () => { try { localStorage.removeItem(DRAF_KEY) } catch { /* abaikan */ } setDrafTersedia(null) }
+  // Tarik Data OTOMATIS (20 Nov 2026): begitu Project Baru dibuka dengan invoice yang punya item (mis. dari tombol + Buat project di Faktur),
+  // usulan sub project langsung ditarik — sekali per nomor invoice, hanya bila sub project masih kosong (isian manual / draf tidak ditimpa). "Urungkan" tetap ada.
+  const tarikOtomatis = useRef('')
+  useEffect(() => {
+    const no = invoiceItems?.invoice_no
+    if (!page || editing || !propTarik.onTarik || !no || !invoiceItems.items?.length) return
+    if (tarikOtomatis.current === no || tarikSt || drafTersedia || subs.some(subTerisi)) return
+    tarikOtomatis.current = no
+    jalankanTarik()
+  }, [invoiceItems, drafTersedia]) // eslint-disable-line react-hooks/exhaustive-deps
 
   /**
    * Dari item invoice Zoho: alamat kirim, kurir & prioritas diisi otomatis (tetap bisa diedit).
@@ -837,7 +847,6 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
             )
             return (
               <>
-                {adaInv && <AturTampilan t={tampil} atur={aturTampil} />}
                 <div className="flex flex-col gap-1.5" data-sub-wadah={adaInv ? (sejajar ? 'sejajar' : 'berdampingan') : 'biasa'} data-sub-rapat={tampil.rapat ? '' : undefined} data-sub-ukuran={tampil.ukuran || undefined} style={{ '--sub-kiri': `${tampil.kiri}%` }}>
                   {sejajar && <InvoiceItemsView inv={invoiceItems} {...propTarik} {...propDrive} tanpaHarga tanpaSalinSemua daftarHpSaja />}
           {autoFill && (autoFill.ship || autoFill.courier || autoFill.priority) && (
@@ -944,20 +953,8 @@ function KolBaru({ label, wajib, hp = 'full', style, error, children }) {
 }
 
 const KUNCI_TAMPIL = 'atlas_sub_tampilan'
-const bacaTampil = () => { const d = { kiri: 42, rapat: false, ukuran: 0 }; try { const t = JSON.parse(localStorage.getItem(KUNCI_TAMPIL) || '{}'); return { kiri: Math.min(62, Math.max(25, Number(t.kiri) || d.kiri)), rapat: !!t.rapat, ukuran: [-1, 0, 1].includes(t.ukuran) ? t.ukuran : 0 } } catch { return d } }
-/** Pengaturan tampilan dua kolom (hanya layar lebar): jarak baris, lebar kolom, ukuran tulisan. Tersimpan di perangkat ini. */
-function AturTampilan({ t, atur }) {
-  const Tbl = ({ aktif, onClick, children, label }) => <button type="button" onClick={onClick} aria-pressed={aktif} aria-label={label} className={cx('h-8 rounded-lg px-2.5 text-xs font-bold ring-1 transition', aktif ? 'bg-[#141B34] text-white ring-[#141B34]' : 'bg-white text-ink ring-[#D9DBE7] hover:ring-ink')}>{children}</button>
-  const Grup = ({ judul, children }) => <div className="flex items-center gap-1.5" role="group" aria-label={judul}><span className="text-[11px] font-semibold text-[#5E6380]">{judul}</span>{children}</div>
-  return (
-    <div className="flex flex-wrap items-center justify-end gap-x-4 gap-y-1.5 max-xl:hidden" data-atur-tampilan>
-      <Grup judul="Jarak baris"><Tbl aktif={!t.rapat} onClick={() => atur({ rapat: false })}>Lebar</Tbl><Tbl aktif={t.rapat} onClick={() => atur({ rapat: true })}>Rapat</Tbl></Grup>
-      <Grup judul="Lebar kolom"><Tbl aktif={t.kiri >= 52} onClick={() => atur({ kiri: 55 })}>Kiri lebar</Tbl><Tbl aktif={t.kiri > 35 && t.kiri < 52} onClick={() => atur({ kiri: 42 })}>Sama rata</Tbl><Tbl aktif={t.kiri <= 35} onClick={() => atur({ kiri: 30 })}>Kanan lebar</Tbl></Grup>
-      <Grup judul="Ukuran"><Tbl aktif={t.ukuran === -1} onClick={() => atur({ ukuran: -1 })} label="Ukuran kecil">A−</Tbl><Tbl aktif={!t.ukuran} onClick={() => atur({ ukuran: 0 })} label="Ukuran normal">A</Tbl><Tbl aktif={t.ukuran === 1} onClick={() => atur({ ukuran: 1 })} label="Ukuran besar">A+</Tbl></Grup>
-    </div>
-  )
-}
-
+// Toolbar Jarak baris / Lebar kolom / Ukuran dihapus (20 Nov 2026): jarak selalu LEBAR, ukuran normal. Yang tersimpan hanya lebar kolom kiri (geser pembatas).
+const bacaTampil = () => { const d = { kiri: 42, rapat: false, ukuran: 0 }; try { const t = JSON.parse(localStorage.getItem(KUNCI_TAMPIL) || '{}'); return { ...d, kiri: Math.min(62, Math.max(25, Number(t.kiri) || d.kiri)) } } catch { return d } }
 /** Item & deskripsi invoice Zoho — hanya tampilan (tidak mengisi apa pun), untuk dibaca / disalin saat mengisi sub project secara manual. */
 function InvoiceItemsView({ inv, onTarik, onUrung, tarik, onDrive, onUrungDrive, drive, tanpaHarga, daftarHpSaja, sempit, tanpaSalinSemua }) {
   const { notify } = useApp()

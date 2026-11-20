@@ -8,7 +8,7 @@ import { COUNTRIES } from '../config/subtypes.js'
 const norm = (s = '') => String(s).toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
 /** Sebutan di invoice (Indonesia / Inggris / singkatan) → nama PERSIS di daftar negara ATLAS. */
 const ALIAS = {
-  china: 'Tiongkok', cina: 'Tiongkok', rrc: 'Tiongkok', rrt: 'Tiongkok', prc: 'Tiongkok', chinese: 'Tiongkok',
+  cina: 'China', tiongkok: 'China', rrc: 'China', rrt: 'China', prc: 'China', chinese: 'China', // 20 Nov 2026: di ATLAS ditulis "China" (bukan Tiongkok)
   usa: 'Amerika Serikat', us: 'Amerika Serikat', as: 'Amerika Serikat', amerika: 'Amerika Serikat', america: 'Amerika Serikat', 'united states': 'Amerika Serikat',
   uk: 'Inggris (Britania Raya)', inggris: 'Inggris (Britania Raya)', england: 'Inggris (Britania Raya)', 'united kingdom': 'Inggris (Britania Raya)', britania: 'Inggris (Britania Raya)',
   korea: 'Korea Selatan', korsel: 'Korea Selatan', 'south korea': 'Korea Selatan', netherlands: 'Belanda', holland: 'Belanda', dutch: 'Belanda',
