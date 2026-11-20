@@ -58,7 +58,7 @@ const STATUS = {
  * Strip kapasitas untuk penerjemah sendiri — tampil di My Project.
  * Menunjukkan angkanya, lalu tombol mengajukan penambahan.
  */
-export function KapasitasSaya({ className }) {
+export function KapasitasSaya({ className, kartu = false, hariIni = 0 }) {
   const { user, data, save, notify } = useApp()
   const [form, setForm] = useState(null)
   const [sibuk, setSibuk] = useState(false)
@@ -88,7 +88,17 @@ export function KapasitasSaya({ className }) {
 
   return (
     <>
-      <div className={cx('flex flex-wrap items-center gap-2 rounded-xl bg-white px-3 py-2 ring-1 ring-slate-200', className)} data-kapasitas-saya>
+      {kartu && (
+        <section className={cx('flex flex-col gap-2 rounded-2xl bg-white p-4 ring-1 ring-slate-200 dark:bg-white/5 dark:ring-white/10', className)} data-kapasitas-kartu>
+          <h2 className="text-[15px] font-bold">Kapasitas hari ini</h2>
+          <p className="flex items-baseline gap-1.5"><b className={cx('text-2xl font-extrabold tabular-nums', hariIni > kap && 'text-rose-600')}>{hariIni}</b><span className="text-[13px] text-ink-soft">dari {kap} halaman</span></p>
+          <span className="h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-white/10" role="img" aria-label={`${hariIni} dari ${kap} halaman`}><span className={cx('block h-full rounded-full', hariIni > kap ? 'bg-rose-500' : 'bg-brand')} style={{ width: `${Math.min(100, (hariIni / Math.max(1, kap)) * 100)}%` }} /></span>
+          <p className="text-[12.5px] text-ink-soft">Bulan ini <b className={cx(bulanIni > kuota ? 'text-rose-600' : 'text-ink')}>{bulanIni.toLocaleString('id-ID')}</b> dari {kuota.toLocaleString('id-ID')} halaman</p>
+          {menunggu ? <span className="inline-flex min-h-9 items-center gap-1 rounded-xl bg-amber-50 px-3 text-[12px] font-bold text-amber-800 ring-1 ring-amber-200"><Clock className="h-3.5 w-3.5" />Diajukan jadi {menunggu.ke} — menunggu persetujuan</span>
+            : <button type="button" onClick={() => setForm({ ke: kap + 5, alasan: '' })} data-aksi="ajukan-kapasitas" className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl bg-white px-3 text-[13px] font-bold ring-1 ring-slate-200 hover:ring-brand dark:bg-white/5"><Plus className="h-4 w-4" />Ajukan tambah kapasitas</button>}
+        </section>
+      )}
+      <div className={cx('flex flex-wrap items-center gap-2 rounded-xl bg-white px-3 py-2 ring-1 ring-slate-200', className, kartu && 'hidden')} data-kapasitas-saya>
         <Gauge className="h-4 w-4 shrink-0 text-brand" />
         <span className="text-xs text-ink-soft">Kapasitas harian saya <b className="text-sm text-ink" data-kap-angka>{kap}</b> halaman/hari deadline</span>
         <span className="text-xs text-ink-soft" data-kap-bulan title={`Akumulasi sebulan: ${kap} halaman × ${HARI_BULAN} hari`}>· Bulan ini <b className={cx('text-sm', bulanIni > kuota ? 'text-rose-600' : 'text-ink')}>{bulanIni.toLocaleString('id-ID')}</b> / {kuota.toLocaleString('id-ID')} halaman</span>

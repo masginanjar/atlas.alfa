@@ -165,6 +165,9 @@ export default function Dashboard() {
     user.role === 'staf_apostille' && { key: 'staf', label: 'Antrean instansi', n: s.staf.length, polos: true, isi: <div className="[&>*]:shadow-none [&>*]:ring-0"><StafBoard rows={s.staf} /></div> },
   ].filter(Boolean)
 
+  // Pelaksana (penerjemah / proofreader / otorisator): satu susunan dashboard sendiri
+  if (worker) return <DasborPelaksana projects={scopeByBranch(user, data.projects, branchFilter)} angka={{ aktif: s.myTasks.length, hariIni: today, telat: late, selesai: selesaiBulanIni }} perbaikan={s.myTasks.filter((t) => t.data?.perbaikan_note)} />
+
   return (
     <div className="space-y-3">
       <KepalaDasbor user={user} ping={pil} />
