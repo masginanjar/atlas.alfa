@@ -746,25 +746,24 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
           </div>
         )}
 
-        {/* 1 · Pelanggan, invoice & pengiriman — satu pita */}
+        {/* Pelanggan, invoice & pengiriman + data project — satu kotak */}
         <div className="flex flex-col gap-2.5 rounded-2xl bg-white px-4 py-3.5" data-bagian="1">
-          <h2 className="text-xs font-bold uppercase tracking-[0.06em] text-[#5E6380]">1 · Pelanggan, invoice & pengiriman</h2>
           <div className="flex flex-wrap items-start gap-2.5">
             <KolBaru label="Pelanggan" wajib style={{ flex: '1.4 1 220px' }} error={E('customer')}>
               <CustomerPicker ringkas value={customer} invalid={!!E('customer')} onChange={(c, inv) => { setCustomer(c); setInvoice(preset?.invoice_no || inv || '') }} />
             </KolBaru>
-            <KolBaru label="No. invoice" wajib style={{ flex: '1 1 170px' }} error={preset?.invoice_no ? E('invoice') : null}>
+            <KolBaru label="Invoice" wajib style={{ flex: '1 1 170px' }} error={preset?.invoice_no ? E('invoice') : null}>
               {preset?.invoice_no
                 ? <p className="flex h-9 items-center text-sm font-bold max-md:h-11">{invoiceLabel(invoice)}</p>
                 : <InvoicePicker ringkas customer={customer} value={invoice} onChange={setInvoice} error={E('invoice')} onPemilik={pakaiPemilik} />}
             </KolBaru>
-            <KolBaru label="Metode pengiriman" wajib style={{ flex: '1 1 190px' }} error={E('metode')}>
+            <KolBaru label="Kirim" wajib style={{ flex: '1 1 190px' }} error={E('metode')}>
               <select value={metodeKirim} onChange={(e) => pilihMetode(e.target.value)} aria-label="Metode pengiriman" aria-invalid={!!E('metode')} data-metode-kirim className={cx(kelas, '!px-2', E('metode') && '!ring-2 !ring-rose-500')}>
                 <option value="" disabled>Pilih metode…</option>
                 {METODE_URUT.map((t) => <option key={t} value={t}>{t === 'pickup' && about.print_location ? `Diambil di Kantor ${about.print_location}` : DELIVERY_LABEL[t]}</option>)}
               </select>
             </KolBaru>
-            <KolBaru label="Alamat kirim" style={{ flex: '2 1 300px' }}>
+            <KolBaru label="Alamat" style={{ flex: '2 1 300px' }}>
               {!perluAlamat
                 ? <p className="flex min-h-9 items-center rounded-[10px] bg-slate-50 px-2.5 text-xs text-ink-mute ring-1 ring-slate-200 max-md:min-h-11" data-tanpa-alamat>{metodeKirim === 'pickup' ? 'Diambil di kantor — alamat tidak diperlukan.' : 'Softcopy saja — alamat tidak diperlukan.'}</p>
                 : !customer
@@ -779,12 +778,8 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
             </KolBaru>
           </div>
           {perluAlamat && customer && editShip && <div className="rounded-xl bg-slate-50 p-3 ring-1 ring-slate-200"><ShipEditor ship={customer.ship || {}} onChange={(ship) => setCustomer((c) => ({ ...c, ship }))} onDone={() => setEditShip(false)} /></div>}
-        </div>
-
-        {/* 2 · Project */}
-        <div className="flex flex-col gap-2.5 rounded-2xl bg-white px-4 py-3.5" data-bagian="2">
-          <h2 className="text-xs font-bold uppercase tracking-[0.06em] text-[#5E6380]">2 · Project</h2>
-          <div className="flex flex-wrap items-start gap-2.5">
+          {/* Project (prioritas, deadline, cabang…) — satu kotak dengan pelanggan & invoice, tanpa judul bagian (20 Nov 2026) */}
+          <div className="flex flex-wrap items-start gap-2.5" data-bagian="2">
             <KolBaru label="Prioritas" wajib hp="half" style={{ flex: '1 1 140px' }}>
               <PrioritySelect value={about.priority} onChange={pilihPrio} />
             </KolBaru>
@@ -794,7 +789,7 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
                 <input type="time" aria-label="Jam deadline" value={about.deadline_time || '17:00'} onChange={setA('deadline_time')} className={cx(kelas, '!w-[110px] flex-none')} data-jam-deadline />
               </div>
             </KolBaru>
-            <KolBaru label="Tanggal masuk" hp="half" style={{ flex: '1 1 136px' }}>
+            <KolBaru label="Masuk" hp="half" style={{ flex: '1 1 136px' }}>
               <input type="date" aria-label="Tanggal masuk" value={about.received_at?.slice(0, 10) || ''} onChange={setA('received_at')} className={kelas} />
             </KolBaru>
             <KolBaru label="Cabang" hp="half" style={{ flex: '1 1 120px' }}>
@@ -802,7 +797,7 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
                 ? <select aria-label="Cabang" value={branch} onChange={(e) => { const lama = branch; setBranch(e.target.value); setAbout((a) => (a.print_location === lama ? { ...a, print_location: e.target.value } : a)) }} className={cx(kelas, '!px-2')}>{(can.seeAllBranches(user) ? BRANCHES : branchesOf(user)).map((b) => <option key={b}>{b}</option>)}</select>
                 : <input aria-label="Cabang" value={branch} readOnly disabled tabIndex={-1} className={cx(kelas, 'bg-slate-50 text-ink-mute')} />}
             </KolBaru>
-            <KolBaru label="Lokasi print" hp="half" style={{ flex: '1 1 120px' }}>
+            <KolBaru label="Print" hp="half" style={{ flex: '1 1 120px' }}>
               <select aria-label="Lokasi print" value={about.print_location} onChange={setA('print_location')} data-print-pilih className={cx(kelas, '!px-2')}>
                 <optgroup label="Cabang">{BRANCHES.map((b) => <option key={b} value={b}>{b}</option>)}</optgroup>
                 <optgroup label="Eksternal"><option value={PRINT_VENDOR}>Vendor</option></optgroup>
@@ -817,8 +812,8 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
         {/* 3 · Sub project — satu baris per sub, jarak rapat */}
         <div className="flex flex-col gap-1.5 rounded-2xl bg-white px-4 py-3.5 max-md:px-2.5" data-bagian="3">
           <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-            <h2 className="text-xs font-bold uppercase tracking-[0.06em] text-[#5E6380]">3 · Sub project & dokumen</h2>
-            <span className="text-xs text-[#5E6380]" data-ringkasan-sub>{subs.length} sub project · {nDokumen} dokumen · {nHalaman} halaman</span>
+            <h2 className="text-xs font-bold uppercase tracking-[0.06em] text-[#5E6380]">Sub project</h2>
+            <span className="text-xs text-[#5E6380]" data-ringkasan-sub>{subs.length} sub · {nDokumen} dok · {nHalaman} hlm</span>
           </div>
           {(() => {
             // Layar lebar + ada item invoice: data Zoho di KIRI, isian di KANAN. Sub hasil Tarik Data disejajarkan baris demi baris dengan item asalnya.
@@ -884,13 +879,13 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
           <div data-tarik-bawah className={cx('mt-1.5 flex flex-wrap items-center gap-2 rounded-xl border-2 border-dashed px-3 py-2.5', seretBawah ? 'border-brand bg-brand-soft' : 'border-[#B9BEDA] bg-[#F8F9FD]')}
             onDragOver={(e) => { if ([...(e.dataTransfer?.types || [])].includes('Files')) { e.preventDefault(); setSeretBawah(true) } }} onDragLeave={() => setSeretBawah(false)}
             onDrop={(e) => { if (e.dataTransfer?.files?.length) { e.preventDefault(); setSeretBawah(false); tarikKeBawah(e.dataTransfer.files) } }}>
-            <span className="inline-flex items-center gap-2 text-sm font-semibold"><Upload className="h-[18px] w-[18px]" />{seretBawah ? 'Lepas file di sini' : 'Tarik file ke sini'}</span>
+            <span className="inline-flex items-center gap-2 text-sm font-semibold"><Upload className="h-[18px] w-[18px]" />{seretBawah ? 'Lepas di sini' : 'Tarik file'}</span>
             {Object.entries(SUB_TYPES).map(([k, t]) => (
-              <button key={k} type="button" onClick={() => tambahSub(k)} data-aksi={`tambah-sub-${k}`} className="inline-flex h-9 items-center gap-1.5 rounded-[10px] bg-white px-3 text-[13px] font-semibold text-ink ring-1 ring-[#D9DBE7] hover:ring-ink max-md:h-11"><Plus className="h-3.5 w-3.5" />{t.short || t.label}</button>
+              <button key={k} type="button" onClick={() => tambahSub(k)} data-aksi={`tambah-sub-${k}`} aria-label={`Tambah sub ${t.label}`} className={cx('inline-flex h-9 items-center gap-1.5 rounded-[10px] px-3 text-[13px] font-bold text-white hover:opacity-90 max-md:h-11', WARNA_SUB[k] || 'bg-ink')}><Plus className="h-3.5 w-3.5" />{t.short || t.label}</button>
             ))}
           </div>
           <details className="rounded-xl ring-1 ring-slate-200">
-            <summary className="cursor-pointer px-3 py-2 text-xs font-semibold text-ink-soft max-md:py-3"><CloudUpload className="mr-1 inline h-3.5 w-3.5" />File tambahan (opsional){queue.length ? ` · ${queue.length} file` : ''}</summary>
+            <summary className="cursor-pointer px-3 py-2 text-xs font-semibold text-ink-soft max-md:py-3"><CloudUpload className="mr-1 inline h-3.5 w-3.5" />File lain{queue.length ? ` · ${queue.length}` : ''}</summary>
             <div className="px-3 pb-3"><FileQueue queue={queue} setQueue={setQueue} subs={subs} /></div>
           </details>
         </div>
@@ -951,6 +946,8 @@ function KolBaru({ label, wajib, hp = 'full', style, error, children }) {
   )
 }
 
+/** Warna tombol tambah sub = warna kategorinya (sama dengan field Kategori di SubBaris). */
+const WARNA_SUB = { terjemahan: 'bg-[#2343C9]', terjemahan_nt: 'bg-[#6D28D9]', apostille: 'bg-[#14275E]', legalisasi: 'bg-[#C62828]', jasa_lain: 'bg-[#1E7A3C]' }
 const KUNCI_TAMPIL = 'atlas_sub_tampilan'
 // Toolbar Jarak baris / Lebar kolom / Ukuran dihapus (20 Nov 2026): jarak selalu LEBAR, ukuran normal. Yang tersimpan hanya lebar kolom kiri (geser pembatas).
 const bacaTampil = () => { const d = { kiri: 42, rapat: false, ukuran: 0 }; try { const t = JSON.parse(localStorage.getItem(KUNCI_TAMPIL) || '{}'); return { ...d, kiri: Math.min(62, Math.max(25, Number(t.kiri) || d.kiri)) } } catch { return d } }
@@ -969,12 +966,12 @@ function InvoiceItemsView({ inv, onTarik, onUrung, tarik, onDrive, onUrungDrive,
         <p className={cx('min-w-0 flex-1 text-xs text-emerald-900 max-md:basis-[calc(100%-2rem)]', sempit && 'xl:basis-[calc(100%-2rem)]')}><b className="font-semibold">Item invoice {invoiceLabel(inv.invoice_no)}</b></p>
         {onTarik && items.length > 0 && <button type="button" onClick={onTarik} disabled={!!tarik?.sibuk} data-aksi="tarik-data" title="Susun sub project otomatis dari item invoice ini — hasilnya tetap bisa diubah"
           className="inline-flex min-h-8 items-center gap-1.5 rounded-lg bg-violet-600 px-2.5 py-1 text-[11.5px] font-bold text-white hover:bg-violet-700 disabled:opacity-60 max-md:min-h-11 max-md:px-3 max-md:text-[13px]">
-          {tarik?.sibuk ? <Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" /> : <Sparkles className="h-3.5 w-3.5" />}{tarik?.sibuk ? 'Menganalisa…' : 'Tarik Data (beta)'}</button>}
+          {tarik?.sibuk ? <Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" /> : <Sparkles className="h-3.5 w-3.5" />}{tarik?.sibuk ? 'Menganalisa…' : tarik?.ok ? 'Tarik ulang' : 'Tarik Data'}</button>}
         {onDrive && <button type="button" onClick={onDrive} disabled={!!drive?.sibuk} data-aksi="tarik-drive" title="Masa transisi: susun sub project dari nama file di folder Drive bernomor invoice ini — hasilnya tetap bisa diubah"
           className="inline-flex min-h-8 items-center gap-1.5 rounded-lg bg-sky-700 px-2.5 py-1 text-[11.5px] font-bold text-white hover:bg-sky-800 disabled:opacity-60 max-md:min-h-11 max-md:px-3 max-md:text-[13px]">
-          {drive?.sibuk ? <Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" /> : <FolderSearch className="h-3.5 w-3.5" />}{drive?.sibuk ? 'Membaca Drive…' : 'Tarik dari Drive (transisi)'}</button>}
+          {drive?.sibuk ? <Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" /> : <FolderSearch className="h-3.5 w-3.5" />}{drive?.sibuk ? 'Membaca Drive…' : 'Drive'}</button>}
         {items.length > 0 && !tanpaSalinSemua && <button type="button" onClick={() => copy(items.map((it, i) => `${i + 1}. ${textOf(it)}`).join('\n\n'), 'Semua item')} className="inline-flex items-center gap-1 rounded-lg bg-white px-2 py-1 text-[11px] font-semibold text-emerald-800 ring-1 ring-emerald-300 hover:bg-emerald-100"><Copy className="h-3 w-3" />Salin semua</button>}
-        <button type="button" onClick={() => setOpen((o) => !o)} className={cx('rounded-lg p-1 text-emerald-800 hover:bg-emerald-100', daftarHpSaja && 'xl:hidden')} aria-label={open ? 'Sembunyikan item invoice' : 'Tampilkan item invoice'} aria-expanded={open}>{open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</button>
+        <button type="button" onClick={() => setOpen((o) => !o)} className={cx('grid place-items-center rounded-lg p-1 text-emerald-800 hover:bg-emerald-100 max-md:h-11 max-md:w-11', daftarHpSaja && 'xl:hidden')} aria-label={open ? 'Sembunyikan item invoice' : 'Tampilkan item invoice'} aria-expanded={open}>{open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</button>
       </div>
       {tarik?.galat && <p role="alert" className="border-t border-rose-100 bg-rose-50 px-3.5 py-2 text-xs font-semibold text-rose-800" data-tarik-galat>{tarik.galat}. Sub project tidak diubah — isi manual seperti biasa.</p>}
       {tarik?.ok && (
@@ -1006,7 +1003,7 @@ function InvoiceItemsView({ inv, onTarik, onUrung, tarik, onDrive, onUrungDrive,
                   </div>
                   {String(it.description || '').trim() && <pre className="mt-1 cursor-text select-text whitespace-pre-wrap break-words rounded-lg bg-slate-50 px-2.5 py-2 font-sans text-[13px] leading-relaxed text-ink-soft ring-1 ring-slate-100">{it.description.trim()}</pre>}
                 </div>
-                <button type="button" onClick={() => copy(textOf(it), `Item ${i + 1}`)} title="Salin item ini" aria-label={`Salin item ${i + 1}`} className="h-fit shrink-0 rounded-lg p-1.5 text-slate-400 hover:bg-brand-soft hover:text-brand"><Copy className="h-4 w-4" /></button>
+                <button type="button" onClick={() => copy(textOf(it), `Item ${i + 1}`)} title="Salin item ini" aria-label={`Salin item ${i + 1}`} className="grid h-fit shrink-0 place-items-center rounded-lg p-1.5 text-slate-400 hover:bg-brand-soft hover:text-brand max-md:h-11 max-md:w-11"><Copy className="h-4 w-4" /></button>
               </li>
             ))}
           </ol>

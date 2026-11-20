@@ -322,8 +322,11 @@ export default function SubBaris({ n, sub, onChange, onRemove, branch, error, on
   const tr = isTerjemahan(sub.type)
   const al = ['apostille', 'legalisasi'].includes(sub.type)
   const labelUnggah = seret ? 'Lepas file di sini' : kosong.length ? 'Upload massal' : docs.length ? 'Upload file lagi' : 'Upload file'
+  // Terjemahan ke VENDOR: file tidak wajib diunggah saat membuat project — cukup nama dokumennya (tombol "+ Dokumen").
+  const keVendor = tr && (sub.translator_kind === 'vendor' || perluVendor(sub))
+  const tambahBaris = () => setDocs([...docs, { desc: `Dokumen ${docs.length + 1}`, pages: 1, ...(tr && jenisOps[0] ? { kind: jenisOps[0][0] } : {}) }])
   const judulDok = tr
-    ? (docs.length ? `Dokumen · ${docs.length} file · ${nHal} hlm` : 'Dokumen · belum ada file')
+    ? (docs.length ? `Dokumen · ${docs.length} · ${nHal} hlm` : keVendor ? 'Dokumen · file tidak wajib' : 'Dokumen · belum ada file')
     : tunggu ? 'Dokumen · menunggu hasil terjemahan'
     : `${sub.type === 'legalisasi' ? 'Dokumen yang dilegalisasi' : 'Dokumen yang diapostille'}${docs.length ? ` · ${docs.length} dokumen` : ' · belum ada file'}`
 
@@ -339,7 +342,7 @@ export default function SubBaris({ n, sub, onChange, onRemove, branch, error, on
         </Kol>
 
         {extra.includes('lang') && (
-          <Kol label="Bahasa · asal → tujuan" wajib style={{ flex: '1.6 1 250px' }}>
+          <Kol label="Bahasa" wajib style={{ flex: '1.6 1 250px' }}>
             <div className="flex items-center gap-1.5">
               <select value={sub.lang_from} onChange={(e) => setBahasa({ lang_from: e.target.value })} aria-label="Bahasa asal" className={cx(inputCls, '!px-2')}>{LANGS.map((x) => <option key={x}>{x}</option>)}</select>
               <span aria-hidden className="text-[#4F5470]">→</span>
@@ -436,7 +439,7 @@ export default function SubBaris({ n, sub, onChange, onRemove, branch, error, on
   )
   const elKepala = (
             <div className="flex items-center gap-2 px-2.5 text-[11px] font-semibold text-[#4F5470]">
-              <span className="min-w-0 flex-1 truncate">{judulDok}<span className="text-[#B4233F]"> *</span>{tr && jenisOps.length > 0 && <span className="md:hidden"> · jenis: {jenisOps.map(([, l]) => l).join(' / ')}</span>}</span>
+              <span className="min-w-0 flex-1 truncate">{judulDok}{!(keVendor && !docs.length) && <span className="text-[#B4233F]"> *</span>}{tr && jenisOps.length > 0 && <span className="md:hidden"> · jenis: {jenisOps.map(([, l]) => l).join(' / ')}</span>}</span>
               {tr && docs.length > 0 && jenisOps.length > 0 && <span className="w-[132px] flex-none max-md:hidden">Jenis<span className="text-[#B4233F]"> *</span></span>}
               {tr && docs.length > 0 && <span className="w-[64px] flex-none text-center max-md:hidden">Hlm</span>}
               {docs.length > 0 && <span className="w-9 flex-none max-md:hidden" />}
@@ -486,6 +489,7 @@ export default function SubBaris({ n, sub, onChange, onRemove, branch, error, on
   const elUnggah = !massal && (
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                       <TombolUnggah data="data-unggah-banyak" salah={errOn('dokumen')} label={labelUnggah} onFiles={pasang} className="md:w-auto md:px-5" />
+                      {keVendor && (!maks || docs.length < maks) && <button type="button" onClick={tambahBaris} data-aksi="tambah-dokumen" className="inline-flex h-9 items-center gap-1 rounded-[10px] bg-white px-3 text-[13px] font-bold text-ink ring-1 ring-[#D9DBE7] hover:ring-ink max-md:h-11">+ Dokumen</button>}
                       {onApostilleHasil && sub.type === 'terjemahan' && docs.length > 0 && <button type="button" onClick={onApostilleHasil} data-aksi="apostille-hasil" className="inline-flex min-h-9 items-center gap-1 rounded-lg px-1 text-xs font-semibold text-[#17693A] hover:underline max-md:min-h-11">+ Apostille hasil terjemahan ini</button>}
                     </div>
   )
