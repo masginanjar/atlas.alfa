@@ -1,5 +1,5 @@
 // ============================================================
-//  IMPOR DATA ATLAS LAMA (Pengaturan → Impor data lama) — hanya dengan izin pengaturan.impor-lama.jalankan.
+//  IMPOR DATA ATLAS LAMA (Pengaturan → Impor data lama) — hanya dengan izin pengaturan.impor-lama.atur.
 //  • Berkas .json disiapkan dari ekspor ATLAS lama (project + pengajuan dana). Berkas dibaca di browser ini
 //    dan dikirim ke server lewat sesi pengguna yang sedang masuk — RLS server tetap berlaku.
 //  • Aman diulang: yang sudah ada (id / No. Invoice sama) dilewati, tidak pernah ditimpa.
@@ -24,7 +24,7 @@ export default function ImporLama() {
   const [galat, setGalat] = useState('')
   const [jalan, setJalan] = useState(null) // { langkah, n, total }
   const [hasil, setHasil] = useState(null)
-  const bisa = boleh(user, 'pengaturan.impor-lama.jalankan')
+  const bisa = boleh(user, 'pengaturan.impor-lama.atur')
   const live = MODE === 'supabase'
 
   const baca = async (f) => {
