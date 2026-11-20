@@ -176,7 +176,9 @@ const STAF_FLOW = [
     notify: (p) => [{ to_user: p.created_by, text: 'Hasil apostille/legalisasi sudah tersedia — silakan download' }] },
 ]
 /** Status sederhana untuk dashboard Staf Apostille. */
-export const stafStatus = (stage) => (stage === DONE ? 'Selesai' : stage === 'diproses' ? 'Sedang Diproses' : 'Belum Diproses')
+/** Sudah mulai dikerjakan? (20 Nov 2026: tahap "Belum Diproses" dilewati — "mulai" = langkah to-do pertama dicentang / hasil diunggah / dulu menekan Mulai Proses.) */
+export const apSudahMulai = (sub) => !!(sub?.data?.started_at || (sub?.data?.proses_checklist || []).length || sub?.data?.hasil_akhir)
+export const stafStatus = (stage, sub) => (stage === DONE ? 'Selesai' : stage === 'diproses' && (!sub || apSudahMulai(sub)) ? 'Sedang Diproses' : 'Belum Diproses')
 /** Total biaya apostille/legalisasi = biaya proses + biaya lain. */
 /** Nama langkah ceklis untuk ditampilkan (bisa berbeda dari kunci datanya). */
 export const namaLangkah = (f, it) => f?.itemLabel?.[it] || it
@@ -208,11 +210,11 @@ export const CATEGORIES = {
           { key: 'catatan_proofread', label: 'Catatan Pemeriksaan', type: 'text' },
         ],
         notify: () => [{ to_role: 'otorisator', text: 'Dokumen baru di To-Do List Otorisator' }] },
-      { key: 'otorisasi', label: 'Otorisasi', roles: ['superadmin', 'supervisor', 'otorisator'], claimable: true, action: 'ACC → Nomor Registrasi',
+      { key: 'otorisasi', label: 'Otorisasi', roles: ['superadmin', 'supervisor', 'otorisator'], claimable: true, action: 'ACC',
         hint: 'To-Do bersama semua otorisator. Tekan "Ambil" agar tidak dikerjakan bersamaan.',
         fields: [{ key: 'file_final', label: 'Hasil Otorisasi', type: 'file', required: true }],
         onAdvance: (s, u) => ({ authorized_by: u.id, authorized_name: u.name, authorized_at: new Date().toISOString(), claim: null }),
-        // Nomor register dipesan otomatis saat ACC (lihat processStage); Admin Pusat mengecek & menerbitkan
+        // Nomor register dipesan & LANGSUNG TERBIT otomatis saat ACC (lihat processStage, 20 Nov 2026); pesan di bawah hanya terkirim bila nomor gagal lengkap
         notify: () => [{ to_role: 'admin_pusat', text: 'Dokumen selesai diotorisasi — nomor register sudah dibuat, menunggu dicek & diterbitkan' }] },
       { key: 'registrasi', label: 'Nomor Registrasi', short: 'No. Registrasi', roles: ['superadmin', 'admin_pusat', 'otorisator', 'supervisor'], action: 'Terbitkan Nomor → Siap Print',
         hint: 'Nomor register sudah dibuat otomatis saat Otorisator ACC (berurutan, satu per dokumen). Cek jenis dokumen & nama dalam dokumen, lalu Terbitkan. Nomor ini dituliskan pada hasil cetak.',

@@ -133,10 +133,13 @@ function useTask(project, sub, onDone) {
   const values = () => ({ ...(pick ? { [pick.key]: target() } : {}), ...(noteField && note ? { [noteField.key]: note } : {}) })
   const next = async () => {
     const keOtorisasiSelesai = stage.key === 'otorisasi'
-    const ok = await run('next', () => processStage(project, sub.id, values(), true), keOtorisasiSelesai ? `${sub.title} di-ACC — isi nomor registrasi` : `${sub.title} → tahap berikutnya`)
-    // Setelah ACC otorisasi, jendela tetap terbuka: form nomor registrasi langsung muncul
-    if (ok && !keOtorisasiSelesai) onDone?.()
-    return ok
+    let hasil = null
+    const ok = await run('next', async () => { hasil = await processStage(project, sub.id, values(), true) }, keOtorisasiSelesai ? `${sub.title} di-ACC` : `${sub.title} → tahap berikutnya`)
+    // Setelah ACC otorisasi: nomor register biasanya langsung terbit otomatis → jendela ditutup.
+    // Jendela hanya tetap terbuka bila dokumen masih berhenti di tahap Nomor Registrasi (pemesanan nomor tidak lengkap).
+    const masihRegistrasi = hasil?.sub_projects?.find((x) => x.id === sub.id)?.stage === 'registrasi'
+    if (ok && !(keOtorisasiSelesai && masihRegistrasi)) onDone?.()
+    return ok ? (keOtorisasiSelesai && masihRegistrasi ? 'tetap' : true) : false
   }
   const blocked = stage.fields.some((f) => f.required && f.type === 'file' && !files.length) ? 'Upload hasil dulu'
     : pick?.required && !(tetap || (teamPick ? people?.length : who)) ? (teamPick ? 'Belum ada proofreader aktif — hubungi Direktur' : `Pilih ${pick.label} dulu`) : ''
@@ -306,7 +309,7 @@ function WorkSheetBerkas({ project, sub, t, onClose }) {
       footer={<>
         <Button variant="outline" className="flex-1 sm:flex-none sm:px-6" onClick={onClose}>Tutup</Button>
         <Button className="flex-[2]" variant="dark" loading={t.busy === 'next'} disabled={!!t.blocked}
-          onClick={async () => { const ok = await t.next(); if (ok && t.stage.key !== 'otorisasi') onClose() }}>{t.stage.action} <Send className="h-4 w-4" /></Button>
+          onClick={async () => { const ok = await t.next(); if (ok && ok !== 'tetap') onClose() }}>{t.stage.action} <Send className="h-4 w-4" /></Button>
       </>}>
       <div className="space-y-4">
         <KotakDeadline project={project} />

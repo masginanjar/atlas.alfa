@@ -1418,7 +1418,7 @@ function StafBoard({ rows }) {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {aUrut.map((r) => {
-                const st = stafStatus(r.stage); const S = STATUS_STYLE[st]; const d = daysLeft(r.project.about?.deadline)
+                const st = stafStatus(r.stage, r); const S = STATUS_STYLE[st]; const d = daysLeft(r.project.about?.deadline)
                 return (
                   <tr key={r.id} className="hover:bg-slate-50/60">
                     <td data-label="Project" className="px-4 py-2.5"><a href={`#/projects/${r.project.id}`} className="font-bold hover:text-brand">{invoiceLabel(r.project.invoice_no)}</a><TimeAgo at={stageArrivedAt(r, r.project)} prefix="Masuk" /><p className="max-w-[200px] truncate text-xs text-ink-mute">{r.project.customer?.name} · {r.title}</p></td>

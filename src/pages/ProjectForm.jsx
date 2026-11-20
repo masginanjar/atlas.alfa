@@ -338,18 +338,20 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
       //  • terjemahan + penerjemah dipilih langsung → langsung Penerjemahan (lewati Direktur), penerjemah diberi tahu
       //  • apostille/legalisasi → antrean staf
       const autoNotes = []
-      if (!editing) for (const sp of sub_projects) {
+      // 20 Nov 2026: berlaku juga saat project DIEDIT (selama sub masih di tahap pertama) dan untuk terjemahan non tersumpah.
+      for (const sp of sub_projects) {
         const st = stagesOf(sp.flow); const first = st[0]; const second = st[1]
-        if (!second || !sp.data?.dokumen_sumber) continue
+        if (!second || !sp.data?.dokumen_sumber || sp.stage !== first.key) continue
         const toSpv = sp.flow === 'tr_int' && first.key === 'cs_input' && !sp.data.translator
         const toTr = sp.flow === 'tr_int' && first.key === 'cs_input' && !!sp.data.translator && st.some((x) => x.key === 'penerjemahan')
         const toStaf = first.key === 'cs_upload'
-        if (!toSpv && !toTr && !toStaf) continue
-        const target = toTr ? st.find((x) => x.key === 'penerjemahan') : second
+        const toNt = sp.flow === 'tr_nt' && first.key === 'cs_input' && !!sp.data.translator // non tersumpah: dokumen + penerjemah sudah ada → langsung dikerjakan
+        if (!toSpv && !toTr && !toStaf && !toNt) continue
+        const target = toTr ? st.find((x) => x.key === 'penerjemahan') : toStaf && second.key === 'antrian' && st[2] ? st[2] : second // apostille: tahap "Belum Diproses" dilewati
         sp.stage = target.key; sp.stage_at = now
-        sp.history = [...(sp.history || []), { at: now, by: user.name, action: `${first.label} → ${target.label} · otomatis (dokumen sudah diunggah saat project dibuat${toTr ? ', penerjemah dipilih langsung oleh CS' : ''})` }]
+        sp.history = [...(sp.history || []), { at: now, by: user.name, action: `${first.label} → ${target.label} · otomatis (dokumen sudah diunggah${toTr || toNt ? ', penerjemah sudah dipilih' : ''})` }]
         if (toStaf && first.notify) autoNotes.push(...first.notify(row, sp, user).map((n) => ({ ...n, text: `${inv} · ${sp.title}: ${n.text}` })))
-        if (toTr) autoNotes.push({ to_user: sp.data.translator, kind: 'task', text: `${inv} · ${sp.title}: Tugas terjemahan baru untuk Anda` })
+        if (toTr || toNt) autoNotes.push({ to_user: sp.data.translator, kind: 'task', text: `${inv} · ${sp.title}: Tugas terjemahan baru untuk Anda` })
       }
       const saved = await save('projects', row)
       for (const n of autoNotes) await save('notifications', { ...n, project_id: saved.id, by: user.name, read_by: [] }).catch(() => {})

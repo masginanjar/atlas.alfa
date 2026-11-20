@@ -8,7 +8,7 @@ import { startHeartbeat, statusOf } from './presence.js'
 import { threadOf, myMessages, unreadByThread, pingQuota, openChatBus, PING_MAX_24H, PING_GAP_MS } from './chat.js'
 import { broadcastSignOut, markActivity, setIdleReason, simpanTujuan, ambilTujuan, tandaiMasukHari, masukHariIni, setHarianReason, hariIniAbsen } from './session.js'
 import { CHAT_ENABLED } from './flags.js'
-import { DONE, stagesOf, flowOf, isBilled, regComplete, stageLabel, namaLangkah } from '../config/workflows.js'
+import { DONE, stagesOf, flowOf, isBilled, regComplete, stageLabel, namaLangkah, totalPengajuan, recommendFund } from '../config/workflows.js'
 import { docListOf } from '../config/workflows.js'
 import { setKonfigIzin, boleh, wajibLoginHarian } from './izin.js'
 import { barisRegistrasi, ambilNomor, kodeArah, jumlahDok, namaDefault } from './registrasi.js'
@@ -362,6 +362,8 @@ export function AppProvider({ children }) {
 
   // ---------- workflow ----------
   /** Simpan isian tahap. advance=true → validasi & pindah ke tahap berikutnya. */
+  /** Batas persetujuan vendor otomatis (Rp). 0 / kosong = mati. Diatur Super Admin di Pengaturan → Aturan alur. */
+  const batasAutoVendor = () => Number((data.app_settings || []).find((r) => r.key === 'aturan_alur')?.vendor_auto_batas) || 0
   const processStage = async (project, subId, values, advance) => {
     const subs = project.sub_projects.map((s) => ({ ...s }))
     const s = subs.find((x) => x.id === subId)
@@ -425,6 +427,26 @@ export function AppProvider({ children }) {
         }
       }
     }
+    // ---------- PENYEDERHANAAN ALUR (20 Nov 2026, disetujui pemilik) ----------
+    // (a) Nomor register LANGSUNG TERBIT saat ACC: nomor sudah dipesan & tercatat di tabel registrations (nomor kembar ditolak database),
+    //     jadi tahap "Nomor Registrasi" dilewati. Bila pemesanan nomor tidak lengkap → tetap berhenti di tahap itu untuk Admin Pusat.
+    let terbitOtomatis = false
+    if (advance && !lompat && ['otorisasi', 'hasil_biro'].includes(stage.key) && stages[idx + 1]?.key === 'registrasi' && regComplete({ ...s, data: merged })
+      && barisRegistrasi(project, { ...s, data: merged }, user).length === (merged.reg_numbers || []).filter(Boolean).length) {
+      terbitOtomatis = true; lompat = 1
+      merged = { ...merged, registered_by: null, registered_name: 'ATLAS (otomatis)', registered_at: new Date().toISOString(), reg_terbit_otomatis: true }
+    }
+    // (b) Persetujuan vendor otomatis untuk nominal kecil (batas diatur Super Admin di Pengaturan → Aturan alur; 0 = mati).
+    let accOtomatis = false
+    if (advance && stage.key === 'pengajuan' && stages[idx + 1]?.key === 'persetujuan') {
+      const batas = batasAutoVendor(), total = totalPengajuan(merged)
+      if (batas > 0 && total > 0 && total <= batas) {
+        accOtomatis = true; lompat = 1
+        merged = { ...merged, sumber_dana: merged.sumber_dana || recommendFund(project.branch), approved_by: null, approved_name: 'ATLAS (otomatis)', approved_at: new Date().toISOString(), approved_otomatis: true }
+      }
+    }
+    // (c) Apostille/Legalisasi internal: tahap "Belum Diproses" dilewati — pekerjaan langsung bisa dikerjakan (tanpa klik "Mulai Proses").
+    if (advance && !lompat && stages[idx + 1]?.key === 'antrian' && stages[idx + 2]) lompat = 1
     if (advance && stage.printBranch) merged = { ...merged, [`${stage.key}_by`]: user.id }
     if (advance && stage.key === 'proofread') merged = { ...merged, proofread_at: new Date().toISOString(), proofread_by: merged.proofreader || user.id, ...(merged.proofreader && merged.proofreader !== user.id ? { proofread_via: user.id } : {}) }
     s.data = merged
@@ -433,7 +455,9 @@ export function AppProvider({ children }) {
     delete merged.__override
     const nextLabel = next === DONE ? 'Selesai' : stages[idx + 1 + lompat].label
     s.history = [...(s.history || []), { at: new Date().toISOString(), by: user.name, role: user.role, action: advance ? (override ? `${stage.label} → ${nextLabel} · dilanjutkan tanpa menunggu ${stage.roles.filter((r) => r !== 'superadmin').map((r) => ROLES[r]?.label || r).join('/')} oleh ${roleLabel(user)} · alasan: ${override}` : `${stage.label} → ${nextLabel}`) : `Update ${stage.label}`, ...(override ? { override: true, reason: override, from: stage.key, to: next } : {}) }]
-    if (regRows) s.history = [...s.history, { at: new Date().toISOString(), by: 'ATLAS (otomatis)', action: `Nomor register dipesan: ${regRows.map((r) => r.reg_no).join(', ')} — menunggu dicek Admin Pusat` }]
+    if (terbitOtomatis) s.history = [...s.history, { at: new Date().toISOString(), by: 'ATLAS (otomatis)', action: `Nomor register terbit otomatis: ${(merged.reg_numbers || []).filter(Boolean).join(', ')}` }]
+    else if (regRows) s.history = [...s.history, { at: new Date().toISOString(), by: 'ATLAS (otomatis)', action: `Nomor register dipesan: ${regRows.map((r) => r.reg_no).join(', ')} — menunggu dicek Admin Pusat` }]
+    if (accOtomatis) s.history = [...s.history, { at: new Date().toISOString(), by: 'ATLAS (otomatis)', action: `Pengajuan vendor disetujui otomatis (di bawah batas) · dana ${merged.sumber_dana}` }]
     s.stage = next
     if (advance) s.stage_at = new Date().toISOString()
     // Tahap registrasi: nomor dicatat ke tabel registrations DULU — nomor kembar
@@ -452,13 +476,14 @@ export function AppProvider({ children }) {
         if (t.id === s.id || t.data?.menunggu_sub !== s.id || t.data?.dokumen_sumber) continue
         const st = stagesOf(flowOf(t, project))
         if (st[0]?.key !== 'cs_upload' || t.stage !== 'cs_upload' || !st[1]) continue
+        const tuju = st[1].key === 'antrian' && st[2] ? st[2] : st[1] // tahap "Belum Diproses" dilewati
         const at = new Date().toISOString()
         // Bila jumlah file hasil = jumlah dokumen terjemahan, diteruskan file dokumen yang ditunggu saja; kalau tidak (mis. satu PDF gabungan), semua file diteruskan.
         const nDok = Array.isArray(s.docs) ? s.docs.length : 0
         const milik = daftar.length > 1 && daftar.length === nDok && daftar[t.data?.menunggu_dok ?? -1] ? [daftar[t.data.menunggu_dok]] : daftar
         t.data = { ...t.data, dokumen_sumber: milik[0], dokumen_sumber_list: milik }
-        t.stage = st[1].key; t.stage_at = at
-        t.history = [...(t.history || []), { at, by: 'ATLAS (otomatis)', action: `Hasil terjemahan diterima dari "${s.title}" → ${st[1].label}` }]
+        t.stage = tuju.key; t.stage_at = at
+        t.history = [...(t.history || []), { at, by: 'ATLAS (otomatis)', action: `Hasil terjemahan diterima dari "${s.title}" → ${tuju.label}` }]
         terusan.push(t)
       }
     }
@@ -467,12 +492,17 @@ export function AppProvider({ children }) {
     for (const t of terusan) await save('notifications', { ...(t.data?.staff_apostille ? { to_user: t.data.staff_apostille } : { to_role: 'staf_apostille' }), kind: 'task', text: `${project.invoice_no} · ${t.title}: hasil terjemahan sudah ada — siap diproses`, project_id: project.id, sub_id: t.id, by: 'ATLAS (otomatis)', read_by: [] }).catch(() => {})
     // Notifikasi in-app (tujuan: user / role / cabang)
     if (advance && stage.notify) {
-      for (const n of stage.notify(project, s, user).filter((x) => x.to_user || x.to_role || x.to_branch)) {
+      const pesan = terbitOtomatis
+        ? [...(stages[idx + 1].notify?.(project, s, user) || []), { to_role: 'admin_pusat', text: `Nomor register terbit otomatis (${(merged.reg_numbers || []).filter(Boolean).join(', ')}) — cek bila ada yang janggal` }]
+        : accOtomatis
+          ? [{ to_role: 'akunting', text: `Pengajuan vendor disetujui otomatis (di bawah batas, dana ${merged.sumber_dana}) — menunggu pembayaran` }, { to_role: 'direktur', text: 'Pengajuan vendor disetujui otomatis (di bawah batas) — untuk diketahui' }]
+          : stage.notify(project, s, user)
+      for (const n of pesan.filter((x) => x.to_user || x.to_role || x.to_branch)) {
         await save('notifications', { ...n, text: `${project.invoice_no} · ${s.title}: ${n.text}`, project_id: project.id, by: user.name, read_by: [] }).catch(() => {})
       }
     }
     // Nomor register terbit (Admin Pusat) → CS pembuat project diberi tahu nomornya
-    if (advance && stage.key === 'registrasi' && project.created_by) {
+    if (advance && (stage.key === 'registrasi' || terbitOtomatis) && project.created_by) {
       const nomor = (merged.reg_numbers || []).filter(Boolean)
       if (nomor.length) await save('notifications', { to_user: project.created_by, kind: 'register', text: `${project.invoice_no} · ${s.title}: Nomor register terbit — ${nomor.join(', ')}`, project_id: project.id, by: user.name, read_by: [] }).catch(() => {})
     }
@@ -651,12 +681,19 @@ export function AppProvider({ children }) {
         const ongkir = Number(d.ongkir_cost) || 0
         Object.assign(d, { vendor_service: service.name, vendor_cost: Number(service.price) || 0, total_pengajuan: (Number(service.price) || 0) + ongkir,
           submitted_by: user.id, submitted_name: user.name, submitted_at: now })
+        const batas = batasAutoVendor()
+        if (batas > 0 && d.total_pengajuan > 0 && d.total_pengajuan <= batas) { // nominal kecil → disetujui otomatis
+          Object.assign(d, { sumber_dana: d.sumber_dana || recommendFund(project.branch), approved_by: null, approved_name: 'ATLAS (otomatis)', approved_at: now, approved_otomatis: true })
+          stage = 'pembayaran'
+          notes.push({ to_role: 'akunting', text: `Pengajuan vendor disetujui otomatis (di bawah batas, dana ${d.sumber_dana}) — menunggu pembayaran` }, { to_role: 'direktur', text: 'Pengajuan vendor disetujui otomatis (di bawah batas) — untuk diketahui' })
+        } else {
         stage = 'persetujuan'
         notes.push({ to_role: 'direktur', text: 'Pengajuan vendor baru menunggu persetujuan' })
+        }
         if (project.created_by && project.created_by !== user.id) notes.push({ to_user: project.created_by, text: `${user.name} mengajukan vendor ${v?.name ?? ''} untuk order Anda` })
       } else notes.push({ to_user: project.created_by, text: `Vendor ${v?.name ?? ''} ditetapkan — lengkapi pengajuan vendor` })
       return { ...x, flow: 'tr_ext', translator_kind: 'vendor', translator: id, executor_kind: 'vendor', executor_id: id, stage, data: d,
-        history: [...(x.history || []), { ...by, action: `Vendor ditetapkan: ${v?.name ?? id}${service ? ` (${service.name}) → Menunggu Persetujuan` : ''}` }] }
+        history: [...(x.history || []), { ...by, action: `Vendor ditetapkan: ${v?.name ?? id}${service ? ` (${service.name}) → ${stage === 'pembayaran' ? 'Disetujui otomatis (di bawah batas) — Menunggu Pembayaran' : 'Menunggu Persetujuan'}` : ''}` }] }
     })
     const saved = await save('projects', { ...project, sub_projects: subs })
     for (const n of notes) await save('notifications', { ...n, text: `${project.invoice_no} · ${title}: ${n.text}`, project_id: project.id, by: user.name, read_by: [] }).catch(() => {})

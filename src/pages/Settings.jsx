@@ -57,6 +57,7 @@ export default function Settings() {
     ['superadmin', 'admin_pusat'].includes(user.role) && { value: 'file', label: 'File & portal', grup: 'Perusahaan' },
     can.manageUsers(user) && { value: 'integrasi', label: 'Integrasi', grup: 'Perusahaan' },
     bolehIzin(user, 'pengaturan.ai.lihat') && { value: 'ai', label: 'AI (Gemini)', grup: 'Perusahaan' },
+    bolehIzin(user, 'pengaturan.alur.lihat') && { value: 'alur', label: 'Aturan alur', grup: 'Perusahaan' },
     user.role === 'superadmin' && { value: 'tampilan', label: 'Tampilan login', grup: 'Perusahaan' },
     user.role === 'superadmin' && { value: 'beranda', label: 'Slide Beranda', grup: 'Perusahaan' },
     user.role === 'superadmin' && { value: 'apostille', label: 'Tahapan Apostille', grup: 'Perusahaan' },
@@ -100,6 +101,7 @@ export default function Settings() {
       {tab === 'integrasi' && <Integrations />}
       {tab === 'akses-st' && <Suspense fallback={null}><AksesSmartTranslator /></Suspense>}
       {tab === 'ai' && <Suspense fallback={null}><AiSettings /></Suspense>}
+      {tab === 'alur' && <AturanAlur />}
       {tab === 'tampilan' && <LoginSettings />}
       {tab === 'beranda' && <SlideBerandaSettings />}
       {tab === 'apostille' && <AksesApostilleSettings />}
@@ -1124,6 +1126,31 @@ function Users() {
         {sandiUntuk && <SandiPengguna e={sandiUntuk} bukaAwal />}
       </Sheet>
     </>
+  )
+}
+
+/** Aturan alur: batas persetujuan vendor otomatis. Izin pengaturan.alur.lihat / .atur (bawaan hanya Super Admin). */
+function AturanAlur() {
+  const { user, data, save, refresh, notify } = useApp()
+  const row = (data.app_settings || []).find((r) => r.key === 'aturan_alur')
+  const [batas, setBatas] = useState(() => String(row?.vendor_auto_batas || ''))
+  const [sibuk, setSibuk] = useState(false)
+  if (!bolehIzin(user, 'pengaturan.alur.lihat')) return <Card className="p-5 text-sm text-ink-mute">Tidak ada akses.</Card>
+  const bisa = bolehIzin(user, 'pengaturan.alur.atur')
+  const n = Math.max(0, Math.round(Number(batas) || 0))
+  const simpan = async () => {
+    if (sibuk) return; setSibuk(true)
+    try { await save('app_settings', { ...(row || { key: 'aturan_alur' }), vendor_auto_batas: n }); await refresh(); notify(n ? `Pengajuan vendor sampai ${rupiah(n)} disetujui otomatis` : 'Persetujuan vendor otomatis dimatikan') }
+    catch (e) { notify(e.message, 'err') } finally { setSibuk(false) }
+  }
+  return (
+    <Card className="max-w-xl space-y-3 p-4" data-aturan-alur>
+      <div><p className="text-sm font-bold">Persetujuan vendor otomatis</p><p className="text-xs text-ink-mute">Pengajuan vendor dengan total (biaya layanan + ongkir) sampai batas ini langsung disetujui tanpa menunggu Direktur, lalu masuk ke Akunting untuk dibayar. Sumber dana memakai rekomendasi cabang. Direktur tetap diberi tahu. Isi 0 untuk mematikan.</p></div>
+      <Field label="Batas nominal (Rp)" hint={n ? `Aktif: sampai ${rupiah(n)}` : 'Mati — semua pengajuan menunggu persetujuan Direktur'}>
+        <Input type="number" inputMode="numeric" min={0} step={10000} value={batas} disabled={!bisa} onChange={(e) => setBatas(e.target.value)} className="max-md:min-h-11 max-md:text-base" data-batas-vendor />
+      </Field>
+      {bisa && <Button loading={sibuk} disabled={n === (Number(row?.vendor_auto_batas) || 0)} onClick={simpan} className="max-md:min-h-11 max-md:w-full" data-aksi="simpan-aturan-alur">Simpan</Button>}
+    </Card>
   )
 }
 

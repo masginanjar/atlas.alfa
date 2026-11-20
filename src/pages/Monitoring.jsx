@@ -230,7 +230,7 @@ export default function Monitoring() {
   const [vOpen, setVOpen] = useState(null)
 
   // ---------- staf apostille: antrian belum ditugaskan ----------
-  const apUnassigned = subs.filter((s) => ['ap_int', 'lg_int'].includes(s.flow) && s.stage === 'antrian' && !s.data?.staff_apostille).length
+  const apUnassigned = subs.filter((s) => ['ap_int', 'lg_int'].includes(s.flow) && ['antrian', 'diproses'].includes(s.stage) && !s.data?.staff_apostille).length
   // ---------- supervisor & akunting: ringkasan antrian ----------
   const needTr = subs.filter((s) => s.flow === 'tr_int' && s.stage === 'pilih_penerjemah').length
   const payQueue = subs.filter((s) => s.stage === 'pembayaran')

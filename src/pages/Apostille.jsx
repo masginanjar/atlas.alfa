@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { Stamp, Play, FolderOpen, Eye, Loader2, Search, CheckCircle2, Clock3, Upload } from 'lucide-react'
 import { useApp } from '../lib/store.jsx'
 import { can, scopeByBranch, branchesOf, invoiceLabel} from '../config/access.js'
-import { flowOf, stagesOf, stageLabel, DONE, stafStatus, totalBiaya } from '../config/workflows.js'
+import { flowOf, stagesOf, stageLabel, DONE, stafStatus, totalBiaya, apSudahMulai } from '../config/workflows.js'
 import { SUB_TYPES } from '../config/subtypes.js'
 import { DeadlineCell } from '../components/badges.jsx'
 import { PriorityBadge } from '../components/Priority.jsx'
@@ -44,7 +44,8 @@ export default function Apostille({ embedded }) {
       .sort((a, b) => new Date(a.project.about?.deadline || 0) - new Date(b.project.about?.deadline || 0))
   }, [user, data.projects, branchFilter])
 
-  const inTab = (r, k) => (k === 'selesai' ? r.sub.stage === DONE : r.sub.stage === k)
+  // "Belum diproses" = masih di tahap lama 'antrian' ATAU sudah di 'diproses' tapi belum ada langkah yang dikerjakan
+  const inTab = (r, k) => (k === 'selesai' ? r.sub.stage === DONE : k === 'antrian' ? r.sub.stage === 'antrian' || (r.sub.stage === 'diproses' && !apSudahMulai(r.sub)) : k === 'diproses' ? r.sub.stage === 'diproses' && apSudahMulai(r.sub) : r.sub.stage === k)
   const match = (r) => { const s = q.trim().toLowerCase(); return !s || [r.project.invoice_no, r.project.customer?.name, r.sub.title, r.sub.country, r.project.branch].join(' ').toLowerCase().includes(s) }
   const list = rows.filter((r) => inTab(r, tab) && match(r))
   const count = (k) => rows.filter((r) => inTab(r, k) && match(r)).length
@@ -165,7 +166,7 @@ function Row({ project, sub, flow, alt, active, nameOf, canCost, onDetail, onFil
           {canCost && biaya > 0 && <p className="text-[11px] text-ink-mute">{rupiah(biaya)}</p>}
         </div>
         <div className="flex flex-col gap-1.5 lg:items-end">
-          <span className={cx('w-fit rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1', done ? 'bg-emerald-50 text-emerald-700 ring-emerald-200' : 'bg-slate-100 text-ink-soft ring-slate-200')}>{done ? 'Selesai' : stafStatus(sub.stage)}</span>
+          <span className={cx('w-fit rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1', done ? 'bg-emerald-50 text-emerald-700 ring-emerald-200' : 'bg-slate-100 text-ink-soft ring-slate-200')}>{done ? 'Selesai' : stafStatus(sub.stage, sub)}</span>
           <div className="flex items-center gap-1.5">
             <button type="button" onClick={onFiles} aria-label={`File project ${invoiceLabel(project.invoice_no)}`} title="File project" className="grid h-8 w-8 place-items-center rounded-xl bg-white text-ink-soft ring-1 ring-slate-300 hover:bg-ink hover:text-white"><FolderOpen className="h-4 w-4" /></button>
             <button type="button" onClick={onDetail} aria-label={`Detail ${invoiceLabel(project.invoice_no)}`} title="Detail project" className="grid h-8 w-8 place-items-center rounded-xl bg-white text-brand ring-1 ring-brand/30 hover:bg-brand hover:text-white"><Eye className="h-4 w-4" /></button>
