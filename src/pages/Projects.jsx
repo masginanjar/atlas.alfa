@@ -110,7 +110,7 @@ export default function Projects({ tabAwal }) {
   const worker = isWorkRole(user) // penerjemah / proofreader / otorisator → tampilan fokus tugas
   // Pelaksana freelance tidak terikat cabang, jadi kolom cabang/print/CS disembunyikan.
   // Selain itu tampilan List & Tabel-nya sama persis dengan My Project milik CS.
-  const SEMBUNYI_TABEL = ['cabang', 'print', 'cs', 'status', 'orang']
+  const SEMBUNYI_TABEL = ['cabang', 'print', 'cs', 'status', 'orang', 'layanan'] // Detail Layanan: sudah ada di isi project (klik baris)
   const SEMBUNYI_LIST = ['cabang'] // pelaksana tidak perlu kolom "Tahap → berikutnya"
   const colsAktif = worker ? cols.filter((k) => !SEMBUNYI_LIST.includes(k)) : cols
   const [fullView, setFullView] = useState(true) // tampilan lengkap selalu terbuka (masih bisa disembunyikan)
