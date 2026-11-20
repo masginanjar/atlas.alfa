@@ -312,16 +312,16 @@ export default function SubBaris({ n, sub, onChange, onRemove, branch, error, on
   const tipeId = sub.applicant_id_type || 'ktp'
   const adaId = !!sub.applicant_file || !!sub.data?.dokumen_id
   const ketId = bacaId === 'baca' ? 'Membaca nomor dari KTP…'
-    : bacaId?.ok ? `Terbaca otomatis (${bacaId.mesin}) — cocokkan dengan KTP.`
-    : bacaId?.paspor ? 'Paspor: ketik nomor paspornya — dipakai sebagai ID pemohon.'
-    : bacaId?.gagal ? 'Nomor tidak terbaca otomatis — ketik manual.' : ''
-  const ketIkut = sub._id_ikut && sub.applicant_file ? 'Memakai ID pemohon yang sama dengan sub di atas — lepas (×) lalu unggah lagi bila pemohonnya berbeda.' : ''
+    : bacaId?.ok ? 'Terbaca otomatis — cocokkan dengan KTP.'
+    : bacaId?.paspor ? 'Paspor: ketik nomornya.'
+    : bacaId?.gagal ? 'Nomor tidak terbaca — ketik manual.' : ''
+  const ketIkut = sub._id_ikut && sub.applicant_file ? 'ID sama dengan sub di atas.' : ''
   const lembaga = extra.includes('institution') ? of('lembaga').find((p) => p.id === sub.institution) : null
   const nHal = docs.reduce((a, d) => a + (Number(d.pages) || 0), 0)
   const tema = TEMA[sub.type] || TEMA.jasa_lain
   const tr = isTerjemahan(sub.type)
   const al = ['apostille', 'legalisasi'].includes(sub.type)
-  const labelUnggah = seret ? 'Lepas file di sini' : kosong.length ? 'Upload massal (banyak file sekaligus)' : docs.length ? 'Upload / tarik file lagi (bisa banyak)' : 'Upload / tarik file (bisa banyak)'
+  const labelUnggah = seret ? 'Lepas file di sini' : kosong.length ? 'Upload massal' : docs.length ? 'Upload file lagi' : 'Upload file'
   const judulDok = tr
     ? (docs.length ? `Dokumen · ${docs.length} file · ${nHal} hlm` : 'Dokumen · belum ada file')
     : tunggu ? 'Dokumen · menunggu hasil terjemahan'
@@ -447,11 +447,11 @@ export default function SubBaris({ n, sub, onChange, onRemove, branch, error, on
                     className={cx(inputCls, '!px-2 font-semibold', !sub.sumber_sub && '!ring-[#B4233F]', errOn('dokumen') && '!ring-2')}>
                     <option value="">Pilih hasil terjemahan yang mana…</option>{daftarTr.map((t) => <option key={String(t.ref)} value={String(t.ref)}>Sub {t.n} · {t.nama}</option>)}
                   </select>
-                : <p className="flex min-h-9 items-center rounded-[10px] bg-amber-50 px-2.5 text-xs text-amber-900 ring-1 ring-amber-200 max-md:min-h-11" data-tanpa-tr>Tambahkan dulu sub Terjemahan — hasilnya yang akan diapostille.</p>)
+                : <p className="flex min-h-9 items-center rounded-[10px] bg-amber-50 px-2.5 text-xs text-amber-900 ring-1 ring-amber-200 max-md:min-h-11" data-tanpa-tr>Tambahkan sub Terjemahan dulu.</p>)
   const elMassal = massal && (
                     <div className="rounded-xl bg-white p-3 ring-1 ring-[#C9CCE0]" data-upload-massal role="group" aria-label="Pasangkan file upload massal">
                       <p className="text-sm font-bold text-ink">Upload massal · {massal.files.length} file dipilih</p>
-                      <p className="mt-0.5 text-xs leading-relaxed text-[#4F5470]">Tiap file dipasangkan ke isi sub project. Tebakan diambil dari nama file saja (isi file tidak dibaca) — periksa dan ganti bila keliru.</p>
+                      <p className="mt-0.5 text-xs leading-relaxed text-[#4F5470]">Pasangan ditebak dari nama file — periksa dulu.</p>
                       <ul className="mt-2 flex flex-col gap-1.5">
                         {massal.files.map((f, k) => {
                           const v = massal.ke[k]
@@ -460,7 +460,7 @@ export default function SubBaris({ n, sub, onChange, onRemove, branch, error, on
                               <div className="min-w-0 flex-1 max-md:basis-full">
                                 <p className="text-sm font-semibold leading-snug text-ink [overflow-wrap:anywhere]">{f.name}</p>
                                 <p className={cx('text-[11px]', typeof v === 'number' ? 'text-[#17693A]' : v === 'baru' ? 'text-[#8A4B00]' : 'text-[#6B7088]')}>
-                                  {typeof v === 'number' ? 'Dipasangkan ke isi sub project' : v === 'baru' ? 'Belum dipasangkan — akan jadi dokumen baru di sub ini' : 'Dilewati — file ini tidak dipakai'}
+                                  {typeof v === 'number' ? 'Terpasang' : v === 'baru' ? 'Jadi dokumen baru' : 'Dilewati'}
                                 </p>
                               </div>
                               <label className="flex min-w-0 flex-col gap-[3px] md:w-[280px] md:flex-none max-md:basis-full">
@@ -486,7 +486,6 @@ export default function SubBaris({ n, sub, onChange, onRemove, branch, error, on
   const elUnggah = !massal && (
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                       <TombolUnggah data="data-unggah-banyak" salah={errOn('dokumen')} label={labelUnggah} onFiles={pasang} className="md:w-auto md:px-5" />
-                      {kosong.length > 0 && <span className="text-xs text-[#4F5470] max-md:basis-full">atau tekan <b>File</b> di tiap baris untuk mengunggah satu per satu</span>}
                       {onApostilleHasil && sub.type === 'terjemahan' && docs.length > 0 && <button type="button" onClick={onApostilleHasil} data-aksi="apostille-hasil" className="inline-flex min-h-9 items-center gap-1 rounded-lg px-1 text-xs font-semibold text-[#17693A] hover:underline max-md:min-h-11">+ Apostille hasil terjemahan ini</button>}
                     </div>
   )
@@ -535,7 +534,7 @@ export default function SubBaris({ n, sub, onChange, onRemove, branch, error, on
               </div>
               {z.ket && <p className="pl-9 text-[11px] text-[#4F5470] [overflow-wrap:anywhere]">{z.ket}</p>}
             </>
-          ) : <p className="rounded-[10px] border border-dashed border-slate-300 px-2.5 py-2 text-xs text-[#6B7088]">Sub ini tidak dari item invoice — diisi manual di kanan.</p>}
+          ) : <p className="rounded-[10px] border border-dashed border-slate-300 px-2.5 py-2 text-xs text-[#6B7088]">Bukan dari invoice</p>}
         </div>
         <div className={cx(kanan, 'rounded-t-2xl border-t pb-2 pt-3 md:pt-3.5')}>{elAtas}</div>
 

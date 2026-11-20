@@ -393,7 +393,7 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
         <Sheet open onClose={lanjutSetelahOrder} title={`Project ${invoiceLabel(orderVendor.saved.invoice_no)} tersimpan — order ke vendor`}
           footer={<Button className="flex-1" onClick={lanjutSetelahOrder} data-aksi="lanjut-setelah-order">Lanjut ke project</Button>}>
           <div className="flex flex-col gap-3" data-order-setelah-simpan>
-            <p className="text-sm text-ink-soft">Project sudah tersimpan dan vendornya sudah tercatat di sub project. Tekan <b>WhatsApp Fix Order</b> untuk membuka WhatsApp dengan pesan order yang sudah terisi — pesan baru terkirim setelah Anda menekan kirim di WhatsApp.</p>
+            <p className="text-sm text-ink-soft">Project tersimpan. Kirim pesan order ke vendor lewat WhatsApp.</p>
             {orderVendor.grup.map(({ vendor: v, subs: daftar }) => {
               const teks = teksOrderVendor(orderVendor.saved, daftar, v.name || 'Penerjemah', { sapaan: v.sapaan, namaCs: orderVendor.saved.about?.cs_name || user.name })
               return (
@@ -407,7 +407,6 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
                 </div>
               )
             })}
-            <p className="text-xs text-ink-mute">Biaya vendor tidak diubah di sini: vendor tagihan dicatat di tahap “Order ke Vendor”, vendor bayar langsung tetap lewat pengajuan &amp; persetujuan Direktur di project.</p>
           </div>
         </Sheet>
       )
@@ -733,7 +732,7 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
             <p className="text-xs font-semibold text-[#5E6380]">Project{preset?.invoice_no ? ` · dari faktur ${invoiceLabel(preset.invoice_no)}` : ''}</p>
             <h1 className="text-[22px] font-extrabold leading-tight tracking-tight">Project Baru</h1>
           </div>
-          {!drafTersedia && <span className="text-xs font-semibold text-[#17693A] max-sm:hidden" title="Isian teks tersimpan di perangkat ini. File dokumen tidak ikut tersimpan.">Draf tersimpan otomatis</span>}
+          {!drafTersedia && <span className="text-xs font-semibold text-[#17693A] max-sm:hidden" title="Isian teks tersimpan di perangkat ini. File dokumen tidak ikut tersimpan.">Draf tersimpan</span>}
           <div className="hidden gap-2 md:flex">
             <Button variant="outline" onClick={onClose} className="!h-11 px-5">Batal</Button>
             <Button loading={busy} onClick={submit} className="!h-11 px-6" data-aksi="buat-project-atas"><Check className="h-[18px] w-[18px]" />{tombolSimpan}</Button>
@@ -769,7 +768,7 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
               {!perluAlamat
                 ? <p className="flex min-h-9 items-center rounded-[10px] bg-slate-50 px-2.5 text-xs text-ink-mute ring-1 ring-slate-200 max-md:min-h-11" data-tanpa-alamat>{metodeKirim === 'pickup' ? 'Diambil di kantor — alamat tidak diperlukan.' : 'Softcopy saja — alamat tidak diperlukan.'}</p>
                 : !customer
-                ? <p className="flex min-h-9 items-center rounded-[10px] bg-slate-50 px-2.5 text-xs text-ink-mute ring-1 ring-slate-200 max-md:min-h-11">Tampil otomatis setelah pelanggan dipilih.</p>
+                ? <p className="flex min-h-9 items-center rounded-[10px] bg-slate-50 px-2.5 text-xs text-ink-mute ring-1 ring-slate-200 max-md:min-h-11">Pilih pelanggan dulu</p>
                 : (
                   <div className="flex min-h-9 items-center gap-2 rounded-[10px] bg-white px-2.5 ring-1 ring-[#D9DBE7] max-md:min-h-11" data-alamat-ringkas>
                     <span className="min-w-0 flex-1 truncate text-sm" title={alamatRingkas}>{alamatRingkas || <span className="text-ink-mute">Belum ada alamat</span>}</span>
@@ -866,7 +865,7 @@ export default function ProjectForm({ onClose, project, preset, side, page, onSa
                           <li key={k} className="rounded-[10px] bg-slate-50 px-2.5 py-1.5 text-[12.5px] leading-snug text-ink-soft"><b className="font-bold text-ink">{k + 1}. {it.name || 'Item'}</b>{String(it.description || '').trim() && <span className="mt-0.5 block cursor-text select-text whitespace-pre-wrap [overflow-wrap:anywhere]">{it.description.trim()}</span>}</li>
                         ))}</ol>
                       </div>
-                      <p className="self-center px-1 text-xs text-[#6B7088]">Biaya, ongkos kirim dan item sejenis tidak dijadikan sub project. Bila ada pekerjaan yang terlewat, tambahkan sub lewat tombol di bawah.</p>
+                      <span />
                     </div>
                   )}
                   {pembatas}
@@ -967,7 +966,7 @@ function InvoiceItemsView({ inv, onTarik, onUrung, tarik, onDrive, onUrungDrive,
       <div className="flex flex-wrap items-center gap-2 bg-emerald-50 px-3.5 py-2">
         {/* sempit = dipasang di kolom kiri (layar lebar): judul satu baris penuh, tombol turun ke baris berikutnya supaya teks tidak terjepit */}
         <Receipt className="h-4 w-4 shrink-0 text-emerald-700" />
-        <p className={cx('min-w-0 flex-1 text-xs text-emerald-900 max-md:basis-[calc(100%-2rem)]', sempit && 'xl:basis-[calc(100%-2rem)]')}><b className="font-semibold">Item invoice {invoiceLabel(inv.invoice_no)}</b> <span className="text-emerald-800/80">· {onTarik ? 'isi sub project manual, atau coba Tarik Data (beta)' : 'hanya tampilan — baca/salin lalu isi sub project di bawah secara manual'}</span></p>
+        <p className={cx('min-w-0 flex-1 text-xs text-emerald-900 max-md:basis-[calc(100%-2rem)]', sempit && 'xl:basis-[calc(100%-2rem)]')}><b className="font-semibold">Item invoice {invoiceLabel(inv.invoice_no)}</b></p>
         {onTarik && items.length > 0 && <button type="button" onClick={onTarik} disabled={!!tarik?.sibuk} data-aksi="tarik-data" title="Susun sub project otomatis dari item invoice ini — hasilnya tetap bisa diubah"
           className="inline-flex min-h-8 items-center gap-1.5 rounded-lg bg-violet-600 px-2.5 py-1 text-[11.5px] font-bold text-white hover:bg-violet-700 disabled:opacity-60 max-md:min-h-11 max-md:px-3 max-md:text-[13px]">
           {tarik?.sibuk ? <Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" /> : <Sparkles className="h-3.5 w-3.5" />}{tarik?.sibuk ? 'Menganalisa…' : 'Tarik Data (beta)'}</button>}
