@@ -11,7 +11,7 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, useS
 import { Search, Plus, ChevronDown, ArrowLeft, ExternalLink, Maximize2, Minimize2, X, FolderOpen, Wallet, Eye, Copy, Languages, Stamp, UserCheck, Printer, LogOut, MoreHorizontal, Hash, ClipboardList } from 'lucide-react'
 import { useApp } from '../lib/store.jsx'
 import { go } from '../lib/router.js'
-import { scopeByBranch, can, branchesOf, BRANCHES, invoiceLabel, isMultiBranch, activeClaim, ROLES, rolesOf, coordinatorFor, foreignLang, diKoordinasi, vendorKoordinator, bolehItemCeklis } from '../config/access.js'
+import { scopeByBranch, can, branchesOf, BRANCHES, invoiceLabel, isMultiBranch, activeClaim, ROLES, rolesOf, coordinatorFor, foreignLang, diKoordinasi, vendorKoordinator, bolehItemCeklis, namaOtoUntuk, teksOtoUntuk } from '../config/access.js'
 import { projectRow, statusOf } from '../lib/projectRow.js'
 import { flowOf, stageLabel, stageIndex, DONE, isVendorFlow, namaLangkah } from '../config/workflows.js'
 import { ProjectTypes } from './badges.jsx'
@@ -305,11 +305,12 @@ function BarisProses({ n, p, x, sel }) {
   const tahap = sel ? null : <span className={cx('whitespace-nowrap rounded-md px-2 py-0.5 text-[11.5px] font-bold', normal ? 'bg-indigo-50 text-ink' : 'bg-slate-100 text-ink-soft')}>{st.label}</span>
   if (!normal) {
     const tid = st.assignee ? x.data?.[st.assignee] : null
-    const who = claim && st.claimable ? `${claim.name} (sedang diproses)` : tid ? nameOf(tid) : st.printBranch ? `staf cabang ${p.about?.print_location || p.branch}` : st.roles.filter((r) => r !== 'superadmin').map((r) => ROLES[r]?.label || r).join(' / ')
+    const satuOto = teksOtoUntuk(user, st)
+    const who = claim && st.claimable ? `${namaOtoUntuk(user, claim.name)} (sedang diproses)` : tid ? nameOf(tid) : st.printBranch ? `staf cabang ${p.about?.print_location || p.branch}` : st.roles.filter((r) => r !== 'superadmin').map((r) => ROLES[r]?.label || r).join(' / ')
     const bisaLewati = ['superadmin', 'direktur', 'admin_pusat'].includes(user.role)
     return (
       <div className={sel ? '' : 'bg-slate-50/70'} data-baris-proses="menunggu">
-        <div className={cx(pad, 'text-ink-soft')}>{nama}{tahap}<span className="text-[11.5px]">🔒 menunggu {who}</span>
+        <div className={cx(pad, 'text-ink-soft')}>{nama}{tahap}<span className="text-[11.5px]">🔒 {satuOto || `menunggu ${who}`}</span>
           {tid && tid !== user.id && <button type="button" onClick={async () => { try { await sendPing({ to_user: tid, project: p, sub: x, stage: st, message: `Mohon dicek: ${st.label}` }); notify('Ping terkirim') } catch (e) { notify(e.message, 'err') } }} className="h-8 rounded-lg bg-white px-3 font-semibold text-ink ring-1 ring-slate-300">🔔 Ping</button>}
           {bisaLewati && <button type="button" onClick={() => setPenuh((o) => !o)} className="h-8 rounded-lg px-2 text-[11.5px] font-semibold text-amber-700 hover:bg-amber-50">{penuh ? 'Tutup' : 'Lanjutkan tanpa menunggu…'}</button>}
         </div>

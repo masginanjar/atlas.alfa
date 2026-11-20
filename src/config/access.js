@@ -87,6 +87,20 @@ export function displayNameFor(viewer, target) {
   if (!isPr || viewer?.id === target.id || seeProofreaderIdentity(viewer)) return target.name
   return proofreaderTeamName()
 }
+/**
+ * TIM OTORISASI HANYA DIKETAHUI INTERNAL (20 Nov 2026): penerjemah, proofreader biasa & CS tidak boleh tahu bahwa Master Otorisasi
+ * punya tim (staf otorisasi). Bagi mereka semua urusan otorisasi tampil & diarahkan ke Master Otorisasi.
+ * Di internal pembagian kerja tetap seperti biasa (klaim, prestasi, laporan atas nama staf yang mengerjakan).
+ * Yang ikut tim (punya role otorisator, utama atau tambahan) tentu tetap melihat.
+ */
+export const seeOtoTeam = (u) => !['penerjemah', 'proofreader', 'cs'].includes(u?.base_role || u?.role) || rolesOf(u).includes('otorisator')
+export const masterOto = (users = []) => users.find((u) => rolesOf(u).includes('otorisator') && u.otorisator_level === 'master' && u.active !== false) || null
+/** Teks tahap Otorisasi untuk yang tidak boleh tahu soal tim — selalu satu kalimat ini saja; null = tampil seperti biasa. */
+export const teksOtoUntuk = (viewer, stage) => (stage?.key === 'otorisasi' && !seeOtoTeam(viewer) ? `Sedang diotorisasi ${PROOFREADER_TEAM.lead}` : null)
+/** Label role untuk `viewer`: yang tidak boleh tahu soal tim melihat "Otorisator" saja (tanpa Master / Staf). */
+export const labelRoleUntuk = (viewer, u) => (!seeOtoTeam(viewer) && u?.role === 'otorisator' ? 'Otorisator' : roleLabel(u))
+/** Nama otorisator yang boleh ditampilkan ke `viewer` (klaim "sedang diproses …", dsb.). */
+export const namaOtoUntuk = (viewer, nama) => (seeOtoTeam(viewer) ? nama : PROOFREADER_TEAM.lead)
 /** Proofreader aktif dengan antrean paling sedikit — dipakai saat penerjemah mengirim ke Tim Proofreader. */
 export function pickProofreader(users, projects = []) {
   const pool = users.filter((u) => u.role === 'proofreader' && u.active !== false)

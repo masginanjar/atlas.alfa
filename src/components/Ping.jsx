@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { InvoiceNo } from './badges.jsx'
 import { BellRing, Send, CheckCircle2, Clock3 } from 'lucide-react'
 import { useApp } from '../lib/store.jsx'
-import { activeClaim, branchesOf, ROLES, roleLabel, printBranchOf, invoiceLabel} from '../config/access.js'
+import { activeClaim, branchesOf, ROLES, roleLabel, printBranchOf, invoiceLabel, seeOtoTeam, masterOto, labelRoleUntuk } from '../config/access.js'
 import { DONE } from '../config/workflows.js'
 import { Button, Sheet, Textarea, Select, cx } from './ui.jsx'
 import Avatar from './Avatar.jsx'
@@ -20,6 +20,8 @@ export function pingTargets(stage, sub, project, users, me) {
   const active = users.filter((u) => u.active !== false && u.id !== me?.id)
   const byId = (id) => active.find((u) => u.id === id) || null
   if (!stage) return { pic: null, candidates: [] }
+  // Tim otorisasi hanya diketahui internal: penerjemah & proofreader biasa selalu diarahkan ke Master Otorisasi.
+  if (stage.key === 'otorisasi' && !seeOtoTeam(me)) { const m = masterOto(active); if (m) return { pic: m, candidates: [m] } }
   // 1) PIC eksplisit: penugasan (penerjemah/proofreader/staf apostille) atau klaim otorisator
   if (stage.assignee && sub?.data?.[stage.assignee]) { const u = byId(sub.data[stage.assignee]); if (u) return { pic: u, candidates: [u] } }
   if (stage.claimable) { const c = activeClaim(sub); if (c?.by) { const u = byId(c.by); if (u) return { pic: u, candidates: [u] } } }
@@ -81,13 +83,13 @@ export function PingButton({ project, sub, stage, size = 'sm', className, label 
             {pic ? (
               <div className="flex items-center gap-3 rounded-xl bg-white p-2.5 ring-1 ring-slate-200">
                 <Avatar user={target || pic} size={40} />
-                <div className="min-w-0 flex-1"><p className="truncate text-sm font-bold">{(target || pic).name}</p><p className="text-xs text-ink-mute">{roleLabel(target || pic)} · PIC tahap {stage?.label}</p></div>
+                <div className="min-w-0 flex-1"><p className="truncate text-sm font-bold">{(target || pic).name}</p><p className="text-xs text-ink-mute">{labelRoleUntuk(user, target || pic)} · PIC tahap {stage?.label}</p></div>
                 {candidates.length > 1 && <Select value={to || pic.id} onChange={(e) => setTo(e.target.value)} className="!w-auto text-xs">{candidates.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}</Select>}
               </div>
             ) : candidates.length ? (
               <div className="space-y-1.5">
                 <p className="text-xs text-amber-800">Belum ada PIC untuk tahap ini — pilih penerima yang berwenang:</p>
-                <Select value={to} onChange={(e) => setTo(e.target.value)}><option value="">— pilih penerima —</option>{candidates.map((u) => <option key={u.id} value={u.id}>{u.name} · {roleLabel(u)}</option>)}</Select>
+                <Select value={to} onChange={(e) => setTo(e.target.value)}><option value="">— pilih penerima —</option>{candidates.map((u) => <option key={u.id} value={u.id}>{u.name} · {labelRoleUntuk(user, u)}</option>)}</Select>
               </div>
             ) : <p className="text-xs text-rose-600">Tidak ada pengguna aktif dengan peran {stage?.roles?.filter((r) => r !== 'superadmin').map((r) => ROLES[r]?.label).join(' / ')}.</p>}
           </div>

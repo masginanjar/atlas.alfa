@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Users, Search, MessageCircle } from 'lucide-react'
 import { useApp } from '../lib/store.jsx'
-import { ROLES, PROOFREADER_TEAM, roleLabel, placeOf, seeProofreaderIdentity } from '../config/access.js'
+import { ROLES, PROOFREADER_TEAM, roleLabel, placeOf, seeProofreaderIdentity, labelRoleUntuk } from '../config/access.js'
 import { STATUS, statusOf, sinceLabel, IDLE_AFTER, always24h } from '../lib/presence.js'
 import Avatar from './Avatar.jsx'
 import { Popover, cx } from './ui.jsx'
@@ -34,7 +34,7 @@ export function teamFor(viewer, users, now = Date.now()) {
     if (TEAM_ROLES.includes(role) && !show && !self) { tim.push(u); continue }
     // Direktur: tersedia 24 jam (bisa dimatikan sendiri di Setting → Preferensi)
     const dir = always24h(u) // Direktur: tampil Online terus & selalu di urutan pertama
-    rows.push({ id: u.id, name: shortName(u.name), user: u, self: u.id === viewer?.id, role: u.role, roleText: roleLabel(u), place: placeOf(u), dir, status: statusOf(u, now), since: u.last_active_at, h24: dir })
+    rows.push({ id: u.id, name: shortName(u.name), user: u, self: u.id === viewer?.id, role: u.role, roleText: labelRoleUntuk(viewer, u), place: placeOf(u), dir, status: statusOf(u, now), since: u.last_active_at, h24: dir })
   }
   if (tim.length) {
     // satu identitas: hanya jumlah yang online yang dibagikan, tanpa nama perorangan

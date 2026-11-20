@@ -10,7 +10,7 @@ import { useApp } from '../lib/store.jsx'
 import { boleh } from '../lib/izin.js'
 import { go } from '../lib/router.js'
 import { drive } from '../lib/integrations.js'
-import { perluVendor, can, biayaVendorTersembunyi, bolehPajakApostille, PERSON_TYPES, ROLES, scopeByBranch, activeClaim, placeOf, branchesOf, printBranchOf, displayNameFor, seeProofreaderIdentity, proofreaderTeamName, pickProofreader, invoiceLabel, coordinatorFor, foreignLang, bolehItemCeklis, lewatIzinApostille, rolesOf } from '../config/access.js'
+import { perluVendor, can, biayaVendorTersembunyi, bolehPajakApostille, PERSON_TYPES, ROLES, scopeByBranch, activeClaim, placeOf, branchesOf, printBranchOf, displayNameFor, seeProofreaderIdentity, seeOtoTeam, namaOtoUntuk, teksOtoUntuk, PROOFREADER_TEAM, proofreaderTeamName, pickProofreader, invoiceLabel, coordinatorFor, foreignLang, bolehItemCeklis, lewatIzinApostille, rolesOf } from '../config/access.js'
 import TugaskanPenerjemah from '../components/TugaskanPenerjemah.jsx'
 import { saveBlob, dataUrlToBlob } from '../lib/download.js'
 import ResiFields from '../components/ResiFields.jsx'
@@ -636,10 +636,10 @@ function StagePanelIsi({ project, sub, stage, ringkas }) {
   const [reason, setReason] = useState('')
   // Otorisasi dilanjutkan oleh selain otorisator → wajib pilih otorisatornya (prestasi dicatat atas nama dia)
   const perluAtasNama = stage.key === 'otorisasi' && user.role !== 'otorisator'
-  const daftarOto = perluAtasNama ? data.users.filter((u) => rolesOf(u).includes('otorisator') && u.active !== false).sort((a, b) => a.name.localeCompare(b.name)) : [] // termasuk yang otorisator sebagai role tambahan
+  const daftarOto = perluAtasNama ? data.users.filter((u) => rolesOf(u).includes('otorisator') && u.active !== false && (seeOtoTeam(user) || u.otorisator_level === 'master')).sort((a, b) => a.name.localeCompare(b.name)) : [] // termasuk yang otorisator sebagai role tambahan
   // Dokumen yang dikirim lewat Email Otorisasi → otorisator tujuan email jadi pilihan awal (tetap bisa diganti)
   const otoEmail = perluAtasNama ? [...(project.email_oto || [])].reverse().find((x) => (x.sub_ids || []).includes(sub.id))?.oto_id || '' : ''
-  const [atasNama, setAtasNama] = useState(() => (daftarOto.some((u) => u.id === activeClaim(sub)?.by) ? activeClaim(sub).by : ''))
+  const [atasNama, setAtasNama] = useState(() => (daftarOto.some((u) => u.id === activeClaim(sub)?.by) ? activeClaim(sub).by : !seeOtoTeam(user) && daftarOto.length === 1 ? daftarOto[0].id : ''))
   useEffect(() => { if (otoEmail && !atasNama) setAtasNama(otoEmail) }, [otoEmail]) // eslint-disable-line react-hooks/exhaustive-deps
   const overriding = canOverride && !isOwnerRole && (overrideMode || normal)
   const allowed = normal || (canOverride && overrideMode)
@@ -647,14 +647,14 @@ function StagePanelIsi({ project, sub, stage, ringkas }) {
   const peopleOf = useMemo(() => (type) => data.people.filter((p) => p.type === type && (p.branch === project.branch || p.branch === 'Semua')), [data.people, project.branch])
 
   if (!allowed) {
-    const who = claim && stage.claimable ? `${claim.name} (sedang diproses)`
+    const who = teksOtoUntuk(user, stage) ? PROOFREADER_TEAM.lead : claim && stage.claimable ? `${namaOtoUntuk(user, claim.name)} (sedang diproses)`
       : stage.assignee && sub.data?.[stage.assignee] ? nameOf(sub.data[stage.assignee])
       : stage.printBranch ? `staf cabang ${project.about?.print_location || project.branch}`
       : stage.roles.filter((r) => r !== 'superadmin').map((r) => ROLES[r].label).join(' / ')
     const stagesAll = stagesOf(flowOf(sub, project)); const iNow = stagesAll.findIndex((x) => x.key === stage.key); const nx = stagesAll[iNow + 1]
     if (ringkas) return (
       <div className="flex flex-wrap items-center gap-2 px-3 py-3 text-[13px]" data-kotak-berikutnya="menunggu">
-        <Lock className="h-4 w-4 shrink-0 text-[#5E6380]" /><span className="min-w-0 flex-1">Menunggu <b>{who}</b></span>
+        <Lock className="h-4 w-4 shrink-0 text-[#5E6380]" /><span className="min-w-0 flex-1">{teksOtoUntuk(user, stage) ? <b data-oto-satu>{teksOtoUntuk(user, stage)}</b> : <>Menunggu <b>{who}</b></>}</span>
         <PingButton project={project} sub={sub} stage={stage} />
         {stage.key === 'penerjemahan' && <GantiPenerjemahBtn project={project} sub={sub} />}
         {canOverride && <Button size="sm" variant="outline" onClick={() => setOverrideMode(true)} title="Lewati menunggu role ini — wajib isi alasan & data tahap"><FastForward className="h-3.5 w-3.5" />Lanjutkan sendiri</Button>}
@@ -662,7 +662,7 @@ function StagePanelIsi({ project, sub, stage, ringkas }) {
     )
     return (
       <div className="mx-4 mb-3 rounded-xl bg-amber-50 p-3 text-xs text-amber-900 ring-1 ring-amber-200" data-kotak-berikutnya="menunggu">
-        <p className="flex items-center gap-1.5"><Lock className="h-3.5 w-3.5 shrink-0" /><span><b>Sekarang:</b> {stage.label} oleh <b>{who}</b>{nx ? <span className="text-amber-700"> · berikutnya {nx.short || nx.label}</span> : ''}</span></p>
+        <p className="flex items-center gap-1.5"><Lock className="h-3.5 w-3.5 shrink-0" /><span><b>Sekarang:</b> {teksOtoUntuk(user, stage) ? <b data-oto-satu>{teksOtoUntuk(user, stage)}</b> : <>{stage.label} oleh <b>{who}</b></>}{nx ? <span className="text-amber-700"> · berikutnya {nx.short || nx.label}</span> : ''}</span></p>
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
           <span className="mr-1 font-bold">Langkah berikutnya (Anda):</span>
           <PingButton project={project} sub={sub} stage={stage} />
@@ -717,7 +717,7 @@ function StagePanelIsi({ project, sub, stage, ringkas }) {
       <div className={ringkas ? 'p-3' : 'space-y-3 p-3'} data-ringkas-grid={ringkas ? '' : undefined}>
         {stage.claimable && claim && (
           <div className="flex items-center gap-2 rounded-lg bg-violet-50 px-3 py-2 text-xs text-violet-900 ring-1 ring-violet-200">
-            <Hand className="h-4 w-4" /><span className="flex-1">Sedang diproses oleh <b>{claim.name}</b> sejak {jam(claim.at)}</span>
+            <Hand className="h-4 w-4" /><span className="flex-1">{teksOtoUntuk(user, stage) ? <b>{teksOtoUntuk(user, stage)}</b> : <>Sedang diproses oleh <b>{namaOtoUntuk(user, claim.name)}</b> sejak {jam(claim.at)}</>}</span>
             <button type="button" onClick={() => doClaim(false)} className="inline-flex items-center gap-1 font-semibold text-violet-700 hover:underline"><Unlock className="h-3.5 w-3.5" />Lepas</button>
           </div>
         )}
@@ -1210,7 +1210,7 @@ export function AksiBaris({ project, sub, onPanel, onTugas, kecil }) {
   }
   const claim = activeClaim(sub)
   if (stage.claimable && user.role !== 'superadmin' && (!claim || claim.by !== user.id)) {
-    if (claim) return <span className="text-xs font-semibold text-amber-700">Diproses {claim.name}</span>
+    if (claim) return <span className="text-xs font-semibold text-amber-700">{teksOtoUntuk(user, { key: sub.stage }) || `Diproses ${namaOtoUntuk(user, claim.name)}`}</span>
     return <button type="button" disabled={!!busy} onClick={async (e) => { e.stopPropagation(); setBusy('ambil'); try { await claimSub(project, sub.id, true); notify('Dokumen diambil') } catch (er) { notify(er.message, 'err') } finally { setBusy('') } }} className={utama} data-aksi="baris-ambil">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Hand className="h-4 w-4" />}Ambil</button>
   }
   const fileFields = stage.fields.filter((f) => f.type === 'file')

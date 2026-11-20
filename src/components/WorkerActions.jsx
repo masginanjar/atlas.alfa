@@ -3,7 +3,7 @@ import { prioSub } from '../config/priority.js'
 import { Play, Send, FolderOpen, Hand, CheckCircle2, FileText, Upload, Loader2, Circle, Inbox, Building2, Headset, Printer, Eye, Download, ChevronDown, ChevronRight, Undo2, MapPin, Languages, X } from 'lucide-react'
 import { useApp } from '../lib/store.jsx'
 import { TolakTugasBtn } from './GantiPenerjemah.jsx'
-import { can, activeClaim, placeOf, seeProofreaderIdentity, pickProofreader, invoiceLabel } from '../config/access.js'
+import { can, activeClaim, placeOf, seeProofreaderIdentity, pickProofreader, invoiceLabel, namaOtoUntuk } from '../config/access.js'
 import { flowOf, stagesOf } from '../config/workflows.js'
 import { SUB_TYPES } from '../config/subtypes.js'
 import { fieldFiles, uploadProjectFiles, collect } from './FileManager.jsx'
@@ -578,7 +578,7 @@ function StatusTugas({ t, sub }) {
   else if (t.stage.claimable) {
     if (!t.claim) teks = 'To-do bersama · belum diambil siapa pun'
     else if (t.claim.by === user.id) { teks = `Diambil Anda${t.claim.at ? ` · ${jamOf(t.claim.at)}` : ''}`; tone = 'text-brand' }
-    else teks = `Sedang diproses ${t.claim.name || ''}`
+    else teks = `Sedang diproses ${namaOtoUntuk(user, t.claim.name || '')}`
   } else if (t.started) { teks = `Sedang dikerjakan${mulai ? ` · mulai ${jamOf(mulai)}` : ''}${t.files.length ? ` · ${t.files.length} file terunggah` : ''}`; tone = 'text-brand' }
   else teks = `Belum dimulai${sub.stage_at ? ` · masuk ${jamOf(sub.stage_at)}` : ''}`
   return <p className={cx('truncate text-xs font-semibold', tone)} data-status-tugas>{t.stage.label}<span className={cx('font-medium', tone === 'text-brand' ? 'text-brand/80' : 'text-ink-mute')}> · {teks}</span></p>
