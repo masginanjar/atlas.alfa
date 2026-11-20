@@ -24,6 +24,7 @@ import { COURIER_ICONS, COURIER_TYPES, CourierLogo } from '../components/Courier
 import AvatarEditor from '../components/AvatarEditor.jsx'
 import DataPribadi from '../components/DataPribadi.jsx'
 import NotifEmailPenerjemah from '../components/NotifEmailPenerjemah.jsx'
+import ImporLama from '../components/ImporLama.jsx'
 import Avatar from '../components/Avatar.jsx'
 import { useTabel, Th, CariTabel } from '../components/TabelSortir.jsx'
 import LoginSettings from '../components/LoginSettings.jsx'
@@ -59,6 +60,7 @@ export default function Settings() {
     can.manageUsers(user) && { value: 'integrasi', label: 'Integrasi', grup: 'Perusahaan' },
     bolehIzin(user, 'pengaturan.ai.lihat') && { value: 'ai', label: 'AI (Gemini)', grup: 'Perusahaan' },
     bolehIzin(user, 'pengaturan.alur.lihat') && { value: 'alur', label: 'Aturan alur', grup: 'Perusahaan' },
+    bolehIzin(user, 'pengaturan.impor-lama.lihat') && { value: 'impor', label: 'Impor data lama', grup: 'Perusahaan' },
     user.role === 'superadmin' && { value: 'tampilan', label: 'Tampilan login', grup: 'Perusahaan' },
     user.role === 'superadmin' && { value: 'beranda', label: 'Slide Beranda', grup: 'Perusahaan' },
     user.role === 'superadmin' && { value: 'apostille', label: 'Tahapan Apostille', grup: 'Perusahaan' },
@@ -103,6 +105,7 @@ export default function Settings() {
       {tab === 'akses-st' && <Suspense fallback={null}><AksesSmartTranslator /></Suspense>}
       {tab === 'ai' && <Suspense fallback={null}><AiSettings /></Suspense>}
       {tab === 'alur' && <AturanAlur />}
+      {tab === 'impor' && bolehIzin(user, 'pengaturan.impor-lama.lihat') && <ImporLama />}
       {tab === 'tampilan' && <LoginSettings />}
       {tab === 'beranda' && <SlideBerandaSettings />}
       {tab === 'apostille' && <AksesApostilleSettings />}

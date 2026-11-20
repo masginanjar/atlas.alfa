@@ -204,6 +204,8 @@ export const MODUL = [
     f('koreksi-typo', 'Koreksi Typo Otomatis — laporan typo per penerjemah', ['laporan']),
     // 20 Nov 2026: Aturan alur — batas persetujuan vendor otomatis. Fitur baru, bawaan hanya Superadmin.
     f('pengaturan.alur', 'Aturan alur — persetujuan vendor otomatis', ['lihat', 'atur']),
+    // 21 Nov 2026: impor data ATLAS lama (project + pengajuan dana) dari berkas. Default deny — hanya Super Admin.
+    f('pengaturan.impor-lama', 'Impor data ATLAS lama', ['lihat', 'jalankan']),
     f('pengaturan.role', 'Role & Hak Akses', ['lihat', 'kelola', 'riwayat'], { semua: ['superadmin'] }, { inti: true }),
     f('pengguna.role', 'Menetapkan role pengguna', ['kelola'], { semua: ['superadmin'] }, { inti: true }),
   ], field: [
