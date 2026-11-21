@@ -115,7 +115,7 @@ Deno.serve(async (req: Request) => {
     const { count } = await admin.from("notif_email_log").select("id", { count: "exact", head: true }).eq("oleh", saya.id).eq("jenis", "contoh").gte("at", new Date(Date.now() - 3600e3).toISOString());
     if ((count ?? 0) >= 10) return json({ ok: false, alasan: "Terlalu banyak email contoh dalam 1 jam — tunggu sebentar" });
     const besok = new Date(Date.now() + 86400e3).toISOString();
-    const isi = susun(String(t.doc?.nickname || t.doc?.name || "Penerjemah"), "1090000000123", tglJam(besok), [{ judul: "Akta Kelahiran, Kartu Keluarga", rinci: "2 dok · 3 hal · Indonesia → Inggris · Ekspres" }], true);
+    const isi = susun(String(t.doc?.nickname || t.doc?.name || "Penerjemah"), "1090000000123", tglJam(besok), [{ judul: "Akta Kelahiran, Kartu Keluarga", rinci: "2 dok · 3 hal · Indonesia → Inggris · Tersumpah · Ekspres" }], true);
     try { await kirimResend(kunci, ke, isi, `contoh-${t.id}-${Date.now()}`); }
     catch (e) { await admin.from("notif_email_log").insert({ jenis: "contoh", oleh: saya.id, penerima: t.id, hasil: "gagal" }); return json({ ok: false, alasan: pesanGalat(e) }); }
     await admin.from("notif_email_log").insert({ jenis: "contoh", oleh: saya.id, penerima: t.id, hasil: "ok" });
