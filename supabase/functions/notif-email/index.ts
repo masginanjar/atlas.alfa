@@ -40,6 +40,8 @@ const judulSub = (sb: Baris) => {
 };
 const jmlDok = (sb: Baris) => (Array.isArray(sb.docs) && sb.docs.length) || Number(sb.file_count) || 0;
 const jmlHal = (sb: Baris) => (Array.isArray(sb.docs) && sb.docs.length ? sb.docs.reduce((a: number, d: Baris) => a + (Number(d?.pages) || 0), 0) : Number(sb.pages) || 0);
+// Jenis terjemahan disebut di email supaya penerjemah langsung tahu (non tersumpah: tanpa proofreader, otorisasi, nomor register).
+const jenisTr = (s: Baris) => (s?.type === "terjemahan_nt" || s?.flow === "tr_nt" ? "Non Tersumpah" : s?.type === "terjemahan" ? "Tersumpah" : "");
 const pemegang = (s: Baris) => (s?.stage === "penerjemahan" && (s?.translator_kind || "translator") === "translator" ? String(s?.translator || s?.data?.translator || "")
   : s?.stage === "proofread" ? String(s?.data?.proofreader || "") : ""); // proofreader yang ditunjuk (tahap Pemeriksaan)
 
@@ -149,7 +151,7 @@ Deno.serve(async (req: Request) => {
     const ke = String(t?.doc?.notif_email ?? "").trim();
     const subs = subsSemua.filter((s) => !pernah.has(`${s.id}:${id}`));
     if (!t || (t.active ?? t.doc?.active) === false || t.doc?.notif_email_aktif !== true || !EMAIL.test(ke) || !subs.length) { dilewati += subsSemua.length; continue; }
-    const baris = subs.map((s) => ({ judul: judulSub(s), rinci: [jmlDok(s) && `${jmlDok(s)} dok`, jmlHal(s) && `${jmlHal(s)} hal`, s.lang_from && s.lang_to && `${s.lang_from} → ${s.lang_to}`, String(s.priority || p.about?.priority || "Normal")].filter(Boolean).join(" · ") }));
+    const baris = subs.map((s) => ({ judul: judulSub(s), rinci: [jmlDok(s) && `${jmlDok(s)} dok`, jmlHal(s) && `${jmlHal(s)} hal`, s.lang_from && s.lang_to && `${s.lang_from} → ${s.lang_to}`, jenisTr(s), String(s.priority || p.about?.priority || "Normal")].filter(Boolean).join(" · ") }));
     const catat = (hasil: string) => admin.from("notif_email_log").insert(subs.map((s) => ({ jenis: "tugas", oleh: saya.id, penerima: id, project_id, sub_id: String(s.id), hasil })));
     try {
       await kirimResend(kunci, ke, susun(String(t.doc?.nickname || t.doc?.name || "Rekan"), no, deadline, baris, false, subs.every((x) => x.stage === "proofread")), `tugas-${project_id}-${id}-${subs.map((s) => s.id).join(".")}`.slice(0, 250));
