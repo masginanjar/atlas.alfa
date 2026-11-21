@@ -1,0 +1,4 @@
+# Aplikasi internal ATLAS — tidak untuk diindeks.
+# Halaman sengaja TIDAK diblokir di sini: mesin pencari harus bisa membukanya untuk membaca tanda "noindex" di tiap halaman.
+User-agent: *
+Allow: /
