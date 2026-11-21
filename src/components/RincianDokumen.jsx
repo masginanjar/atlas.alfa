@@ -7,6 +7,7 @@ import { useApp } from '../lib/store.jsx'
 import { fieldFiles } from './FileManager.jsx'
 import { drive } from '../lib/integrations.js'
 import { saveBlob } from '../lib/download.js'
+import JenisTerjemahan from './JenisTerjemahan.jsx'
 
 const HASIL = { hasil_terjemahan: 'Hasil terjemahan', hasil_vendor: 'Hasil vendor', hasil_proofread: 'Hasil pemeriksaan', file_final: 'Hasil otorisasi' }
 
@@ -37,6 +38,7 @@ export default function RincianDokumen({ project, subMilik }) {
         const hasil = kunciHasil.map((k) => [HASIL[k], fieldFiles(s.data, k)]).filter(([, l], i) => l.length || i === 0)
         return (
           <section key={s.id} className="overflow-hidden rounded-xl bg-white ring-1 ring-slate-200 dark:bg-white/5 dark:ring-white/10">
+            <p className="flex flex-wrap items-center gap-2 border-b border-slate-100 px-3 py-1.5 text-[12px] dark:border-white/10" data-info-jenis><JenisTerjemahan subs={[s]} />{(s.type === 'terjemahan_nt' || s.flow === 'tr_nt') && <span className="text-ink-mute">Selesai diterjemahkan langsung ke Admin Pusat / CS — tanpa proofreader &amp; otorisasi.</span>}</p>
             {subs.length > 1 && <p className="border-b border-slate-100 bg-slate-50 px-3 py-1.5 text-[12px] font-bold text-ink-soft dark:border-white/10 dark:bg-white/5">{s.lang_from && s.lang_to ? `${s.lang_from} → ${s.lang_to}` : 'Dokumen'}</p>}
             <div className="grid gap-x-5 gap-y-3 p-3 md:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)_minmax(0,1fr)]">
               <div className="min-w-0"><p className="mb-1 text-[11.5px] font-bold text-ink-mute">Dokumen</p>

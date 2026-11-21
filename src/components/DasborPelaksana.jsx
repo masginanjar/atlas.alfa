@@ -11,6 +11,7 @@ import { cx } from './ui.jsx'
 import { subMilikUntuk, invoiceLabel } from '../config/access.js'
 import { myWorkSubs, AksiTugasBaris } from './WorkerActions.jsx'
 import { infoDeadline } from './BarisCanvas.jsx'
+import JenisTerjemahan from './JenisTerjemahan.jsx'
 
 const kunciHari = (dl) => (String(dl).length > 10 ? new Date(new Date(dl).getTime() + 8 * 3600e3).toISOString().slice(0, 10) : String(dl).slice(0, 10))
 const HARI = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab']
@@ -25,7 +26,7 @@ export default function DasborPelaksana({ projects = [], angka = {}, perbaikan =
     if (!subs.length) return null
     const dok = subs.flatMap((s) => { const d = (s.docs || []).filter((x) => String(x?.desc || '').trim()); return d.length ? d.map((x) => ({ nama: String(x.desc).trim(), hlm: Number(x.pages) || 0 })) : [{ nama: String(s.title || 'Dokumen').replace(/^terjemahan tersumpah:\s*/i, ''), hlm: Number(s.pages) || 0 }] })
     const arah = [...new Set(subs.map((s) => (s.lang_from && s.lang_to ? `${s.lang_from} → ${s.lang_to}` : '')).filter(Boolean))].join(', ')
-    return { p, dok, arah, hlm: dok.reduce((a, d) => a + d.hlm, 0), aktif: myWorkSubs(user, p).length > 0, dl: p.about?.deadline || '' }
+    return { p, dok, arah, subs, hlm: dok.reduce((a, d) => a + d.hlm, 0), aktif: myWorkSubs(user, p).length > 0, dl: p.about?.deadline || '' }
   }).filter(Boolean).sort((a, b) => (a.aktif === b.aktif ? String(a.dl || '9').localeCompare(String(b.dl || '9')) : a.aktif ? -1 : 1)), [projects, milik, user])
   const aktif = baris.filter((r) => r.aktif); const selesai = baris.filter((r) => !r.aktif)
   const tampil = saring === 'aktif' ? aktif : saring === 'selesai' ? selesai : baris
@@ -69,7 +70,7 @@ export default function DasborPelaksana({ projects = [], angka = {}, perbaikan =
         <section className="flex flex-col gap-3 rounded-2xl bg-[#141B34] p-4 text-white md:flex-row md:items-center md:p-5" data-kerjakan-sekarang>
           <div className="flex min-w-0 flex-1 flex-col gap-1.5">
             <span className="text-[11px] font-bold uppercase tracking-wider text-white/60">Kerjakan sekarang</span>
-            <span className="text-lg font-extrabold tabular-nums md:text-xl">{invoiceLabel(utama.p.invoice_no)}{utama.arah && <span className="font-bold"> · {utama.arah}</span>}</span>
+            <span className="text-lg font-extrabold tabular-nums md:text-xl">{invoiceLabel(utama.p.invoice_no)}{utama.arah && <span className="font-bold"> · {utama.arah}</span>} <JenisTerjemahan subs={utama.subs} className="ml-1 align-middle" /></span>
             <span className="text-[13px] text-white/80">{utama.dok.slice(0, 3).map((d, i) => `${i + 1}. ${d.nama}${d.hlm ? ` · ${d.hlm} hlm` : ''}`).join('   ')}{utama.dok.length > 3 ? `   +${utama.dok.length - 3} lagi` : ''}</span>
             {(() => { const d = infoDeadline(utama.p); return d ? <span className="flex flex-wrap items-center gap-2 text-[12.5px]"><span className="inline-flex min-h-6 items-center rounded-full px-2.5 text-xs font-bold" style={{ background: d.bg, color: d.fg }}>Deadline {d.tgl}</span><span className="font-semibold text-amber-200">{d.sisa}</span></span> : null })()}
           </div>
@@ -93,7 +94,7 @@ export default function DasborPelaksana({ projects = [], angka = {}, perbaikan =
                 <tr key={r.p.id} className={cx('border-t border-slate-100 align-middle dark:border-white/10', !r.aktif && 'bg-[#DDF5E4] dark:bg-[#143524]')} data-baris-dasbor>
                   <td className="px-4 py-3"><a href={`#/projects/${r.p.id}`} className="whitespace-nowrap text-[14.5px] font-extrabold tabular-nums hover:underline">{invoiceLabel(r.p.invoice_no)}</a></td>
                   <td className="px-3 py-3"><Pil p={r.p} /></td>
-                  <td className="whitespace-nowrap px-3 py-3">{r.arah || '—'}</td>
+                  <td className="px-3 py-3"><span className="flex flex-col items-start gap-0.5"><span className="whitespace-nowrap">{r.arah || '—'}</span><JenisTerjemahan subs={r.subs} /></span></td>
                   <td className="px-3 py-3"><Dok dok={r.dok} /></td>
                   <td className="px-4 py-3"><span className="flex items-center justify-end">{r.aktif ? <AksiTugasBaris project={r.p} /> : <span className="mr-2 text-[13px] font-bold text-emerald-700 dark:text-emerald-300">Selesai</span>}<span className="ml-1.5"><Folder p={r.p} /></span></span></td>
                 </tr>))}</tbody>
@@ -101,7 +102,7 @@ export default function DasborPelaksana({ projects = [], angka = {}, perbaikan =
             <ul className="divide-y divide-slate-100 border-t border-slate-100 md:hidden dark:divide-white/10 dark:border-white/10" data-kartu-dasbor>{tampil.map((r) => (
               <li key={r.p.id} className={cx('flex flex-col gap-2 px-4 py-3', !r.aktif && 'bg-[#DDF5E4] dark:bg-[#143524]')}>
                 <span className="flex items-start justify-between gap-2"><a href={`#/projects/${r.p.id}`} className="inline-flex min-h-11 items-center text-[15px] font-extrabold tabular-nums">{invoiceLabel(r.p.invoice_no)}</a><Pil p={r.p} /></span>
-                {r.arah && <span className="text-[13px] font-semibold">{r.arah}</span>}
+                <span className="flex flex-wrap items-center gap-2">{r.arah && <span className="text-[13px] font-semibold">{r.arah}</span>}<JenisTerjemahan subs={r.subs} /></span>
                 <Dok dok={r.dok} />
                 <span className="flex items-center gap-2"><span className="min-w-0 flex-1">{r.aktif ? <AksiTugasBaris project={r.p} hp /> : <span className="text-[13px] font-bold text-emerald-700">Selesai</span>}</span><Folder p={r.p} /></span>
               </li>))}</ul>

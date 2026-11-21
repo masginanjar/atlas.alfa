@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import NamaFoto, { FotoNama } from './NamaFoto.jsx'
+import JenisTerjemahan from './JenisTerjemahan.jsx'
 import { labelPrioritas } from '../config/priority.js'
 import { OfficialInvoice } from './NoReg.jsx'
 import { InvoiceNo, TandaAcc } from './badges.jsx'
@@ -273,7 +274,7 @@ export default function ProjectSpreadsheet({ list, detailFor, onDetail, onFiles,
         </Lingkar>{pref.urgensi && sisaWaktu(r.p) && <span className={cx('block text-[10.5px] font-bold', grupOf(r.p) === 'terlambat' ? 'text-rose-600' : 'text-orange-600')}>{sisaWaktu(r.p)}</span>}</>)
     }
     if (key === 'cabangCs') return <span className="flex min-w-0 flex-col leading-tight"><span className="truncate font-semibold">{r.cabang || '—'}</span>{r.cs && <NamaFoto nama={r.cs} awalan="CS " size={16} className="mt-0.5 text-[11.5px] text-ink-mute" />}</span>
-    if (key === 'dokumen' && dokRingkas) return <span className="flex flex-col whitespace-nowrap leading-tight"><span className="font-semibold">{r.dokAll?.length || r.jmlDok || 0} dokumen</span>{r.jmlHal ? <span className="text-[11.5px] text-ink-mute">{r.jmlHal} hlm</span> : null}</span>
+    if (key === 'dokumen' && dokRingkas) return <span className="flex flex-col items-start gap-0.5 whitespace-nowrap leading-tight"><span className="font-semibold">{r.dokAll?.length || r.jmlDok || 0} dokumen{r.jmlHal ? <span className="font-normal text-ink-mute"> · {r.jmlHal} hlm</span> : null}</span><JenisTerjemahan subs={(r.p?.sub_projects || []).filter((x) => !subMilik || subMilik(x))} /></span>
     if (key === 'dokumen') return !r.dokAll?.length ? <span className="text-ink-mute">—</span> : (
       <ol className="min-w-0 space-y-0.5 text-[12.5px] leading-snug" data-dok-baris>
         {r.dokAll.slice(0, 5).map((d, i) => <li key={i} className="flex min-w-0 gap-1.5"><span className="shrink-0 tabular-nums text-ink-mute">{i + 1}.</span><span className="min-w-0 break-words md:line-clamp-2" title={d}>{d}</span></li>)}
@@ -368,7 +369,7 @@ export default function ProjectSpreadsheet({ list, detailFor, onDetail, onFiles,
             <thead>
               <tr>
                 {KOLOM.map((c) => (
-                  <th key={c.key} scope="col" style={tanpaIsi && !lebar[c.key] ? (c.key === 'dokumen' ? (dokRingkas ? { minWidth: '96px' } : { width: '34%', minWidth: '170px' }) : undefined) : { width: lebar[c.key] || c.w, minWidth: lebar[c.key] || c.w }}
+                  <th key={c.key} scope="col" style={tanpaIsi && !lebar[c.key] ? (c.key === 'dokumen' ? (dokRingkas ? { minWidth: '128px' } : { width: '34%', minWidth: '170px' }) : undefined) : { width: lebar[c.key] || c.w, minWidth: lebar[c.key] || c.w }}
                     className={cx('relative sticky top-0 z-10 whitespace-nowrap border-b border-slate-200 bg-slate-50 px-3 py-2 text-left text-xs font-bold text-ink-soft',
                       c.sticky && 'left-0 z-20 shadow-[6px_0_8px_-6px_rgba(15,23,42,.25)] md:shadow-none')}>
                     <span onPointerDown={(e) => mulaiTarik(e, c.key, c.w)} onDoubleClick={() => simpanLebar({ ...lebar, [c.key]: undefined })} title="Tarik untuk mengubah lebar · klik dua kali untuk kembali"
